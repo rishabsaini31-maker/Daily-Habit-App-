@@ -19,7 +19,7 @@ export default function App() {
       <FocusEngineProvider>
         <OnboardingProvider>
           <NavigationProvider>
-            <StatusBar barStyle="light-content" backgroundColor={colors.obsidian} />
+            <StatusBar barStyle="light-content" />
             <RootNavigator />
           </NavigationProvider>
         </OnboardingProvider>

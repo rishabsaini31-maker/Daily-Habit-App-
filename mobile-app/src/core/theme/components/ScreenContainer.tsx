@@ -23,11 +23,7 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
 }) => {
   return (
     <SafeAreaView style={[styles.safeArea, style]}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor={colors.obsidian}
-        translucent={Platform.OS === 'android'}
-      />
+      <StatusBar barStyle="light-content" />
       <View style={[styles.content, contentStyle]}>{children}</View>
     </SafeAreaView>
   );
