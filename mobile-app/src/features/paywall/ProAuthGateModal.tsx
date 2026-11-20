@@ -25,7 +25,9 @@ import {
 import { colors, typography, spacing } from '../../core/theme/tokens';
 import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
+import oAuthService from '../../services/oauth/OAuthService';
 import authService from '../../services/supabase/auth';
+import revenueCat from '../../services/revenuecat/RevenueCatService';
 
 interface ProAuthGateModalProps {
   visible: boolean;
@@ -61,13 +63,15 @@ export const ProAuthGateModal: React.FC<ProAuthGateModalProps> = ({
     onClose();
   };
 
-  // 1. Link with Apple (Required on iOS when social sign-in is offered)
+  // 1. Direct Sign in with Apple (App Store Review Guideline 4.8 Compliance)
   const handleLinkApple = async () => {
     setLoading(true);
     setErrorMessage(null);
     try {
-      const res = await authService.linkWithApple();
-      if (res.success) {
+      const res = await oAuthService.signInWithApple();
+      if (res.success && res.user) {
+        // Pass verified OAuth sub directly into RevenueCat logIn
+        await revenueCat.logIn(res.user.sub);
         handleClose();
         await onSuccess();
       } else {
@@ -80,13 +84,15 @@ export const ProAuthGateModal: React.FC<ProAuthGateModalProps> = ({
     }
   };
 
-  // 2. Link with Google
+  // 2. Direct Google OAuth Sign-In
   const handleLinkGoogle = async () => {
     setLoading(true);
     setErrorMessage(null);
     try {
-      const res = await authService.linkWithGoogle();
-      if (res.success) {
+      const res = await oAuthService.signInWithGoogle();
+      if (res.success && res.user) {
+        // Pass verified OAuth sub directly into RevenueCat logIn
+        await revenueCat.logIn(res.user.sub);
         handleClose();
         await onSuccess();
       } else {

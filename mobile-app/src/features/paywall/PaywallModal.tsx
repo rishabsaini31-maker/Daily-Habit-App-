@@ -16,6 +16,7 @@ import { useAppNavigation } from '../../core/navigation/NavigationContext';
 import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
 import revenueCat from '../../services/revenuecat/RevenueCatService';
 import authService from '../../services/supabase/auth';
+import oAuthService from '../../services/oauth/OAuthService';
 import ProAuthGateModal from './ProAuthGateModal';
 import SignInModal from '../auth/SignInModal';
 
@@ -27,13 +28,14 @@ export const PaywallModal: React.FC = () => {
   const [showAuthGate, setShowAuthGate] = useState<boolean>(false);
   const [showSignIn, setShowSignIn] = useState<boolean>(false);
 
-  // Executes purchase only after user identity is established
+  // Executes purchase only after OAuth user identity is established
   const executePurchase = async () => {
     setIsProcessing(true);
     try {
-      const user = await authService.getCurrentUser();
-      if (user?.id) {
-        await revenueCat.logIn(user.id);
+      const oAuthUser = await oAuthService.getCurrentOAuthUser();
+      if (!oAuthUser.isGuest && oAuthUser.sub) {
+        // Pass verified OAuth sub ID directly into Purchases.logIn(oauthSubId)
+        await revenueCat.logIn(oAuthUser.sub);
       }
 
       const packageId = billingPlan === 'annual' ? 'annual_4999_trial' : 'monthly_899';
@@ -58,11 +60,11 @@ export const PaywallModal: React.FC = () => {
     }
   };
 
-  // Spec: Enforce mandatory account linking BEFORE initiating payment for anonymous guests
+  // Spec: Enforce mandatory OAuth sign-in BEFORE initiating payment for anonymous guests
   const handleStartTrial = async () => {
     try {
-      const isAnon = await authService.isAnonymous();
-      if (isAnon) {
+      const oAuthUser = await oAuthService.getCurrentOAuthUser();
+      if (oAuthUser.isGuest) {
         setShowAuthGate(true);
         return;
       }
@@ -75,9 +77,9 @@ export const PaywallModal: React.FC = () => {
   const handleRestore = async () => {
     setIsProcessing(true);
     try {
-      const user = await authService.getCurrentUser();
-      if (user?.id) {
-        await revenueCat.logIn(user.id);
+      const oAuthUser = await oAuthService.getCurrentOAuthUser();
+      if (!oAuthUser.isGuest && oAuthUser.sub) {
+        await revenueCat.logIn(oAuthUser.sub);
       }
       const result = await revenueCat.restorePurchases();
       if (result.isPro) {

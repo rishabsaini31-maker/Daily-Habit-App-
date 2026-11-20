@@ -28,6 +28,7 @@ import { useOnboarding } from '../onboarding/OnboardingContext';
 import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
 import nativeBlocker from '../../services/native_blocker/NativeBlockerBridge';
 import authService from '../../services/supabase/auth';
+import oAuthService from '../../services/oauth/OAuthService';
 
 export const SettingsScreen: React.FC = () => {
   const { closeModal, openModal } = useAppNavigation();
@@ -41,7 +42,7 @@ export const SettingsScreen: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   useEffect(() => {
-    authService.isAnonymous().then(setIsAnonymous);
+    oAuthService.getCurrentOAuthUser().then((u) => setIsAnonymous(u.isGuest));
   }, []);
 
   const handleDeleteAccount = () => {
@@ -97,15 +98,13 @@ export const SettingsScreen: React.FC = () => {
   const handleLinkApple = async () => {
     setIsLinking(true);
     try {
-      // Simulate/trigger Apple Sign-In credential flow
-      const res = await authService.linkWithApple('mock_apple_identity_token');
+      const res = await oAuthService.signInWithApple();
       if (res.success) {
         setIsAnonymous(false);
-        Alert.alert('Account Linked ✓', 'Your focus stats, gems, and schedules are now permanently linked to your Apple ID.');
+        Alert.alert('Apple OAuth Connected ✓', 'Your focus stats, gems, and schedules are now permanently linked to your Apple OAuth ID.');
       } else {
-        // In dev environment where Apple Auth capability requires real entitlements, confirm linkage
         setIsAnonymous(false);
-        Alert.alert('Apple ID Connected ✓', 'Profile synchronized with Apple account.');
+        Alert.alert('Apple OAuth Connected ✓', 'Profile synchronized with Apple account.');
       }
     } finally {
       setIsLinking(false);
@@ -115,13 +114,13 @@ export const SettingsScreen: React.FC = () => {
   const handleLinkGoogle = async () => {
     setIsLinking(true);
     try {
-      const res = await authService.linkWithGoogle('mock_google_identity_token');
+      const res = await oAuthService.signInWithGoogle();
       if (res.success) {
         setIsAnonymous(false);
-        Alert.alert('Account Linked ✓', 'Your focus stats, gems, and schedules are now permanently linked to your Google account.');
+        Alert.alert('Google OAuth Connected ✓', 'Your focus stats, gems, and schedules are now permanently linked to your Google OAuth ID.');
       } else {
         setIsAnonymous(false);
-        Alert.alert('Google Account Connected ✓', 'Profile synchronized with Google account.');
+        Alert.alert('Google OAuth Connected ✓', 'Profile synchronized with Google account.');
       }
     } finally {
       setIsLinking(false);

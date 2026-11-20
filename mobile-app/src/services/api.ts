@@ -929,4 +929,14 @@ export const api = {
       method: 'DELETE',
     });
   },
+
+  async migrateGuestData(guestId: string, oauthSub: string) {
+    return await request<{ success: boolean; migrated: boolean; guestId: string; oauthSub: string }>(
+      '/focus/migrate-guest',
+      {
+        method: 'POST',
+        body: JSON.stringify({ guestId, oauthSub }),
+      }
+    );
+  },
 };

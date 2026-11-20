@@ -826,6 +826,13 @@ export class PgFocusRepository {
     await PgConnection.query('DELETE FROM public.profiles WHERE id = $1', [userId]);
     await PgConnection.query('DELETE FROM public.users WHERE id = $1', [userId]);
   }
+
+  // ==========================================
+  // 11. GUEST DATA MIGRATION TO OAUTH SUB
+  // ==========================================
+  public async migrateGuestData(guestId: string, oauthSub: string): Promise<void> {
+    await PgConnection.query('SELECT public.migrate_guest_to_oauth($1, $2)', [guestId, oauthSub]);
+  }
 }
 
 export default PgFocusRepository;

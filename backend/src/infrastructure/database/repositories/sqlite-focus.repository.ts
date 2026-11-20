@@ -721,4 +721,29 @@ export class SqliteFocusRepository {
     this.db.prepare('DELETE FROM profiles WHERE user_id = ?').run(userId);
     this.db.prepare('DELETE FROM users WHERE id = ?').run(userId);
   }
+
+  // ==========================================
+  // 11. GUEST DATA MIGRATION TO OAUTH SUB
+  // ==========================================
+  public migrateGuestData(guestId: string, oauthSub: string): void {
+    if (guestId === oauthSub) return;
+    const guestProfile = this.db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(guestId) as any;
+    if (guestProfile) {
+      this.createDefaultProfile(oauthSub, guestProfile.display_name);
+      this.updateProfile(oauthSub, {
+        streakDays: guestProfile.streak_days,
+        totalGems: guestProfile.total_gems,
+        tierRank: guestProfile.tier_rank,
+        baselineMinutes: guestProfile.daily_baseline_minutes,
+        isPro: Boolean(guestProfile.is_pro),
+      });
+    }
+    this.db.prepare('UPDATE OR IGNORE blocked_targets SET user_id = ? WHERE user_id = ?').run(oauthSub, guestId);
+    this.db.prepare('DELETE FROM blocked_targets WHERE user_id = ?').run(guestId);
+    this.db.prepare('UPDATE schedules SET user_id = ? WHERE user_id = ?').run(oauthSub, guestId);
+    this.db.prepare('UPDATE focus_sessions SET user_id = ? WHERE user_id = ?').run(oauthSub, guestId);
+    this.db.prepare('UPDATE OR IGNORE daily_metrics SET user_id = ? WHERE user_id = ?').run(oauthSub, guestId);
+    this.db.prepare('DELETE FROM daily_metrics WHERE user_id = ?').run(guestId);
+    this.db.prepare('DELETE FROM profiles WHERE user_id = ?').run(guestId);
+  }
 }

@@ -530,5 +530,28 @@ export function createFocusRouter(
     }
   });
 
+  // =========================================================================
+  // GUEST DATA MIGRATION TO DIRECT OAUTH SUB
+  // =========================================================================
+  router.post('/focus/migrate-guest', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { guestId, oauthSub } = req.body;
+      if (!guestId || !oauthSub) {
+        return res.status(400).json({ error: 'guestId and oauthSub are required' });
+      }
+
+      await focusRepo.migrateGuestData(guestId, oauthSub);
+
+      res.status(200).json({
+        success: true,
+        migrated: true,
+        guestId,
+        oauthSub,
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   return router;
 }

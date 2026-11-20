@@ -23,6 +23,7 @@ import { colors, typography, spacing } from '../../core/theme/tokens';
 import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import authService from '../../services/supabase/auth';
+import oAuthService from '../../services/oauth/OAuthService';
 import { useOnboarding } from '../onboarding/OnboardingContext';
 import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
 
@@ -76,12 +77,12 @@ export const SignInModal: React.FC<SignInModalProps> = ({
     );
   };
 
-  // 1. Sign In with Apple
+  // 1. Direct Apple OAuth Sign In
   const handleAppleSignIn = async () => {
     setLoading(true);
     setErrorMessage(null);
     try {
-      const res = await authService.signInWithApple();
+      const res = await oAuthService.signInWithApple();
       if (res.success) {
         await handlePostSignInSuccess();
       } else {
@@ -94,12 +95,12 @@ export const SignInModal: React.FC<SignInModalProps> = ({
     }
   };
 
-  // 2. Sign In with Google
+  // 2. Direct Google OAuth Sign In
   const handleGoogleSignIn = async () => {
     setLoading(true);
     setErrorMessage(null);
     try {
-      const res = await authService.signInWithGoogle();
+      const res = await oAuthService.signInWithGoogle();
       if (res.success) {
         await handlePostSignInSuccess();
       } else {
