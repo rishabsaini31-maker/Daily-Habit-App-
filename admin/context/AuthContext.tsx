@@ -15,6 +15,7 @@ interface AuthContextType {
   user: AdminUserSession | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  loginWithPassword: (email: string, password: string) => Promise<boolean>;
   loginWithEmail: (email: string) => Promise<boolean>;
   loginWithGoogle: () => Promise<void>;
   quickDemoLogin: () => void;
@@ -42,6 +43,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   }, []);
+
+  const loginWithPassword = async (email: string, password: string): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const { AdminService } = await import('../services/admin-service');
+      const result = await AdminService.authenticateWithPassword(email, password);
+
+      if (!result.success || !result.user) {
+        throw new Error(result.message || 'Invalid administrator email or password.');
+      }
+
+      const sessionUser: AdminUserSession = {
+        id: result.user.id,
+        email: result.user.email,
+        role: result.user.role as 'super_admin' | 'support',
+        displayName: result.user.displayName || result.user.email.split('@')[0],
+      };
+
+      setUser(sessionUser);
+      localStorage.setItem('focus_admin_user', JSON.stringify(sessionUser));
+      router.push('/dashboard');
+      return true;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const loginWithEmail = async (email: string): Promise<boolean> => {
     setIsLoading(true);
@@ -126,6 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isAuthenticated: !!user,
         isLoading,
+        loginWithPassword,
         loginWithEmail,
         loginWithGoogle,
         quickDemoLogin,
