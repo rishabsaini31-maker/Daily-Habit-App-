@@ -103,87 +103,107 @@ ALTER TABLE public.daily_metrics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.emergency_unlock_codes ENABLE ROW LEVEL SECURITY;
 
 -- Profiles Policies
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 CREATE POLICY "Users can view own profile"
     ON public.profiles FOR SELECT
     USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
 CREATE POLICY "Users can insert own profile"
     ON public.profiles FOR INSERT
     WITH CHECK (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile"
     ON public.profiles FOR UPDATE
     USING (auth.uid() = id);
 
 -- Blocked Targets Policies
+DROP POLICY IF EXISTS "Users can view own blocked targets" ON public.blocked_targets;
 CREATE POLICY "Users can view own blocked targets"
     ON public.blocked_targets FOR SELECT
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own blocked targets" ON public.blocked_targets;
 CREATE POLICY "Users can insert own blocked targets"
     ON public.blocked_targets FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own blocked targets" ON public.blocked_targets;
 CREATE POLICY "Users can update own blocked targets"
     ON public.blocked_targets FOR UPDATE
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own blocked targets" ON public.blocked_targets;
 CREATE POLICY "Users can delete own blocked targets"
     ON public.blocked_targets FOR DELETE
     USING (auth.uid() = user_id);
 
 -- Focus Sessions Policies
+DROP POLICY IF EXISTS "Users can view own focus sessions" ON public.focus_sessions;
 CREATE POLICY "Users can view own focus sessions"
     ON public.focus_sessions FOR SELECT
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own focus sessions" ON public.focus_sessions;
 CREATE POLICY "Users can insert own focus sessions"
     ON public.focus_sessions FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own focus sessions" ON public.focus_sessions;
 CREATE POLICY "Users can update own focus sessions"
     ON public.focus_sessions FOR UPDATE
     USING (auth.uid() = user_id);
 
 -- Schedules Policies
+DROP POLICY IF EXISTS "Users can view own schedules" ON public.schedules;
 CREATE POLICY "Users can view own schedules"
     ON public.schedules FOR SELECT
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own schedules" ON public.schedules;
 CREATE POLICY "Users can insert own schedules"
     ON public.schedules FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own schedules" ON public.schedules;
 CREATE POLICY "Users can update own schedules"
     ON public.schedules FOR UPDATE
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own schedules" ON public.schedules;
 CREATE POLICY "Users can delete own schedules"
     ON public.schedules FOR DELETE
     USING (auth.uid() = user_id);
 
 -- Daily Metrics Policies
+DROP POLICY IF EXISTS "Users can view own daily metrics" ON public.daily_metrics;
 CREATE POLICY "Users can view own daily metrics"
     ON public.daily_metrics FOR SELECT
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own daily metrics" ON public.daily_metrics;
 CREATE POLICY "Users can insert own daily metrics"
     ON public.daily_metrics FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own daily metrics" ON public.daily_metrics;
 CREATE POLICY "Users can update own daily metrics"
     ON public.daily_metrics FOR UPDATE
     USING (auth.uid() = user_id);
 
 -- Emergency Unlock Codes Policies
+DROP POLICY IF EXISTS "Users can view own emergency codes" ON public.emergency_unlock_codes;
 CREATE POLICY "Users can view own emergency codes"
     ON public.emergency_unlock_codes FOR SELECT
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own emergency codes" ON public.emergency_unlock_codes;
 CREATE POLICY "Users can insert own emergency codes"
     ON public.emergency_unlock_codes FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own emergency codes" ON public.emergency_unlock_codes;
 CREATE POLICY "Users can update own emergency codes"
     ON public.emergency_unlock_codes FOR UPDATE
     USING (auth.uid() = user_id);

@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS categories (
     name VARCHAR(50) NOT NULL UNIQUE,
     icon VARCHAR(50) NOT NULL,
     color VARCHAR(20) NOT NULL,
-    is_system BOOLEAN NOT NULL DEFAULT 1,
+    is_system BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS habits (
     reminder_time VARCHAR(5),                           -- 'HH:mm'
     color VARCHAR(20) NOT NULL,
     icon VARCHAR(50) NOT NULL,
-    is_archived BOOLEAN NOT NULL DEFAULT 0,
+    is_archived BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS habit_templates (
     unit VARCHAR(30),
     icon VARCHAR(50) NOT NULL,
     color VARCHAR(20) NOT NULL,
-    is_published BOOLEAN NOT NULL DEFAULT 1,
+    is_published BOOLEAN NOT NULL DEFAULT true,
     created_by VARCHAR(36) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -7,9 +7,11 @@ export class DatabaseConnection {
 
   public static getInstance(dbPath?: string): DatabaseType {
     if (!DatabaseConnection.instance) {
+      const isPostgresUrl = process.env.DATABASE_URL?.startsWith('postgres');
       const targetPath =
         dbPath ||
-        process.env.DATABASE_URL ||
+        process.env.SQLITE_DB_PATH ||
+        (!isPostgresUrl ? process.env.DATABASE_URL : undefined) ||
         (process.env.NODE_ENV === 'test'
           ? ':memory:'
           : path.resolve(process.cwd(), 'habit_tracker.db'));

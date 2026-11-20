@@ -3,6 +3,7 @@ import { Database as DatabaseType } from 'better-sqlite3';
 
 // Repositories
 import { SqliteUserRepository } from '../infrastructure/database/repositories/sqlite-user.repository.js';
+import { PgUserRepository } from '../infrastructure/database/repositories/pg-user.repository.js';
 import { SqliteCategoryRepository } from '../infrastructure/database/repositories/sqlite-category.repository.js';
 import { SqliteHabitRepository } from '../infrastructure/database/repositories/sqlite-habit.repository.js';
 import { SqliteCompletionRepository } from '../infrastructure/database/repositories/sqlite-completion.repository.js';
@@ -10,6 +11,7 @@ import { SqliteStreakRepository } from '../infrastructure/database/repositories/
 import { SqliteTemplateRepository } from '../infrastructure/database/repositories/sqlite-template.repository.js';
 import { SqliteAuditLogRepository } from '../infrastructure/database/repositories/sqlite-audit-log.repository.js';
 import { SqliteFocusRepository } from '../infrastructure/database/repositories/sqlite-focus.repository.js';
+import { PgFocusRepository } from '../infrastructure/database/repositories/pg-focus.repository.js';
 
 // Services
 import { JwtTokenService } from '../infrastructure/security/jwt-token.service.js';
@@ -63,15 +65,23 @@ import { createFocusRouter } from './focus.controller.js';
 export function createApiRouter(db: DatabaseType): Router {
   const router = Router();
 
+  const isPostgres =
+    (process.env.DATABASE_URL?.startsWith('postgres://') ||
+      process.env.DATABASE_URL?.startsWith('postgresql://')) &&
+    process.env.NODE_ENV !== 'test';
+
   // Instantiate Repositories
-  const userRepo = new SqliteUserRepository(db);
+  const userRepo = isPostgres ? new PgUserRepository() : new SqliteUserRepository(db);
   const categoryRepo = new SqliteCategoryRepository(db);
   const habitRepo = new SqliteHabitRepository(db);
   const completionRepo = new SqliteCompletionRepository(db);
   const streakRepo = new SqliteStreakRepository(db);
   const templateRepo = new SqliteTemplateRepository(db);
   const auditLogRepo = new SqliteAuditLogRepository(db);
-  const focusRepo = new SqliteFocusRepository(db);
+
+  const focusRepo = isPostgres
+    ? (new PgFocusRepository() as any)
+    : new SqliteFocusRepository(db);
 
   // Instantiate Infrastructure Services
   const tokenService = new JwtTokenService();

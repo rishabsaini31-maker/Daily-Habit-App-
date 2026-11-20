@@ -6,14 +6,16 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { SqliteFocusRepository } from '../infrastructure/database/repositories/sqlite-focus.repository.js';
-import { SqliteUserRepository } from '../infrastructure/database/repositories/sqlite-user.repository.js';
+import { PgFocusRepository } from '../infrastructure/database/repositories/pg-focus.repository.js';
+import { IUserRepository } from '../usecases/ports/user.repository.port.js';
 import { JwtTokenService } from '../infrastructure/security/jwt-token.service.js';
 import { FocusScoringService } from '../domain/services/focus-scoring.service.js';
 import { User } from '../domain/entities/user.entity.js';
+import { SupabaseClientManager } from '../infrastructure/database/supabase-client.js';
 
 export function createFocusRouter(
-  focusRepo: SqliteFocusRepository,
-  userRepo: SqliteUserRepository,
+  focusRepo: SqliteFocusRepository | PgFocusRepository | any,
+  userRepo: IUserRepository | any,
   tokenService: JwtTokenService,
   authMiddleware: any
 ): Router {
@@ -29,8 +31,32 @@ export function createFocusRouter(
 
       let user = await userRepo.findByEmail(anonEmail);
       if (!user) {
+        let authUserId = uuidv4();
+
+        const isPostgres =
+          process.env.DATABASE_URL?.startsWith('postgres://') ||
+          process.env.DATABASE_URL?.startsWith('postgresql://');
+
+        if (isPostgres && process.env.NODE_ENV !== 'test') {
+          try {
+            const supabase = SupabaseClientManager.getInstance();
+            const { data: authUser, error: authErr } = await supabase.auth.admin.createUser({
+              email: anonEmail,
+              email_confirm: true,
+              user_metadata: { full_name: req.body.displayName || 'Focus Pioneer' },
+            });
+            if (authUser?.user?.id) {
+              authUserId = authUser.user.id;
+            } else if (authErr) {
+              console.warn('Supabase auth.admin.createUser warning:', authErr.message);
+            }
+          } catch {
+            // fallback
+          }
+        }
+
         user = new User({
-          id: uuidv4(),
+          id: authUserId,
           email: anonEmail,
           passwordHash: 'ANONYMOUS_SESSION',
           displayName: req.body.displayName || 'Focus Pioneer',
@@ -44,7 +70,9 @@ export function createFocusRouter(
       }
 
       // Initialize default profile with 50 Welcome Gems
-      const profile = focusRepo.getProfile(user.id) || focusRepo.createDefaultProfile(user.id, user.displayName);
+      const profile =
+        (await focusRepo.getProfile(user.id)) ||
+        (await focusRepo.createDefaultProfile(user.id, user.displayName));
       const token = tokenService.signToken({
         sub: user.id,
         email: user.email,
@@ -74,7 +102,8 @@ export function createFocusRouter(
   router.get('/focus/profile', authMiddleware, async (req: any, res: Response, next: NextFunction) => {
     try {
       const userId = req.user.id;
-      const profile = focusRepo.getProfile(userId) || focusRepo.createDefaultProfile(userId);
+      const profile =
+        (await focusRepo.getProfile(userId)) || (await focusRepo.createDefaultProfile(userId));
       res.status(200).json({ success: true, profile });
     } catch (err) {
       next(err);
@@ -94,7 +123,7 @@ export function createFocusRouter(
         }
       }
 
-      const updated = focusRepo.updateProfile(userId, {
+      const updated = await focusRepo.updateProfile(userId, {
         displayName: req.body.displayName,
         baselineMinutes: req.body.dailyBaselineMinutes || req.body.baselineMinutes,
         friendPartnerName: req.body.friendPartnerName,
@@ -114,7 +143,7 @@ export function createFocusRouter(
   router.get('/focus/blocked-targets', authMiddleware, async (req: any, res: Response, next: NextFunction) => {
     try {
       const userId = req.user.id;
-      const targets = focusRepo.getBlockedTargets(userId);
+      const targets = await focusRepo.getBlockedTargets(userId);
       res.status(200).json({ success: true, targets });
     } catch (err) {
       next(err);
@@ -130,7 +159,7 @@ export function createFocusRouter(
         return res.status(400).json({ error: 'packageOrToken is required' });
       }
 
-      const target = focusRepo.addBlockedTarget(userId, {
+      const target = await focusRepo.addBlockedTarget(userId, {
         platform: platform || 'android',
         packageOrToken,
         displayName: displayName || packageOrToken,
@@ -147,7 +176,7 @@ export function createFocusRouter(
     try {
       const userId = req.user.id;
       const { id } = req.params;
-      const removed = focusRepo.removeBlockedTarget(userId, id);
+      const removed = await focusRepo.removeBlockedTarget(userId, id);
       res.status(200).json({ success: true, removed });
     } catch (err) {
       next(err);
@@ -162,7 +191,7 @@ export function createFocusRouter(
       const userId = req.user.id;
       const { id, durationMinutes, strictnessMode } = req.body;
 
-      const session = focusRepo.createFocusSession(userId, {
+      const session = await focusRepo.createFocusSession(userId, {
         id,
         durationMinutes: durationMinutes || 25,
         strictnessMode: strictnessMode || 'normal',
@@ -177,7 +206,7 @@ export function createFocusRouter(
   router.get('/focus/sessions/active', authMiddleware, async (req: any, res: Response, next: NextFunction) => {
     try {
       const userId = req.user.id;
-      const session = focusRepo.getActiveSession(userId);
+      const session = await focusRepo.getActiveSession(userId);
       res.status(200).json({ success: true, session });
     } catch (err) {
       next(err);
@@ -193,7 +222,7 @@ export function createFocusRouter(
         return res.status(400).json({ error: 'sessionId is required' });
       }
 
-      const result = focusRepo.completeFocusSession(userId, sessionId, actualMinutes || 25);
+      const result = await focusRepo.completeFocusSession(userId, sessionId, actualMinutes || 25);
       res.status(200).json(result);
     } catch (err) {
       next(err);
@@ -205,14 +234,14 @@ export function createFocusRouter(
       const userId = req.user.id;
       const { sessionId } = req.body;
 
-      const active = focusRepo.getActiveSession(userId);
+      const active = await focusRepo.getActiveSession(userId);
       const targetId = sessionId || active?.id;
 
       if (!targetId) {
         return res.status(400).json({ error: 'No active session to stop' });
       }
 
-      const broken = focusRepo.cancelFocusSession(userId, targetId);
+      const broken = await focusRepo.cancelFocusSession(userId, targetId);
       res.status(200).json({ success: true, session: broken });
     } catch (err) {
       next(err);
@@ -223,7 +252,7 @@ export function createFocusRouter(
     try {
       const userId = req.user.id;
       const limit = parseInt(req.query.limit as string, 10) || 20;
-      const sessions = focusRepo.getPastSessions(userId, limit);
+      const sessions = await focusRepo.getPastSessions(userId, limit);
       res.status(200).json({ success: true, sessions });
     } catch (err) {
       next(err);
@@ -237,7 +266,7 @@ export function createFocusRouter(
     try {
       const userId = req.user.id;
       const { targetName } = req.body;
-      const result = focusRepo.recordInterception(userId, targetName || 'Instagram Reels');
+      const result = await focusRepo.recordInterception(userId, targetName || 'Instagram Reels');
       res.status(200).json({ success: true, ...result });
     } catch (err) {
       next(err);
@@ -251,7 +280,7 @@ export function createFocusRouter(
     try {
       const userId = req.user.id;
       const { sessionId } = req.body;
-      const result = focusRepo.generateFriendUnlockOtp(userId, sessionId);
+      const result = await focusRepo.generateFriendUnlockOtp(userId, sessionId);
       res.status(200).json({ success: true, ...result });
     } catch (err) {
       next(err);
@@ -267,7 +296,7 @@ export function createFocusRouter(
         return res.status(400).json({ error: 'otpCode is required' });
       }
 
-      const result = focusRepo.verifyFriendUnlockOtp(userId, otpCode, sessionId);
+      const result = await focusRepo.verifyFriendUnlockOtp(userId, otpCode, sessionId);
       res.status(200).json(result);
     } catch (err) {
       next(err);
@@ -280,7 +309,7 @@ export function createFocusRouter(
   router.get('/focus/schedules', authMiddleware, async (req: any, res: Response, next: NextFunction) => {
     try {
       const userId = req.user.id;
-      const schedules = focusRepo.getSchedules(userId);
+      const schedules = await focusRepo.getSchedules(userId);
       res.status(200).json({ success: true, schedules });
     } catch (err) {
       next(err);
@@ -290,7 +319,7 @@ export function createFocusRouter(
   router.post('/focus/schedules', authMiddleware, async (req: any, res: Response, next: NextFunction) => {
     try {
       const userId = req.user.id;
-      const schedule = focusRepo.createSchedule(userId, req.body);
+      const schedule = await focusRepo.createSchedule(userId, req.body);
       res.status(200).json({ success: true, schedule });
     } catch (err) {
       next(err);
@@ -303,7 +332,7 @@ export function createFocusRouter(
       const { id } = req.params;
       const { isActive } = req.body;
 
-      const schedule = focusRepo.toggleSchedule(userId, id, Boolean(isActive));
+      const schedule = await focusRepo.toggleSchedule(userId, id, Boolean(isActive));
       if (!schedule) {
         return res.status(404).json({ error: 'Schedule not found' });
       }
@@ -323,7 +352,7 @@ export function createFocusRouter(
       const totalScreenMin = parseInt(req.body.totalScreenMinutes || req.body.totalScreenMin, 10) || 0;
       const distractingMin = parseInt(req.body.distractingMinutes || req.body.distractingMin, 10) || 0;
 
-      const result = focusRepo.syncDailyScreenTime(userId, totalScreenMin, distractingMin);
+      const result = await focusRepo.syncDailyScreenTime(userId, totalScreenMin, distractingMin);
       res.status(200).json({ success: true, ...result });
     } catch (err) {
       next(err);
@@ -333,7 +362,7 @@ export function createFocusRouter(
   router.get('/focus/metrics/today', authMiddleware, async (req: any, res: Response, next: NextFunction) => {
     try {
       const userId = req.user.id;
-      const metrics = focusRepo.getTodayMetrics(userId);
+      const metrics = await focusRepo.getTodayMetrics(userId);
       res.status(200).json({ success: true, metrics });
     } catch (err) {
       next(err);
@@ -343,7 +372,7 @@ export function createFocusRouter(
   router.get('/focus/metrics/weekly', authMiddleware, async (req: any, res: Response, next: NextFunction) => {
     try {
       const userId = req.user.id;
-      const metrics = focusRepo.getWeeklyMetrics(userId);
+      const metrics = await focusRepo.getWeeklyMetrics(userId);
       res.status(200).json({ success: true, metrics });
     } catch (err) {
       next(err);
@@ -356,8 +385,8 @@ export function createFocusRouter(
   router.get('/focus/insights/weekly-ai', authMiddleware, async (req: any, res: Response, next: NextFunction) => {
     try {
       const userId = req.user.id;
-      const profile = focusRepo.getProfile(userId) || focusRepo.createDefaultProfile(userId);
-      const metrics = focusRepo.getWeeklyMetrics(userId);
+      const profile = (await focusRepo.getProfile(userId)) || (await focusRepo.createDefaultProfile(userId));
+      const metrics = await focusRepo.getWeeklyMetrics(userId);
 
       let totalBlocked = 0;
       let totalInterceptions = 0;
@@ -427,7 +456,7 @@ export function createFocusRouter(
         'NON_RENEWING_PURCHASE',
       ].includes(eventType);
 
-      const sub = focusRepo.upsertSubscription(appUserId, {
+      const sub = await focusRepo.upsertSubscription(appUserId, {
         originalTransactionId: event.original_transaction_id || event.transaction_id,
         productId: event.product_id || 'annual_4999_trial',
         store: (event.store || 'app_store').toLowerCase(),
@@ -452,8 +481,8 @@ export function createFocusRouter(
   router.get('/focus/subscription/status', authMiddleware, async (req: any, res: Response, next: NextFunction) => {
     try {
       const userId = req.user.id;
-      const profile = focusRepo.getProfile(userId) || focusRepo.createDefaultProfile(userId);
-      const sub = focusRepo.getSubscription(userId);
+      const profile = (await focusRepo.getProfile(userId)) || (await focusRepo.createDefaultProfile(userId));
+      const sub = await focusRepo.getSubscription(userId);
 
       res.status(200).json({
         success: true,

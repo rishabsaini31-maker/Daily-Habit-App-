@@ -28,11 +28,12 @@ CREATE POLICY "Users can view own subscription"
     USING (auth.uid() = user_id);
 
 -- Restrict Direct Client Modifications on Subscriptions (Service Role Only)
-DROP POLICY IF EXISTS "Users cannot modify subscriptions" ON public.subscriptions;
+DROP POLICY IF EXISTS "Users cannot insert subscriptions" ON public.subscriptions;
 CREATE POLICY "Users cannot insert subscriptions"
     ON public.subscriptions FOR INSERT
     WITH CHECK (false);
 
+DROP POLICY IF EXISTS "Users cannot update subscriptions" ON public.subscriptions;
 CREATE POLICY "Users cannot update subscriptions"
     ON public.subscriptions FOR UPDATE
     USING (false);
@@ -550,3 +551,4 @@ EXCEPTION
         RAISE NOTICE 'pg_cron is optional in local development and was skipped.';
 END;
 $$;
+
