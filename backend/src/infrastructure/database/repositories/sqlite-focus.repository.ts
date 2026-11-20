@@ -707,4 +707,18 @@ export class SqliteFocusRepository {
       is_active: Boolean(row.is_active),
     };
   }
+
+  // ==========================================
+  // 10. ACCOUNT DELETION (GDPR & APP STORE COMPLIANCE)
+  // ==========================================
+  public deleteUserData(userId: string): void {
+    this.db.prepare('DELETE FROM emergency_unlock_codes WHERE user_id = ?').run(userId);
+    this.db.prepare('DELETE FROM daily_metrics WHERE user_id = ?').run(userId);
+    this.db.prepare('DELETE FROM schedules WHERE user_id = ?').run(userId);
+    this.db.prepare('DELETE FROM focus_sessions WHERE user_id = ?').run(userId);
+    this.db.prepare('DELETE FROM blocked_targets WHERE user_id = ?').run(userId);
+    this.db.prepare('DELETE FROM subscriptions WHERE user_id = ?').run(userId);
+    this.db.prepare('DELETE FROM profiles WHERE user_id = ?').run(userId);
+    this.db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+  }
 }

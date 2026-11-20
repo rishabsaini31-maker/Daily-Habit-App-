@@ -15,16 +15,27 @@ import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import { useAppNavigation } from '../../core/navigation/NavigationContext';
 import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
 import revenueCat from '../../services/revenuecat/RevenueCatService';
+import authService from '../../services/supabase/auth';
+import ProAuthGateModal from './ProAuthGateModal';
+import SignInModal from '../auth/SignInModal';
 
 export const PaywallModal: React.FC = () => {
   const { closeModal } = useAppNavigation();
   const { updateProfile } = useFocusEngine();
   const [billingPlan, setBillingPlan] = useState<'annual' | 'monthly'>('annual');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [showAuthGate, setShowAuthGate] = useState<boolean>(false);
+  const [showSignIn, setShowSignIn] = useState<boolean>(false);
 
-  const handleStartTrial = async () => {
+  // Executes purchase only after user identity is established
+  const executePurchase = async () => {
     setIsProcessing(true);
     try {
+      const user = await authService.getCurrentUser();
+      if (user?.id) {
+        await revenueCat.logIn(user.id);
+      }
+
       const packageId = billingPlan === 'annual' ? 'annual_4999_trial' : 'monthly_899';
       const result = await revenueCat.purchasePackage(packageId);
 
@@ -47,9 +58,27 @@ export const PaywallModal: React.FC = () => {
     }
   };
 
+  // Spec: Enforce mandatory account linking BEFORE initiating payment for anonymous guests
+  const handleStartTrial = async () => {
+    try {
+      const isAnon = await authService.isAnonymous();
+      if (isAnon) {
+        setShowAuthGate(true);
+        return;
+      }
+      await executePurchase();
+    } catch {
+      await executePurchase();
+    }
+  };
+
   const handleRestore = async () => {
     setIsProcessing(true);
     try {
+      const user = await authService.getCurrentUser();
+      if (user?.id) {
+        await revenueCat.logIn(user.id);
+      }
       const result = await revenueCat.restorePurchases();
       if (result.isPro) {
         await updateProfile({ is_pro: true });
@@ -206,8 +235,14 @@ export const PaywallModal: React.FC = () => {
           7 days free, then $49.99/yr. Cancel at least 24 hours before trial ends in App Store settings.
         </Text>
         <View style={styles.linksRow}>
+          <TouchableOpacity onPress={() => setShowSignIn(true)}>
+            <Text style={[styles.linkText, { color: colors.primaryAccent, fontWeight: '600' }]}>
+              Already Pro? Sign In
+            </Text>
+          </TouchableOpacity>
+          <Text style={styles.linkDivider}>•</Text>
           <TouchableOpacity onPress={handleRestore}>
-            <Text style={styles.linkText}>Restore Purchases</Text>
+            <Text style={styles.linkText}>Restore</Text>
           </TouchableOpacity>
           <Text style={styles.linkDivider}>•</Text>
           <TouchableOpacity onPress={() => Alert.alert('Terms of Service', 'Standard Apple EULA applies.')}>
@@ -219,6 +254,21 @@ export const PaywallModal: React.FC = () => {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Pro Account Upgrade Gate Modal */}
+      <ProAuthGateModal
+        visible={showAuthGate}
+        onClose={() => setShowAuthGate(false)}
+        onSuccess={executePurchase}
+        planTitle={billingPlan === 'annual' ? 'Annual Focus Pass' : 'Monthly Pass'}
+      />
+
+      {/* Returning User Sign In Modal */}
+      <SignInModal
+        visible={showSignIn}
+        onClose={() => setShowSignIn(false)}
+        onSuccess={closeModal}
+      />
     </SafeAreaView>
   );
 };

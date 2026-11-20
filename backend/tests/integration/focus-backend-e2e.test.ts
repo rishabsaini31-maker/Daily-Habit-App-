@@ -378,4 +378,38 @@ describe('Digital Well-Being & OS Blocker Backend - 8 Core Flows E2E', () => {
     expect(proCheckRes.body.is_pro).toBe(true);
     expect(proCheckRes.body.subscription.product_id).toBe('annual_4999_trial');
   });
+
+  // =========================================================================
+  // FLOW 9: MANDATORY IN-APP ACCOUNT DELETION (App Store & Play Store)
+  // =========================================================================
+  it('Flow 9: Mandatory in-app account deletion wipes user and cascades records', async () => {
+    // 1. Create user and populate data
+    const authRes = await request(app)
+      .post('/api/v1/auth/anonymous')
+      .send({ deviceId: 'device_deletion_test_user' });
+    const token = authRes.body.token;
+    const userId = authRes.body.user.id;
+
+    // 2. Add blocked target
+    await request(app)
+      .post('/api/v1/focus/blocked-targets')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ packageOrToken: 'com.test.app', displayName: 'Test App' });
+
+    // 3. Delete account
+    const deleteRes = await request(app)
+      .delete('/api/v1/auth/account')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(deleteRes.status).toBe(200);
+    expect(deleteRes.body.success).toBe(true);
+    expect(deleteRes.body.message).toContain('deleted permanently');
+
+    // 4. Verify token is revoked and user no longer exists (401 Unauthorized)
+    const profileRes = await request(app)
+      .get('/api/v1/focus/profile')
+      .set('Authorization', `Bearer ${token}`);
+    expect(profileRes.status).toBe(401);
+    expect(profileRes.body.error.message).toContain('no longer exists');
+  });
 });

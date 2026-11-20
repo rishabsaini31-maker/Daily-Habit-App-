@@ -923,4 +923,10 @@ export const api = {
   async getSubscriptionStatus() {
     return await request<{ success: boolean; is_pro: boolean; subscription: any }>('/focus/subscription/status');
   },
+
+  async deleteAccount() {
+    return await request<{ success: boolean; message: string }>('/auth/account', {
+      method: 'DELETE',
+    });
+  },
 };

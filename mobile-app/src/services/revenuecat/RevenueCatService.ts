@@ -64,6 +64,38 @@ class RevenueCatService {
   }
 
   /**
+   * Logs RevenueCat into a specific user account (e.g. after identity linking or sign in)
+   */
+  async logIn(userId: string): Promise<boolean> {
+    this.currentUserId = userId;
+    if (this.isConfigured && Purchases && typeof Purchases.logIn === 'function') {
+      try {
+        const { customerInfo } = await Purchases.logIn(userId);
+        await this.handleCustomerInfoUpdate(customerInfo);
+      } catch (e) {
+        console.warn('RevenueCat logIn warning:', e);
+      }
+    }
+    return this.checkProEntitlement();
+  }
+
+  /**
+   * Logs out of RevenueCat (used during account deletion or sign out)
+   */
+  async logOut(): Promise<void> {
+    this.currentUserId = null;
+    this.isProCached = false;
+    await AsyncStorage.removeItem(STORAGE_KEY_PRO_OVERRIDE);
+    if (this.isConfigured && Purchases && typeof Purchases.logOut === 'function') {
+      try {
+        await Purchases.logOut();
+      } catch (e) {
+        console.warn('RevenueCat logOut warning:', e);
+      }
+    }
+  }
+
+  /**
    * Internal handler when entitlement status changes from App Store / Google Play
    */
   private async handleCustomerInfoUpdate(customerInfo: CustomerInfo) {

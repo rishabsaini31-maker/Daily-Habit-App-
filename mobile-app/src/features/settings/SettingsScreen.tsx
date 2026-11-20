@@ -8,6 +8,7 @@ import {
   ScrollView,
   Switch,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import {
   ArrowLeft,
@@ -18,6 +19,7 @@ import {
   CheckCircle2,
   LogIn,
   Crown,
+  Trash2,
 } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
 import GlassCard from '../../core/theme/components/GlassCard';
@@ -36,10 +38,45 @@ export const SettingsScreen: React.FC = () => {
   const [healthSyncEnabled, setHealthSyncEnabled] = useState<boolean>(true);
   const [isAnonymous, setIsAnonymous] = useState<boolean>(true);
   const [isLinking, setIsLinking] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   useEffect(() => {
     authService.isAnonymous().then(setIsAnonymous);
   }, []);
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Permanently Delete Account?',
+      'This will permanently delete your account, streaks, Focus Gems, and all custom schedules from our cloud servers and this device.\n\nThis action is irreversible and complies with Apple App Store & Google Play privacy guidelines.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Everything',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeleting(true);
+            try {
+              const res = await authService.deleteAccount();
+              if (res.success) {
+                await resetOnboarding();
+                closeModal();
+                Alert.alert(
+                  'Account Deleted',
+                  'Your account and all associated personal data have been completely wiped.'
+                );
+              } else {
+                Alert.alert('Deletion Failed', res.error || 'Unable to delete account.');
+              }
+            } catch {
+              Alert.alert('Error', 'An error occurred during account deletion.');
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const handleToggleAntiUninstall = async (value: boolean) => {
     if (value && !profile.is_pro) {
@@ -263,6 +300,37 @@ export const SettingsScreen: React.FC = () => {
           </View>
         </GlassCard>
 
+        {/* Mandatory App Store & Google Play Account Deletion */}
+        <Text style={[styles.sectionHeader, { color: colors.dangerAccent }]}>
+          PRIVACY & ACCOUNT DELETION
+        </Text>
+        <GlassCard style={[styles.card, styles.dangerCard]}>
+          <View style={styles.cardRow}>
+            <View style={[styles.iconCircle, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+              <Trash2 size={20} color={colors.dangerAccent} />
+            </View>
+            <View style={styles.cardTextCol}>
+              <Text style={[styles.cardTitle, { color: colors.dangerAccent }]}>
+                Delete Account & Cloud Data
+              </Text>
+              <Text style={styles.cardSub}>
+                Permanently purge your profile, streaks, and schedules. Mandatory compliance with App Store & Play Store guidelines.
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.deleteBtn}
+              onPress={handleDeleteAccount}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.deleteBtnText}>Delete</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </GlassCard>
+
         {/* Version Information */}
         <View style={styles.appInfoContainer}>
           <Text style={styles.appInfoTitle}>Opal Digital Well-Being OS</Text>
@@ -428,6 +496,25 @@ const styles = StyleSheet.create({
   resetBtnText: {
     ...typography.caption,
     color: colors.warningAccent,
+    fontWeight: '700',
+  },
+  dangerCard: {
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.25)',
+  },
+  deleteBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 12,
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteBtnText: {
+    ...typography.caption,
+    color: colors.dangerAccent,
     fontWeight: '700',
   },
   appInfoContainer: {

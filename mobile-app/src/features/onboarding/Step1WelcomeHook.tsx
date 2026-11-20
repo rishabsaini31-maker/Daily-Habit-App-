@@ -1,13 +1,15 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Shield, Sparkles, Zap, Lock } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
 import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import { useOnboarding } from './OnboardingContext';
+import SignInModal from '../auth/SignInModal';
 
 export const Step1WelcomeHook: React.FC = () => {
   const { nextStep } = useOnboarding();
+  const [showSignInModal, setShowSignInModal] = useState<boolean>(false);
 
   return (
     <View style={styles.container}>
@@ -60,14 +62,29 @@ export const Step1WelcomeHook: React.FC = () => {
         </View>
       </View>
 
-      {/* Bottom CTA */}
+      {/* Bottom CTA & Returning Member Sign-In Link */}
       <View style={styles.bottomBar}>
         <PrimaryPillButton
           title="Begin 2-Minute Diagnostic"
           onPress={nextStep}
           rightIcon={<Sparkles size={18} color={colors.primaryButtonText} />}
         />
+        <TouchableOpacity
+          style={styles.signInLink}
+          activeOpacity={0.7}
+          onPress={() => setShowSignInModal(true)}
+        >
+          <Text style={styles.signInText}>
+            Already have an account? <Text style={styles.signInHighlight}>Sign In</Text>
+          </Text>
+        </TouchableOpacity>
       </View>
+
+      {/* Returning User Sign-In Modal */}
+      <SignInModal
+        visible={showSignInModal}
+        onClose={() => setShowSignInModal(false)}
+      />
     </View>
   );
 };
@@ -161,6 +178,20 @@ const styles = StyleSheet.create({
   },
   bottomBar: {
     paddingTop: 16,
+    alignItems: 'center',
+    gap: 12,
+  },
+  signInLink: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  signInText: {
+    ...typography.bodySmall,
+    color: colors.secondaryMutedText,
+  },
+  signInHighlight: {
+    color: colors.primaryAccent,
+    fontWeight: '700',
   },
 });
 

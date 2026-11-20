@@ -494,5 +494,41 @@ export function createFocusRouter(
     }
   });
 
+  // =========================================================================
+  // MANDATORY ACCOUNT DELETION (App Store & Play Store Compliance)
+  // =========================================================================
+  router.delete('/auth/account', authMiddleware, async (req: any, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user.id;
+
+      // 1. If connected to Supabase PostgreSQL, delete user from auth.users (cascades in DB)
+      const isPostgres =
+        process.env.DATABASE_URL?.startsWith('postgres://') ||
+        process.env.DATABASE_URL?.startsWith('postgresql://');
+
+      if (isPostgres && process.env.NODE_ENV !== 'test') {
+        try {
+          const supabase = SupabaseClientManager.getInstance();
+          const { error } = await supabase.auth.admin.deleteUser(userId);
+          if (error) {
+            console.warn('Supabase admin.deleteUser warning:', error.message);
+          }
+        } catch (supaErr) {
+          console.warn('Supabase deleteUser exception:', supaErr);
+        }
+      }
+
+      // 2. Cascade cleanup in repository
+      await focusRepo.deleteUserData(userId);
+
+      res.status(200).json({
+        success: true,
+        message: 'Account and associated personal data deleted permanently.',
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   return router;
 }

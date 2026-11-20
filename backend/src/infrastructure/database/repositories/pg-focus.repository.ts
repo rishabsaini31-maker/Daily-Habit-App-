@@ -812,6 +812,20 @@ export class PgFocusRepository {
       updated_at: new Date(row.updated_at).toISOString(),
     };
   }
+
+  // ==========================================
+  // 10. ACCOUNT DELETION (GDPR & APP STORE COMPLIANCE)
+  // ==========================================
+  public async deleteUserData(userId: string): Promise<void> {
+    await PgConnection.query('DELETE FROM public.emergency_unlock_codes WHERE user_id = $1', [userId]);
+    await PgConnection.query('DELETE FROM public.daily_metrics WHERE user_id = $1', [userId]);
+    await PgConnection.query('DELETE FROM public.schedules WHERE user_id = $1', [userId]);
+    await PgConnection.query('DELETE FROM public.focus_sessions WHERE user_id = $1', [userId]);
+    await PgConnection.query('DELETE FROM public.blocked_targets WHERE user_id = $1', [userId]);
+    await PgConnection.query('DELETE FROM public.subscriptions WHERE user_id = $1', [userId]);
+    await PgConnection.query('DELETE FROM public.profiles WHERE id = $1', [userId]);
+    await PgConnection.query('DELETE FROM public.users WHERE id = $1', [userId]);
+  }
 }
 
 export default PgFocusRepository;
