@@ -1,0 +1,1417 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Enterprise Daily Habit Tracker REST API",
+    "version": "1.0.0",
+    "description": "Production-grade REST API specification for Daily Habit Tracker ecosystem serving Mobile App and Admin Portal."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:4000/api/v1",
+      "description": "Local Development Server"
+    },
+    {
+      "url": "https://api.habit-tracker.internal/api/v1",
+      "description": "Production API Server"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "summary": "Register a new user",
+        "description": "Creates a new user account with role USER and returns a signed JWT access token.",
+        "tags": ["Authentication"],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Authenticate user credentials",
+        "description": "Validates email and password; returns user profile and access token.",
+        "tags": ["Authentication"],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authentication successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSuccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "summary": "Get authenticated user profile",
+        "description": "Returns details of the currently authenticated user based on JWT token.",
+        "tags": ["Authentication"],
+        "responses": {
+          "200": {
+            "description": "Current user profile retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
+        }
+      }
+    },
+    "/categories": {
+      "get": {
+        "summary": "List habit categories",
+        "description": "Retrieves pre-populated system categories and user-defined categories.",
+        "tags": ["Categories"],
+        "responses": {
+          "200": {
+            "description": "List of categories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new custom category",
+        "description": "Creates a user-defined category.",
+        "tags": ["Categories"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCategoryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Category created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/habits": {
+      "get": {
+        "summary": "List user habits",
+        "description": "Retrieves active or archived habits for the authenticated user, including current streak status.",
+        "tags": ["Habits"],
+        "parameters": [
+          {
+            "name": "isArchived",
+            "in": "query",
+            "schema": { "type": "boolean", "default": false },
+            "description": "Filter by archived status"
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Filter by category ID"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["createdAt", "title", "streak"], "default": "createdAt" }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of habits with streak data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HabitListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new habit",
+        "description": "Creates a new habit for the authenticated user and initializes its streak record.",
+        "tags": ["Habits"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateHabitRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Habit created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HabitDetailResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/habits/{id}": {
+      "get": {
+        "summary": "Get habit by ID",
+        "description": "Retrieves a single habit and its streak metadata.",
+        "tags": ["Habits"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Habit details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HabitDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update habit",
+        "description": "Updates habit properties (title, description, reminder time, icon, color).",
+        "tags": ["Habits"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHabitRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Habit updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HabitDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete or archive habit",
+        "description": "Soft-deletes or permanently removes habit if no completions exist.",
+        "tags": ["Habits"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Habit deleted/archived successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardSuccessResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
+    "/habits/{id}/archive": {
+      "patch": {
+        "summary": "Toggle habit archive state",
+        "description": "Archives or unarchives a habit.",
+        "tags": ["Habits"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "isArchived": { "type": "boolean" }
+                },
+                "required": ["isArchived"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Archive state toggled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HabitDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/habits/{id}/completions": {
+      "get": {
+        "summary": "List habit completions",
+        "description": "Retrieves completion records for a date range.",
+        "tags": ["Completions"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" },
+            "description": "Start date (YYYY-MM-DD)"
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" },
+            "description": "End date (YYYY-MM-DD)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of completions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompletionListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Log or toggle habit completion (Idempotent)",
+        "description": "Idempotently records a completion for date YYYY-MM-DD, updates progress, and recalculates streak.",
+        "tags": ["Completions"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogCompletionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Completion recorded and streak updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompletionSuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "422": {
+            "description": "Completion backfill exceeded allowable 48h window",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/habits/{id}/completions/{date}": {
+      "delete": {
+        "summary": "Remove habit completion for date",
+        "description": "Removes a completion entry and recalculates streak.",
+        "tags": ["Completions"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "date",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "date" },
+            "description": "Target date (YYYY-MM-DD)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completion deleted and streak recalculated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreakRecalculationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/habits/{id}/streak": {
+      "get": {
+        "summary": "Get habit streak details",
+        "description": "Returns current streak, longest streak, freeze availability, and last completed date.",
+        "tags": ["Streaks"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Streak information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreakResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/habits/{id}/streak/freeze": {
+      "post": {
+        "summary": "Apply streak freeze",
+        "description": "Applies a streak freeze to preserve streak across an accidental missed day if freeze count is available.",
+        "tags": ["Streaks"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "missedDate": { "type": "string", "format": "date" }
+                },
+                "required": ["missedDate"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Freeze applied successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreakResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/analytics/summary": {
+      "get": {
+        "summary": "Get user analytics summary",
+        "description": "Returns 7-day, 30-day, and all-time completion statistics, active habits count, and streak milestones.",
+        "tags": ["Analytics"],
+        "responses": {
+          "200": {
+            "description": "Analytics summary data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analytics/heatmap": {
+      "get": {
+        "summary": "Get calendar completion heatmap",
+        "description": "Returns daily aggregate completion stats for rendering the monthly heatmap matrix.",
+        "tags": ["Analytics"],
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "schema": { "type": "string", "pattern": "^\\d{4}-\\d{2}$" },
+            "description": "Format YYYY-MM"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Heatmap matrix data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeatmapResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/templates": {
+      "get": {
+        "summary": "Discover published habit templates",
+        "description": "Lists curated habit templates available for adoption.",
+        "tags": ["Templates"],
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "query",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of published templates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/templates/{id}/adopt": {
+      "post": {
+        "summary": "Adopt habit template",
+        "description": "Clones a curated template directly into the authenticated user's personal habits.",
+        "tags": ["Templates"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Template adopted into personal habits",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HabitDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
+    "/admin/dashboard": {
+      "get": {
+        "summary": "Get administrative platform metrics",
+        "description": "Returns DAU/MAU, total users, completions today, active habits, and platform health.",
+        "tags": ["Admin - Metrics"],
+        "responses": {
+          "200": {
+            "description": "Executive dashboard metrics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminDashboardResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          }
+        }
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "summary": "List and moderate users",
+        "description": "Returns paginated list of registered users with activity indicators.",
+        "tags": ["Admin - Users"],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "search", "in": "query", "schema": { "type": "string" } },
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["ACTIVE", "SUSPENDED"] } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated user table",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          }
+        }
+      }
+    },
+    "/admin/users/{id}/status": {
+      "patch": {
+        "summary": "Update user account status (Suspend / Unsuspend)",
+        "description": "Changes user status and records an immutable entry in audit_logs.",
+        "tags": ["Admin - Users"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": { "type": "string", "enum": ["ACTIVE", "SUSPENDED"] },
+                  "reason": { "type": "string", "minLength": 5, "maxLength": 500 }
+                },
+                "required": ["status", "reason"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User status updated and audit logged",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardSuccessResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          }
+        }
+      }
+    },
+    "/admin/templates": {
+      "post": {
+        "summary": "Create curated habit template",
+        "description": "Creates and publishes a new global habit template.",
+        "tags": ["Admin - Templates"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTemplateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Template created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateDetailResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          }
+        }
+      }
+    },
+    "/admin/templates/{id}": {
+      "put": {
+        "summary": "Update habit template",
+        "description": "Modifies template properties and logs audit record.",
+        "tags": ["Admin - Templates"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTemplateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Template updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete habit template",
+        "description": "Deletes template and records audit event.",
+        "tags": ["Admin - Templates"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Template deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardSuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/audit-logs": {
+      "get": {
+        "summary": "Query immutable audit logs",
+        "description": "Retrieves audit records with filtering by date range, action, and actor.",
+        "tags": ["Admin - Audit"],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50 } },
+          { "name": "actorId", "in": "query", "schema": { "type": "string" } },
+          { "name": "action", "in": "query", "schema": { "type": "string" } },
+          { "name": "startDate", "in": "query", "schema": { "type": "string", "format": "date" } },
+          { "name": "endDate", "in": "query", "schema": { "type": "string", "format": "date" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audit trail log page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "RegisterRequest": {
+        "type": "object",
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string", "minLength": 8 },
+          "displayName": { "type": "string", "minLength": 2, "maxLength": 100 },
+          "timezone": { "type": "string", "default": "UTC" }
+        },
+        "required": ["email", "password", "displayName"]
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string" }
+        },
+        "required": ["email", "password"]
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "email": { "type": "string", "format": "email" },
+          "displayName": { "type": "string" },
+          "role": { "type": "string", "enum": ["USER", "ADMIN"] },
+          "status": { "type": "string", "enum": ["ACTIVE", "SUSPENDED"] },
+          "timezone": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "email", "displayName", "role", "status", "timezone"]
+      },
+      "AuthSuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": {
+            "type": "object",
+            "properties": {
+              "user": { "$ref": "#/components/schemas/User" },
+              "token": { "type": "string", "description": "JWT bearer token" },
+              "expiresIn": { "type": "integer", "example": 3600 }
+            },
+            "required": ["user", "token", "expiresIn"]
+          }
+        },
+        "required": ["success", "data"]
+      },
+      "UserResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": { "$ref": "#/components/schemas/User" }
+        },
+        "required": ["success", "data"]
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "icon": { "type": "string" },
+          "color": { "type": "string" },
+          "isSystem": { "type": "boolean" }
+        },
+        "required": ["id", "name", "icon", "color", "isSystem"]
+      },
+      "CategoryListResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Category" }
+          }
+        },
+        "required": ["success", "data"]
+      },
+      "CreateCategoryRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "minLength": 2, "maxLength": 50 },
+          "icon": { "type": "string" },
+          "color": { "type": "string" }
+        },
+        "required": ["name", "icon", "color"]
+      },
+      "CategoryResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": { "$ref": "#/components/schemas/Category" }
+        },
+        "required": ["success", "data"]
+      },
+      "CreateHabitRequest": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "description": { "type": "string", "nullable": true },
+          "categoryId": { "type": "string" },
+          "frequencyType": { "type": "string", "enum": ["DAILY", "WEEKLY_DAYS", "TIMES_PER_PERIOD"], "default": "DAILY" },
+          "frequencyPayload": {
+            "description": "Optional payload e.g. [1,3,5] for days of week",
+            "type": "array",
+            "items": { "type": "integer" }
+          },
+          "targetType": { "type": "string", "enum": ["BOOLEAN", "NUMERIC"], "default": "BOOLEAN" },
+          "targetValue": { "type": "number", "nullable": true },
+          "unit": { "type": "string", "nullable": true },
+          "reminderTime": { "type": "string", "pattern": "^([01]\\d|2[0-3]):([0-5]\\d)$", "nullable": true },
+          "color": { "type": "string", "default": "#3B82F6" },
+          "icon": { "type": "string", "default": "check-circle" }
+        },
+        "required": ["title", "categoryId", "frequencyType", "targetType"]
+      },
+      "UpdateHabitRequest": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "description": { "type": "string", "nullable": true },
+          "categoryId": { "type": "string" },
+          "reminderTime": { "type": "string", "nullable": true },
+          "color": { "type": "string" },
+          "icon": { "type": "string" }
+        }
+      },
+      "Habit": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "userId": { "type": "string" },
+          "categoryId": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "frequencyType": { "type": "string" },
+          "frequencyPayload": { "type": "array", "items": { "type": "integer" }, "nullable": true },
+          "targetType": { "type": "string" },
+          "targetValue": { "type": "number", "nullable": true },
+          "unit": { "type": "string", "nullable": true },
+          "reminderTime": { "type": "string", "nullable": true },
+          "color": { "type": "string" },
+          "icon": { "type": "string" },
+          "isArchived": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "streak": { "$ref": "#/components/schemas/StreakData" }
+        },
+        "required": ["id", "userId", "categoryId", "title", "frequencyType", "targetType", "color", "icon", "isArchived"]
+      },
+      "HabitListResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Habit" }
+          }
+        },
+        "required": ["success", "data"]
+      },
+      "HabitDetailResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": { "$ref": "#/components/schemas/Habit" }
+        },
+        "required": ["success", "data"]
+      },
+      "LogCompletionRequest": {
+        "type": "object",
+        "properties": {
+          "date": { "type": "string", "format": "date", "example": "2026-11-20" },
+          "status": { "type": "string", "enum": ["COMPLETED", "SKIPPED"], "default": "COMPLETED" },
+          "value": { "type": "number", "default": 1 },
+          "notes": { "type": "string", "nullable": true }
+        },
+        "required": ["date"]
+      },
+      "CompletionRecord": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "habitId": { "type": "string" },
+          "userId": { "type": "string" },
+          "date": { "type": "string", "format": "date" },
+          "status": { "type": "string", "enum": ["COMPLETED", "SKIPPED"] },
+          "value": { "type": "number" },
+          "notes": { "type": "string", "nullable": true },
+          "completedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "habitId", "userId", "date", "status", "value"]
+      },
+      "StreakData": {
+        "type": "object",
+        "properties": {
+          "currentStreak": { "type": "integer", "example": 5 },
+          "longestStreak": { "type": "integer", "example": 12 },
+          "lastCompletedDate": { "type": "string", "format": "date", "nullable": true },
+          "freezeCountRemaining": { "type": "integer", "example": 1 }
+        },
+        "required": ["currentStreak", "longestStreak", "freezeCountRemaining"]
+      },
+      "CompletionSuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": {
+            "type": "object",
+            "properties": {
+              "completion": { "$ref": "#/components/schemas/CompletionRecord" },
+              "streak": { "$ref": "#/components/schemas/StreakData" }
+            },
+            "required": ["completion", "streak"]
+          }
+        },
+        "required": ["success", "data"]
+      },
+      "CompletionListResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CompletionRecord" }
+          }
+        },
+        "required": ["success", "data"]
+      },
+      "StreakResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": { "$ref": "#/components/schemas/StreakData" }
+        },
+        "required": ["success", "data"]
+      },
+      "StreakRecalculationResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": {
+            "type": "object",
+            "properties": {
+              "dateDeleted": { "type": "string", "format": "date" },
+              "updatedStreak": { "$ref": "#/components/schemas/StreakData" }
+            },
+            "required": ["dateDeleted", "updatedStreak"]
+          }
+        },
+        "required": ["success", "data"]
+      },
+      "AnalyticsSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": {
+            "type": "object",
+            "properties": {
+              "completionRate7d": { "type": "number", "example": 85.7 },
+              "completionRate30d": { "type": "number", "example": 78.4 },
+              "totalCompletions": { "type": "integer", "example": 142 },
+              "activeHabitsCount": { "type": "integer", "example": 6 },
+              "longestOverallStreak": { "type": "integer", "example": 28 },
+              "milestonesEarned": {
+                "type": "array",
+                "items": { "type": "string" },
+                "example": ["3_DAY_STREAK", "7_DAY_STREAK", "14_DAY_STREAK"]
+              }
+            },
+            "required": ["completionRate7d", "completionRate30d", "totalCompletions", "activeHabitsCount", "longestOverallStreak"]
+          }
+        },
+        "required": ["success", "data"]
+      },
+      "HeatmapResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": { "type": "string", "format": "date" },
+                "totalScheduled": { "type": "integer" },
+                "completedCount": { "type": "integer" },
+                "completionRatio": { "type": "number", "example": 1.0 }
+              },
+              "required": ["date", "totalScheduled", "completedCount", "completionRatio"]
+            }
+          }
+        },
+        "required": ["success", "data"]
+      },
+      "HabitTemplate": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "categoryId": { "type": "string" },
+          "frequencyType": { "type": "string" },
+          "frequencyPayload": { "type": "array", "items": { "type": "integer" }, "nullable": true },
+          "targetType": { "type": "string" },
+          "targetValue": { "type": "number", "nullable": true },
+          "unit": { "type": "string", "nullable": true },
+          "icon": { "type": "string" },
+          "color": { "type": "string" },
+          "isPublished": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "title", "description", "categoryId", "frequencyType", "targetType", "icon", "color", "isPublished"]
+      },
+      "TemplateListResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/HabitTemplate" }
+          }
+        },
+        "required": ["success", "data"]
+      },
+      "TemplateDetailResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": { "$ref": "#/components/schemas/HabitTemplate" }
+        },
+        "required": ["success", "data"]
+      },
+      "CreateTemplateRequest": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string", "minLength": 2, "maxLength": 100 },
+          "description": { "type": "string", "minLength": 5 },
+          "categoryId": { "type": "string" },
+          "frequencyType": { "type": "string", "enum": ["DAILY", "WEEKLY_DAYS", "TIMES_PER_PERIOD"], "default": "DAILY" },
+          "frequencyPayload": { "type": "array", "items": { "type": "integer" } },
+          "targetType": { "type": "string", "enum": ["BOOLEAN", "NUMERIC"], "default": "BOOLEAN" },
+          "targetValue": { "type": "number", "nullable": true },
+          "unit": { "type": "string", "nullable": true },
+          "icon": { "type": "string" },
+          "color": { "type": "string" },
+          "isPublished": { "type": "boolean", "default": true }
+        },
+        "required": ["title", "description", "categoryId", "frequencyType", "targetType", "icon", "color"]
+      },
+      "AdminDashboardResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": {
+            "type": "object",
+            "properties": {
+              "totalUsers": { "type": "integer", "example": 15420 },
+              "dau": { "type": "integer", "example": 4820 },
+              "mau": { "type": "integer", "example": 12300 },
+              "totalActiveHabits": { "type": "integer", "example": 38900 },
+              "completionsToday": { "type": "integer", "example": 24150 },
+              "platformCompletionRate": { "type": "number", "example": 76.5 },
+              "signupTrends": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "date": { "type": "string", "format": "date" },
+                    "newUsers": { "type": "integer" }
+                  }
+                }
+              }
+            },
+            "required": ["totalUsers", "dau", "mau", "totalActiveHabits", "completionsToday", "platformCompletionRate"]
+          }
+        },
+        "required": ["success", "data"]
+      },
+      "AdminUserListResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "email": { "type": "string" },
+                "displayName": { "type": "string" },
+                "role": { "type": "string" },
+                "status": { "type": "string" },
+                "timezone": { "type": "string" },
+                "totalHabits": { "type": "integer" },
+                "activeStreaks": { "type": "integer" },
+                "createdAt": { "type": "string", "format": "date-time" }
+              },
+              "required": ["id", "email", "displayName", "role", "status", "timezone", "totalHabits", "activeStreaks"]
+            }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "page": { "type": "integer" },
+              "limit": { "type": "integer" },
+              "total": { "type": "integer" }
+            },
+            "required": ["page", "limit", "total"]
+          }
+        },
+        "required": ["success", "data", "meta"]
+      },
+      "AuditLogEntry": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "actorId": { "type": "string" },
+          "actorEmail": { "type": "string" },
+          "action": { "type": "string" },
+          "entityType": { "type": "string" },
+          "entityId": { "type": "string" },
+          "details": { "type": "object", "nullable": true },
+          "ipAddress": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "actorId", "action", "entityType", "entityId", "createdAt"]
+      },
+      "AuditLogListResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AuditLogEntry" }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "page": { "type": "integer" },
+              "limit": { "type": "integer" },
+              "total": { "type": "integer" }
+            },
+            "required": ["page", "limit", "total"]
+          }
+        },
+        "required": ["success", "data", "meta"]
+      },
+      "StandardSuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "message": { "type": "string", "example": "Operation completed successfully." }
+        },
+        "required": ["success"]
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string", "example": "VALIDATION_FAILED" },
+          "message": { "type": "string", "example": "Invalid habit input parameters." },
+          "details": { "type": "object", "nullable": true },
+          "timestamp": { "type": "string", "format": "date-time" },
+          "requestId": { "type": "string", "example": "req-3a8f-91c2" }
+        },
+        "required": ["code", "message", "timestamp", "requestId"]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "error": { "$ref": "#/components/schemas/ErrorEnvelope" }
+        },
+        "required": ["success", "error"]
+      }
+    },
+    "responses": {
+      "ValidationError": {
+        "description": "Validation failed on payload attributes",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "UnauthorizedError": {
+        "description": "Authentication token missing, expired, or invalid",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "ForbiddenError": {
+        "description": "Insufficient permissions (e.g. non-admin accessing admin portal)",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "NotFoundError": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "ConflictError": {
+        "description": "Resource already exists or constraint violation",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      }
+    }
+  }
+}
