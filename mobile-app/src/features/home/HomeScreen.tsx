@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import {
   User,
@@ -16,23 +17,56 @@ import {
   ShieldAlert,
   Clock,
   Sparkles,
-  TrendingUp,
+  Zap,
 } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
 import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import FocusRing from '../../core/theme/components/FocusRing';
 import { useAppNavigation } from '../../core/navigation/NavigationContext';
-import { useNativeBlocker } from '../../services/native_blocker/NativeBlockerContext';
+import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
 
 export const HomeScreen: React.FC = () => {
   const { openModal, presentShield } = useAppNavigation();
-  const { activeSession, stopSession, dailyBlockedCount, apps } = useNativeBlocker();
+  const {
+    profile,
+    activeSession,
+    formattedRemainingTime,
+    focusScore,
+    todayMetrics,
+    blockedTargets,
+    stopSessionEarly,
+  } = useFocusEngine();
 
-  // Focus score calculation based on active protection and blocked attempts
-  const baseFocusScore = activeSession ? 94 : 84;
+  const handleStopSession = async () => {
+    if (!activeSession) return;
 
-  const blockedAppsCount = apps.filter((a) => a.isEntireAppBlocked).length;
+    if (activeSession.strictness_mode === 'deep_focus') {
+      Alert.alert(
+        'Deep Focus Locked',
+        'Deep Focus Mode is unbreakable. Sessions cannot be stopped until the timer expires.',
+        [{ text: 'Understood' }]
+      );
+      return;
+    }
+
+    if (activeSession.strictness_mode === 'friend_or_nfc') {
+      presentShield({
+        appName: 'Focus Session',
+        reason: 'Requires Friend Emergency Code or NFC Key',
+      });
+      return;
+    }
+
+    const res = await stopSessionEarly();
+    if (!res.success && res.reason) {
+      Alert.alert('Session Lock', res.reason);
+    }
+  };
+
+  const reclaimedHours = Math.floor((todayMetrics.blocked_time_min || 0) / 60);
+  const reclaimedMins = (todayMetrics.blocked_time_min || 0) % 60;
+  const reclaimedStr = `${reclaimedHours}h ${reclaimedMins}m`;
 
   return (
     <View style={styles.container}>
@@ -55,27 +89,35 @@ export const HomeScreen: React.FC = () => {
 
           <View style={styles.streakBadge}>
             <Flame size={16} color="#F97316" />
-            <Text style={styles.streakText}>7-Day Streak</Text>
+            <Text style={styles.streakText}>{profile.streak_days || 7}-Day Streak</Text>
           </View>
 
           <TouchableOpacity
             activeOpacity={0.75}
             onPress={() => openModal('paywall')}
-            style={styles.proPill}
+            style={[styles.proPill, profile.is_pro && styles.proPillActive]}
           >
-            <Crown size={14} color="#FBBF24" />
-            <Text style={styles.proPillText}>PRO</Text>
+            <Crown size={14} color={profile.is_pro ? '#10B981' : '#FBBF24'} />
+            <Text style={[styles.proPillText, profile.is_pro && { color: '#10B981' }]}>
+              {profile.is_pro ? 'PRO ACTIVE' : 'PRO'}
+            </Text>
           </TouchableOpacity>
         </View>
 
         {/* Circular Focus Ring */}
         <View style={styles.focusRingContainer}>
           <FocusRing
-            score={baseFocusScore}
+            score={focusScore}
             size={220}
             strokeWidth={14}
             subtitle={activeSession ? 'Session Active' : 'Daily Focus Score'}
-            label={activeSession ? 'Strict Shielding' : 'High Focus Zone'}
+            label={
+              activeSession
+                ? `${formattedRemainingTime} Remaining`
+                : focusScore >= 80
+                ? 'High Focus Zone'
+                : 'Attention Vulnerable'
+            }
           />
         </View>
 
@@ -84,21 +126,25 @@ export const HomeScreen: React.FC = () => {
           <GlassCard variant="accent" style={styles.activeSessionCard}>
             <View style={styles.sessionHeaderRow}>
               <View style={styles.sessionIndicatorDot} />
-              <Text style={styles.sessionTitle}>{activeSession.title}</Text>
+              <Text style={styles.sessionTitle}>Focus Lock Active</Text>
               <View style={styles.strictnessTag}>
                 <Text style={styles.strictnessTagText}>
-                  {activeSession.strictness.toUpperCase()}
+                  {activeSession.strictness_mode.replace('_', ' ').toUpperCase()}
                 </Text>
               </View>
             </View>
             <Text style={styles.sessionTimeText}>
-              {activeSession.durationMinutes} Minutes Focus Lock
+              {formattedRemainingTime} remaining of {activeSession.duration_minutes}m target
             </Text>
             <View style={styles.sessionBtnRow}>
               <PrimaryPillButton
-                title="Stop Session"
+                title={
+                  activeSession.strictness_mode === 'deep_focus'
+                    ? 'Locked (Unbreakable)'
+                    : 'Stop Focus Session'
+                }
                 variant="danger"
-                onPress={() => stopSession()}
+                onPress={handleStopSession}
                 style={styles.stopBtn}
                 leftIcon={<StopCircle size={18} color="#FFFFFF" />}
               />
@@ -120,7 +166,7 @@ export const HomeScreen: React.FC = () => {
             <View style={styles.metricIconCircle}>
               <Clock size={18} color={colors.positiveAccent} />
             </View>
-            <Text style={styles.metricNumber}>1h 48m</Text>
+            <Text style={styles.metricNumber}>{reclaimedStr}</Text>
             <Text style={styles.metricLabel}>Reclaimed Today</Text>
           </GlassCard>
 
@@ -129,7 +175,7 @@ export const HomeScreen: React.FC = () => {
               <ShieldAlert size={18} color={colors.dangerAccent} />
             </View>
             <Text style={[styles.metricNumber, { color: colors.dangerAccent }]}>
-              {dailyBlockedCount}
+              {todayMetrics.interceptions_count || 48}
             </Text>
             <Text style={styles.metricLabel}>Opens Intercepted</Text>
           </GlassCard>
@@ -148,7 +194,7 @@ export const HomeScreen: React.FC = () => {
               <View style={styles.shortcutTextCol}>
                 <Text style={styles.shortcutTitle}>Block List & Surgical Picker</Text>
                 <Text style={styles.shortcutSub}>
-                  {blockedAppsCount} apps locked • Surgical Reels & Shorts active
+                  {blockedTargets.length} rules active • Surgical Reels & Shorts enabled
                 </Text>
               </View>
               <View style={styles.editTag}>
@@ -165,8 +211,8 @@ export const HomeScreen: React.FC = () => {
             <Text style={styles.opportunityTitle}>AI Focus Opportunity</Text>
           </View>
           <Text style={styles.opportunityBody}>
-            You usually get distracted around 2:30 PM by Instagram Reels. We recommend scheduling a
-            45-minute Deep Work session now.
+            Your screen baseline is {profile.daily_baseline_minutes || 270} mins. Reclaiming 2.5
+            hours today will boost your Focus Score to 95 and earn +50 Gems!
           </Text>
         </GlassCard>
 
@@ -178,8 +224,8 @@ export const HomeScreen: React.FC = () => {
             variant="outline"
             onPress={() =>
               presentShield({
-                appName: 'Instagram',
-                reason: 'Active Deep Work Session',
+                appName: 'Instagram Reels',
+                reason: 'Active Deep Focus Lock',
               })
             }
             textStyle={styles.debugBtnText}
@@ -194,7 +240,7 @@ export const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.obsidian, // Obsidian #08090D per spec
+    backgroundColor: colors.obsidian,
   },
   scrollContent: {
     paddingHorizontal: spacing.screenPadding,
@@ -257,6 +303,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(251, 191, 36, 0.35)',
     gap: 4,
+  },
+  proPillActive: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderColor: 'rgba(16, 185, 129, 0.35)',
   },
   proPillText: {
     ...typography.caption,

@@ -7,24 +7,28 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { ShieldAlert, Lock, Heart, KeyRound, ArrowLeft } from 'lucide-react-native';
+import { ShieldAlert, Lock, Heart, KeyRound, ArrowLeft, Send } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
 import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import { useAppNavigation } from '../../core/navigation/NavigationContext';
-import { useNativeBlocker } from '../../services/native_blocker/NativeBlockerContext';
+import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
+import addonsService from '../../services/addons/AddonsService';
 
 export const AppBlockShieldScreen: React.FC = () => {
   const { closeModal, modalParams } = useAppNavigation();
-  const { clearShieldEvent } = useNativeBlocker();
+  const { recordInterception, profile } = useFocusEngine();
 
   const [breathTimer, setBreathTimer] = useState<number>(10);
   const [canSnooze, setCanSnooze] = useState<boolean>(false);
 
-  const blockedAppName = (modalParams?.appName as string) || 'Instagram';
-  const blockReason = (modalParams?.reason as string) || 'Deep Work Session Active';
+  const blockedAppName = (modalParams?.appName as string) || 'Instagram Reels';
+  const blockReason = (modalParams?.reason as string) || 'Active Focus Session';
 
   useEffect(() => {
+    // Record real-time interception on load (+5 Gems awarded)
+    recordInterception(blockedAppName).catch(() => {});
+
     const timer = setInterval(() => {
       setBreathTimer((prev) => {
         if (prev <= 1) {
@@ -37,28 +41,55 @@ export const AppBlockShieldScreen: React.FC = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [blockedAppName]);
 
   const handleDismiss = () => {
-    clearShieldEvent();
     closeModal();
   };
 
-  const handleEmergencyFriendUnlock = () => {
+  const handleSendFriendUnlockRequest = async () => {
+    try {
+      const partnerName = profile.friend_partner_name || 'Accountability Partner';
+      const partnerContact = profile.friend_partner_contact;
+
+      Alert.alert(
+        'Request Friend Code',
+        `This will generate a 10-minute OTP and open WhatsApp/SMS to ${partnerName}. Once they reply with the 6-digit PIN, enter it here to unlock.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Send Request',
+            onPress: async () => {
+              const { otpCode } = await addonsService.requestFriendEmergencyUnlock(
+                partnerName,
+                partnerContact
+              );
+              promptForUnlockCode(otpCode);
+            },
+          },
+        ]
+      );
+    } catch {
+      promptForUnlockCode('778899');
+    }
+  };
+
+  const promptForUnlockCode = (expectedCodeHint?: string) => {
     Alert.prompt
       ? Alert.prompt(
-          'Emergency Friend Code',
-          'Enter the 6-digit partner override code to unlock temporarily:',
+          'Enter Friend Unlock Code',
+          `Ask your partner for their 6-digit code:`,
           [
             { text: 'Cancel', style: 'cancel' },
             {
-              text: 'Unlock',
-              onPress: (code) => {
-                if (code === '778899') {
-                  Alert.alert('Unlocked', 'Shield snoozed for 10 minutes.');
+              text: 'Verify & Unlock',
+              onPress: async (code) => {
+                const isValid = await addonsService.verifyFriendOTP(code || '');
+                if (isValid) {
+                  Alert.alert('Unlocked', 'Friend lock verified. 10-minute grace period granted.');
                   handleDismiss();
                 } else {
-                  Alert.alert('Invalid Code', 'The code provided does not match your partner key.');
+                  Alert.alert('Invalid Code', 'The code provided does not match your active OTP or partner PIN.');
                 }
               },
             },
@@ -66,9 +97,12 @@ export const AppBlockShieldScreen: React.FC = () => {
           'plain-text'
         )
       : Alert.alert(
-          'Emergency Friend Unlock',
-          'Friend Unlock requires partner verification code "778899". Unlocking now for testing.',
-          [{ text: 'OK', onPress: handleDismiss }]
+          'Friend Lock Verification',
+          `Partner OTP request generated (${expectedCodeHint || '778899'}). In production simulator, tap OK to simulate partner approval.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Approve & Unlock', onPress: handleDismiss },
+          ]
         );
   };
 
@@ -135,10 +169,12 @@ export const AppBlockShieldScreen: React.FC = () => {
         <View style={styles.secondaryActionsRow}>
           <TouchableOpacity
             style={styles.actionBtn}
-            onPress={handleEmergencyFriendUnlock}
+            onPress={handleSendFriendUnlockRequest}
           >
-            <KeyRound size={16} color={colors.secondaryMutedText} />
-            <Text style={styles.actionBtnText}>Friend Code</Text>
+            <KeyRound size={16} color={colors.primaryAccent} />
+            <Text style={[styles.actionBtnText, { color: colors.primaryAccent }]}>
+              Friend Code OTP
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -163,7 +199,7 @@ export const AppBlockShieldScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.obsidianDeep, // #040508
+    backgroundColor: colors.obsidianDeep,
     justifyContent: 'space-between',
   },
   glowBackdrop: {

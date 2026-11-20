@@ -6,23 +6,126 @@ import {
   TouchableOpacity,
   ScrollView,
   Switch,
+  Alert,
 } from 'react-native';
-import { X, Sparkles, Check, Scissors } from 'lucide-react-native';
+import { X, Check, Scissors, Crown } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
 import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import { useAppNavigation } from '../../core/navigation/NavigationContext';
-import { useNativeBlocker } from '../../services/native_blocker/NativeBlockerContext';
+import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
+import { SyncBlockedTarget } from '../../services/sync/SyncService';
+
+interface AppItem {
+  packageName: string;
+  name: string;
+  category: 'social' | 'entertainment' | 'gaming';
+  emoji: string;
+  supportsSurgical: boolean;
+  surgicalFeatureName?: string;
+  surgicalDescription?: string;
+}
+
+const APPS_CATALOG: AppItem[] = [
+  {
+    packageName: 'com.instagram.android',
+    name: 'Instagram',
+    category: 'social',
+    emoji: '📸',
+    supportsSurgical: true,
+    surgicalFeatureName: 'Instagram Reels Feed',
+    surgicalDescription: 'Block algorithmic vertical videos while keeping DMs open',
+  },
+  {
+    packageName: 'com.google.android.youtube',
+    name: 'YouTube',
+    category: 'entertainment',
+    emoji: '▶️',
+    supportsSurgical: true,
+    surgicalFeatureName: 'YouTube Shorts',
+    surgicalDescription: 'Block addictive swipe feed while allowing educational videos',
+  },
+  {
+    packageName: 'com.zhiliaoapp.musically',
+    name: 'TikTok',
+    category: 'social',
+    emoji: '🎵',
+    supportsSurgical: true,
+    surgicalFeatureName: 'For You Page (FYP)',
+    surgicalDescription: 'Block autoplay endless scroll loop',
+  },
+  {
+    packageName: 'com.twitter.android',
+    name: 'X (Twitter)',
+    category: 'social',
+    emoji: '🐦',
+    supportsSurgical: false,
+  },
+  {
+    packageName: 'com.reddit.frontpage',
+    name: 'Reddit',
+    category: 'entertainment',
+    emoji: '🤖',
+    supportsSurgical: true,
+    surgicalFeatureName: 'Popular Video Feed',
+    surgicalDescription: 'Block infinite rage-bait video reels',
+  },
+  {
+    packageName: 'com.supercell.clashroyale',
+    name: 'Clash Royale',
+    category: 'gaming',
+    emoji: '🎮',
+    supportsSurgical: false,
+  },
+];
 
 export const BlockListPickerModal: React.FC = () => {
-  const { closeModal } = useAppNavigation();
-  const { apps, toggleAppBlock, toggleSurgicalBlock } = useNativeBlocker();
+  const { closeModal, openModal } = useAppNavigation();
+  const { blockedTargets, addBlockedTarget, removeBlockedTarget, profile } = useFocusEngine();
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'social' | 'entertainment' | 'gaming'>('all');
 
-  const filteredApps = apps.filter((app) => {
+  const filteredCatalog = APPS_CATALOG.filter((app) => {
     if (selectedFilter === 'all') return true;
     return app.category === selectedFilter;
   });
+
+  const handleToggleEntireApp = async (app: AppItem, isBlocked: boolean) => {
+    if (isBlocked) {
+      const target: SyncBlockedTarget = {
+        id: Math.random().toString(36).substring(2, 9),
+        platform: 'android',
+        package_or_token: app.packageName,
+        display_name: app.name,
+        is_surgical_feed_only: false,
+      };
+      await addBlockedTarget(target);
+    } else {
+      await removeBlockedTarget(app.packageName);
+    }
+  };
+
+  const handleToggleSurgical = async (app: AppItem, enableSurgical: boolean) => {
+    if (!profile.is_pro) {
+      Alert.alert(
+        'Pro Feature Required',
+        'Surgical Reels & Shorts blocking is an Opal Pro exclusive feature.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Unlock Pro', onPress: () => openModal('paywall') },
+        ]
+      );
+      return;
+    }
+
+    const target: SyncBlockedTarget = {
+      id: Math.random().toString(36).substring(2, 9),
+      platform: 'android',
+      package_or_token: app.packageName,
+      display_name: app.name,
+      is_surgical_feed_only: enableSurgical,
+    };
+    await addBlockedTarget(target);
+  };
 
   return (
     <View style={styles.modalOverlay}>
@@ -32,7 +135,7 @@ export const BlockListPickerModal: React.FC = () => {
           <View>
             <Text style={styles.title}>Block List & Surgical Picker</Text>
             <Text style={styles.subtitle}>
-              Lock whole apps or surgically remove infinite scroll features
+              Offline-first mirror synced with Supabase PostgreSQL
             </Text>
           </View>
           <TouchableOpacity onPress={closeModal} style={styles.closeBtn}>
@@ -65,6 +168,12 @@ export const BlockListPickerModal: React.FC = () => {
             <View style={styles.spotlightHeader}>
               <Scissors size={20} color={colors.primaryAccent} />
               <Text style={styles.spotlightTitle}>Surgical Blocker Mode</Text>
+              {!profile.is_pro && (
+                <View style={styles.proPillBadge}>
+                  <Crown size={12} color="#FBBF24" />
+                  <Text style={styles.proPillText}>PRO</Text>
+                </View>
+              )}
             </View>
             <Text style={styles.spotlightDesc}>
               Keep productive messaging, search, and educational long-form videos active while
@@ -73,53 +182,46 @@ export const BlockListPickerModal: React.FC = () => {
           </GlassCard>
 
           {/* Apps List */}
-          <Text style={styles.sectionHeader}>INSTALLED APPS & SURGICAL RULES</Text>
+          <Text style={styles.sectionHeader}>INSTALLED TARGETS & LOCAL CACHE RULES</Text>
           <View style={styles.appsList}>
-            {filteredApps.map((app) => (
-              <GlassCard key={app.id} style={styles.appCard}>
-                {/* Main App Row */}
-                <View style={styles.appRow}>
-                  <View style={styles.appIconPlaceholder}>
-                    <Text style={styles.appEmoji}>
-                      {app.name === 'Instagram'
-                        ? '📸'
-                        : app.name === 'YouTube'
-                        ? '▶️'
-                        : app.name === 'TikTok'
-                        ? '🎵'
-                        : app.name.includes('Twitter')
-                        ? '🐦'
-                        : '📱'}
-                    </Text>
-                  </View>
-                  <View style={styles.appInfoCol}>
-                    <Text style={styles.appName}>{app.name}</Text>
-                    <Text style={styles.appUsage}>{app.dailyUsageMinutes} mins/day</Text>
-                  </View>
-                  <Switch
-                    value={app.isEntireAppBlocked}
-                    onValueChange={(val) => toggleAppBlock(app.id, val)}
-                    trackColor={{ false: colors.hairlineBorder, true: colors.primaryAccent }}
-                    thumbColor="#FFFFFF"
-                  />
-                </View>
+            {filteredCatalog.map((app) => {
+              const matchedTarget = blockedTargets.find(
+                (t) => t.package_or_token === app.packageName
+              );
+              const isEntirelyBlocked = matchedTarget !== undefined && !matchedTarget.is_surgical_feed_only;
+              const isSurgicalBlocked = matchedTarget?.is_surgical_feed_only === true;
 
-                {/* Surgical Features Sub-Toggles */}
-                {app.surgicalFeatures && app.surgicalFeatures.length > 0 && (
-                  <View style={styles.surgicalSubList}>
-                    <Text style={styles.surgicalSubHeader}>Surgical Feed Locks:</Text>
-                    {app.surgicalFeatures.map((feat) => (
-                      <View key={feat.id} style={styles.surgicalItemRow}>
+              return (
+                <GlassCard key={app.packageName} style={styles.appCard}>
+                  {/* Main App Row */}
+                  <View style={styles.appRow}>
+                    <View style={styles.appIconPlaceholder}>
+                      <Text style={styles.appEmoji}>{app.emoji}</Text>
+                    </View>
+                    <View style={styles.appInfoCol}>
+                      <Text style={styles.appName}>{app.name}</Text>
+                      <Text style={styles.appUsage}>{app.packageName}</Text>
+                    </View>
+                    <Switch
+                      value={isEntirelyBlocked}
+                      onValueChange={(val) => handleToggleEntireApp(app, val)}
+                      trackColor={{ false: colors.hairlineBorder, true: colors.primaryAccent }}
+                      thumbColor="#FFFFFF"
+                    />
+                  </View>
+
+                  {/* Surgical Features Sub-Toggles */}
+                  {app.supportsSurgical && (
+                    <View style={styles.surgicalSubList}>
+                      <View style={styles.surgicalItemRow}>
                         <View style={styles.surgicalDot} />
                         <View style={styles.surgicalTextCol}>
-                          <Text style={styles.surgicalName}>{feat.name}</Text>
-                          <Text style={styles.surgicalDesc}>{feat.description}</Text>
+                          <Text style={styles.surgicalName}>{app.surgicalFeatureName}</Text>
+                          <Text style={styles.surgicalDesc}>{app.surgicalDescription}</Text>
                         </View>
                         <Switch
-                          value={feat.isBlocked}
-                          onValueChange={(val) =>
-                            toggleSurgicalBlock(app.id, feat.id, val)
-                          }
+                          value={isSurgicalBlocked}
+                          onValueChange={(val) => handleToggleSurgical(app, val)}
                           trackColor={{
                             false: colors.hairlineBorder,
                             true: colors.positiveAccent,
@@ -127,18 +229,18 @@ export const BlockListPickerModal: React.FC = () => {
                           thumbColor="#FFFFFF"
                         />
                       </View>
-                    ))}
-                  </View>
-                )}
-              </GlassCard>
-            ))}
+                    </View>
+                  )}
+                </GlassCard>
+              );
+            })}
           </View>
         </ScrollView>
 
         {/* Footer */}
         <View style={styles.footer}>
           <PrimaryPillButton
-            title="Done & Save Block Rules"
+            title="Done & Sync Rules"
             onPress={closeModal}
             rightIcon={<Check size={18} color={colors.primaryButtonText} />}
           />
@@ -236,6 +338,21 @@ const styles = StyleSheet.create({
     ...typography.titleMedium,
     fontSize: 14,
     color: colors.primaryAccent,
+    flex: 1,
+  },
+  proPillBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(251, 191, 36, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    gap: 4,
+  },
+  proPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FBBF24',
   },
   spotlightDesc: {
     ...typography.bodySmall,
@@ -280,6 +397,7 @@ const styles = StyleSheet.create({
   appUsage: {
     ...typography.bodySmall,
     color: colors.secondaryMutedText,
+    fontSize: 11,
   },
   surgicalSubList: {
     marginTop: 12,
@@ -287,16 +405,10 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.hairlineBorder,
   },
-  surgicalSubHeader: {
-    ...typography.caption,
-    fontSize: 10,
-    color: colors.positiveAccent,
-    marginBottom: 8,
-  },
   surgicalItemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 6,
+    marginVertical: 4,
   },
   surgicalDot: {
     width: 6,

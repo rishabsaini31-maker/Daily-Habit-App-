@@ -7,31 +7,65 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { Award, Gem, Flame, Users, Radio, Check, Lock, Sparkles } from 'lucide-react-native';
+import { Award, Gem, Flame, Users, Radio, Check, Lock } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
 import GlassCard from '../../core/theme/components/GlassCard';
-import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
+import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
+import addonsService from '../../services/addons/AddonsService';
 
 export const RewardsScreen: React.FC = () => {
-  const [gemsBalance, setGemsBalance] = useState<number>(480);
-  const [partnerLinked, setPartnerLinked] = useState<boolean>(true);
-  const [nfcDeskTagPaired, setNfcDeskTagPaired] = useState<boolean>(true);
+  const { profile, updateProfile } = useFocusEngine();
+  const [isScanningNFC, setIsScanningNFC] = useState<boolean>(false);
 
   const handlePairNFC = () => {
+    setIsScanningNFC(true);
     Alert.alert(
-      'NFC Ready',
-      'Hold the back of your phone against an NFC sticker or tag to pair with instant deep focus.',
-      [{ text: 'Simulate Successful Tap', onPress: () => setNfcDeskTagPaired(true) }]
+      'Ready to Tap NFC Tag',
+      'Hold the back of your phone against an NFC sticker (on your desk or nightstand) to pair it as a physical focus key.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => setIsScanningNFC(false),
+        },
+        {
+          text: 'Simulate NFC Tap',
+          onPress: async () => {
+            const simulatedUID = '04:5A:21:7B:9C';
+            await addonsService.pairNfcTag(simulatedUID);
+            Alert.alert(
+              'NFC Key Paired ✓',
+              `Tag UID [${simulatedUID}] registered. Tapping this sticker will now instantly trigger or release your Focus Sessions.`
+            );
+            setIsScanningNFC(false);
+          },
+        },
+      ]
     );
   };
 
   const handlePartnerSetup = () => {
     Alert.alert(
-      'Friend Lock Partner',
-      'Your partner code is "778899". Send this invite link to your accountability partner so they can approve emergency breaks.',
-      [{ text: 'Copy Invite Link' }]
+      'Accountability Partner Lock',
+      `Current Partner: ${profile.friend_partner_name || 'Alex'}.\n\nWhen a locked session is active, your partner receives an OTP via WhatsApp/SMS to authorize emergency breaks.`,
+      [
+        { text: 'Close', style: 'cancel' },
+        {
+          text: 'Send Test OTP',
+          onPress: async () => {
+            await addonsService.requestFriendEmergencyUnlock(
+              profile.friend_partner_name || 'Alex',
+              profile.friend_partner_contact
+            );
+          },
+        },
+      ]
     );
   };
+
+  const currentGems = profile.total_gems || 480;
+  const streakDays = profile.streak_days || 7;
+  const tierRank = profile.tier_rank || 'Bronze';
 
   return (
     <View style={styles.container}>
@@ -51,12 +85,17 @@ export const RewardsScreen: React.FC = () => {
               <Gem size={28} color={colors.primaryAccent} />
             </View>
             <View style={styles.gemTextCol}>
-              <Text style={styles.gemLabel}>TOTAL FOCUS GEMS</Text>
-              <Text style={styles.gemBalanceText}>{gemsBalance} 💎</Text>
+              <View style={styles.gemTierRow}>
+                <Text style={styles.gemLabel}>TOTAL FOCUS GEMS</Text>
+                <View style={styles.tierBadge}>
+                  <Text style={styles.tierBadgeText}>{tierRank.toUpperCase()} TIER</Text>
+                </View>
+              </View>
+              <Text style={styles.gemBalanceText}>{currentGems} 💎</Text>
             </View>
           </View>
           <Text style={styles.gemSub}>
-            Earned by hitting daily screen-time limits & completing sessions without snoozing.
+            Earned via +10 Gems per 30m Deep Focus, +5 Gems per blocked app, and +50 Gems on daily 70+ Focus Score.
           </Text>
         </GlassCard>
 
@@ -68,8 +107,8 @@ export const RewardsScreen: React.FC = () => {
               <Flame size={24} color="#F97316" />
             </View>
             <View style={styles.milestoneTextCol}>
-              <Text style={styles.milestoneTitle}>7-Day Focus Streak</Text>
-              <Text style={styles.milestoneSub}>Milestone Achieved • 1.5x Gem Multiplier active</Text>
+              <Text style={styles.milestoneTitle}>{streakDays}-Day Focus Streak</Text>
+              <Text style={styles.milestoneSub}>Milestone Active • 1.5x Gem Multiplier unlocked</Text>
             </View>
             <View style={styles.doneCheck}>
               <Check size={16} color="#090A0F" />
@@ -86,7 +125,7 @@ export const RewardsScreen: React.FC = () => {
               <Text style={[styles.milestoneTitle, { color: colors.secondaryMutedText }]}>
                 14-Day Diamond Shield
               </Text>
-              <Text style={styles.milestoneSub}>Progress: 7/14 days completed</Text>
+              <Text style={styles.milestoneSub}>Progress: {Math.min(14, streakDays)}/14 days completed</Text>
             </View>
             <View style={styles.lockedBadge}>
               <Lock size={12} color={colors.secondaryMutedText} />
@@ -104,9 +143,7 @@ export const RewardsScreen: React.FC = () => {
             <View style={styles.featureTextCol}>
               <Text style={styles.featureTitle}>Friend Lock Partner</Text>
               <Text style={styles.featureDesc}>
-                {partnerLinked
-                  ? 'Paired with Alex (Emergency PIN: 778899)'
-                  : 'Pair with a friend or partner who must approve session cancellations'}
+                Paired with {profile.friend_partner_name || 'Alex'} (Emergency OTP verification via Supabase)
               </Text>
             </View>
           </View>
@@ -115,7 +152,7 @@ export const RewardsScreen: React.FC = () => {
             onPress={handlePartnerSetup}
           >
             <Text style={styles.configBtnText}>
-              {partnerLinked ? 'Manage Partner & Code' : 'Pair Accountability Partner'}
+              Manage Partner & Test Emergency WhatsApp Link
             </Text>
           </TouchableOpacity>
         </GlassCard>
@@ -130,8 +167,8 @@ export const RewardsScreen: React.FC = () => {
             <View style={styles.featureTextCol}>
               <Text style={styles.featureTitle}>Physical NFC Desk Key</Text>
               <Text style={styles.featureDesc}>
-                {nfcDeskTagPaired
-                  ? 'Office Desk Sticker Paired ✓ (Tap phone to instantly start Deep Work)'
+                {profile.nfc_tag_uid
+                  ? `Paired Tag UID [${profile.nfc_tag_uid}] (Tap phone to unlock hardware-gated sessions)`
                   : 'Stick an NFC tag on your desk to trigger sessions without opening the app'}
               </Text>
             </View>
@@ -141,7 +178,7 @@ export const RewardsScreen: React.FC = () => {
             onPress={handlePairNFC}
           >
             <Text style={styles.configBtnText}>
-              {nfcDeskTagPaired ? 'Re-calibrate NFC Key' : 'Pair New NFC Sticker'}
+              {profile.nfc_tag_uid ? 'Re-calibrate NFC Key' : 'Pair New NFC Sticker'}
             </Text>
           </TouchableOpacity>
         </GlassCard>
@@ -192,10 +229,26 @@ const styles = StyleSheet.create({
   gemTextCol: {
     flex: 1,
   },
+  gemTierRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   gemLabel: {
     ...typography.caption,
     color: colors.primaryAccent,
     letterSpacing: 1.5,
+  },
+  tierBadge: {
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  tierBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.primaryAccent,
   },
   gemBalanceText: {
     fontSize: 32,

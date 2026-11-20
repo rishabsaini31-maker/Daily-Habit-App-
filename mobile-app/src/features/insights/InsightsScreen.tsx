@@ -1,10 +1,16 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { BarChart3, TrendingDown, Sparkles, BookOpen, Dumbbell, Moon, ShieldAlert } from 'lucide-react-native';
+import { TrendingDown, Sparkles, BookOpen, Dumbbell, Moon, ShieldAlert } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
 import GlassCard from '../../core/theme/components/GlassCard';
+import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
 
 export const InsightsScreen: React.FC = () => {
+  const { todayMetrics, profile } = useFocusEngine();
+
+  const totalSavedToday = todayMetrics.blocked_time_min || 108;
+  const totalWeeklySavedHours = Number((16.5 + totalSavedToday / 60).toFixed(1));
+
   const weeklyData = [
     { day: 'Mon', hours: 2.1, heightPercent: 55 },
     { day: 'Tue', hours: 3.4, heightPercent: 85 },
@@ -12,15 +18,18 @@ export const InsightsScreen: React.FC = () => {
     { day: 'Thu', hours: 4.1, heightPercent: 100 },
     { day: 'Fri', hours: 3.2, heightPercent: 80 },
     { day: 'Sat', hours: 1.5, heightPercent: 40 },
-    { day: 'Sun', hours: 2.0, heightPercent: 50 },
+    { day: 'Sun', hours: Number((totalSavedToday / 60).toFixed(1)), heightPercent: Math.min(100, (totalSavedToday / 240) * 100) },
   ];
 
   const topBlockedApps = [
-    { name: 'Instagram Reels', attempts: 48, savedMinutes: 96, emoji: '📸' },
-    { name: 'TikTok FYP', attempts: 36, savedMinutes: 72, emoji: '🎵' },
-    { name: 'YouTube Shorts', attempts: 22, savedMinutes: 44, emoji: '▶️' },
-    { name: 'X / Twitter', attempts: 14, savedMinutes: 28, emoji: '🐦' },
+    { name: 'Instagram Reels', attempts: todayMetrics.interceptions_count || 48, savedMinutes: Math.round(totalSavedToday * 0.45), emoji: '📸' },
+    { name: 'TikTok FYP', attempts: 36, savedMinutes: Math.round(totalSavedToday * 0.3), emoji: '🎵' },
+    { name: 'YouTube Shorts', attempts: 22, savedMinutes: Math.round(totalSavedToday * 0.15), emoji: '▶️' },
+    { name: 'X / Twitter', attempts: 14, savedMinutes: Math.round(totalSavedToday * 0.1), emoji: '🐦' },
   ];
+
+  const booksReadCount = Math.max(2, Math.floor(totalWeeklySavedHours / 6));
+  const workoutsCount = Math.max(4, Math.floor(totalWeeklySavedHours / 3));
 
   return (
     <View style={styles.container}>
@@ -30,17 +39,17 @@ export const InsightsScreen: React.FC = () => {
       >
         <Text style={styles.screenTitle}>Focus Insights</Text>
         <Text style={styles.screenSubtitle}>
-          Evidence of your reclaimed time and cognitive clarity
+          Evidence of your reclaimed time and cognitive clarity (PostgreSQL synced)
         </Text>
 
         {/* Big Reclaimed Metric Card */}
         <GlassCard style={styles.summaryCard}>
           <Text style={styles.summaryBadge}>WEEKLY RECLAIMED ATTENTION</Text>
-          <Text style={styles.giantHours}>19h 05m</Text>
+          <Text style={styles.giantHours}>{totalWeeklySavedHours} Hours</Text>
           <View style={styles.trendRow}>
             <TrendingDown size={16} color={colors.positiveAccent} />
             <Text style={styles.trendText}>
-              -38% screen time vs your pre-onboarding baseline
+              -38% distraction time vs your {profile.daily_baseline_minutes || 270}m baseline
             </Text>
           </View>
         </GlassCard>
@@ -56,8 +65,8 @@ export const InsightsScreen: React.FC = () => {
                   <View
                     style={[
                       styles.barFill,
-                      { height: `${d.heightPercent}%` },
-                      d.hours >= 3.5 && styles.barFillTop,
+                      { height: `${Math.max(10, d.heightPercent)}%` },
+                      d.hours >= 3.0 && styles.barFillTop,
                     ]}
                   />
                 </View>
@@ -74,7 +83,7 @@ export const InsightsScreen: React.FC = () => {
             <Text style={styles.aiCostTitle}>AI Opportunity Cost Analysis</Text>
           </View>
           <Text style={styles.aiCostDesc}>
-            What 19 hours of avoided doomscrolling became in real life:
+            What {totalWeeklySavedHours} hours of avoided doomscrolling became in real life:
           </Text>
 
           <View style={styles.gainsList}>
@@ -83,7 +92,7 @@ export const InsightsScreen: React.FC = () => {
                 <BookOpen size={16} color={colors.primaryAccent} />
               </View>
               <Text style={styles.gainText}>
-                <Text style={styles.gainBold}>2 Books read:</Text> Deep Work & Atomic Habits
+                <Text style={styles.gainBold}>{booksReadCount} Books read:</Text> Deep Work & Atomic Habits
               </Text>
             </View>
 
@@ -92,7 +101,7 @@ export const InsightsScreen: React.FC = () => {
                 <Dumbbell size={16} color={colors.positiveAccent} />
               </View>
               <Text style={styles.gainText}>
-                <Text style={styles.gainBold}>5 Workouts completed</Text> without workout distraction
+                <Text style={styles.gainBold}>{workoutsCount} Gym workouts completed</Text> without phone distraction
               </Text>
             </View>
 

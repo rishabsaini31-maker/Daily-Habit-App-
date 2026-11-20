@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,95 +6,62 @@ import {
   ScrollView,
   Switch,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import {
-  Calendar,
   Clock,
   MapPin,
   Footprints,
   Plus,
   Shield,
   CheckCircle2,
+  Crown,
 } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
 import GlassCard from '../../core/theme/components/GlassCard';
-import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
-
-interface TimeSchedule {
-  id: string;
-  name: string;
-  timeRange: string;
-  days: string;
-  isActive: boolean;
-  blockedAppsCount: number;
-}
-
-interface LocationRule {
-  id: string;
-  name: string;
-  address: string;
-  radiusMeters: number;
-  isActive: boolean;
-}
+import { useAppNavigation } from '../../core/navigation/NavigationContext';
+import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
+import addonsService from '../../services/addons/AddonsService';
 
 export const SchedulesScreen: React.FC = () => {
-  const [timeSchedules, setTimeSchedules] = useState<TimeSchedule[]>([
-    {
-      id: '1',
-      name: 'Work Focus Block',
-      timeRange: '09:00 AM – 05:00 PM',
-      days: 'Mon, Tue, Wed, Thu, Fri',
-      isActive: true,
-      blockedAppsCount: 6,
-    },
-    {
-      id: '2',
-      name: 'Sleep Sanctuary',
-      timeRange: '10:30 PM – 07:00 AM',
-      days: 'Every Day',
-      isActive: true,
-      blockedAppsCount: 8,
-    },
-    {
-      id: '3',
-      name: 'Morning Mindfulness',
-      timeRange: '07:00 AM – 08:30 AM',
-      days: 'Every Day',
-      isActive: false,
-      blockedAppsCount: 4,
-    },
-  ]);
+  const { openModal } = useAppNavigation();
+  const { schedules, toggleSchedule, profile, blockedTargets } = useFocusEngine();
+  const [todaySteps, setTodaySteps] = useState<number>(6420);
 
-  const [locationRules, setLocationRules] = useState<LocationRule[]>([
-    {
-      id: 'loc-1',
-      name: 'Office / Work HQ',
-      address: 'Tech Park Tower 4',
-      radiusMeters: 200,
-      isActive: true,
-    },
-    {
-      id: 'loc-2',
-      name: 'Campus Library',
-      address: 'University Main Hall',
-      radiusMeters: 150,
-      isActive: false,
-    },
-  ]);
+  useEffect(() => {
+    addonsService.getTodaySteps().then(setTodaySteps);
+  }, []);
 
-  const [stepGatingEnabled, setStepGatingEnabled] = useState<boolean>(true);
+  const handleToggle = (id: string, currentlyActive: boolean, triggerType: string) => {
+    const activeCount = schedules.filter((s) => s.is_active).length;
 
-  const toggleTimeSchedule = (id: string) => {
-    setTimeSchedules((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, isActive: !s.isActive } : s))
-    );
+    // Spec: Free users can enable 1 active schedule only; geofence and health_steps require Pro
+    if (!currentlyActive && !profile.is_pro) {
+      if (activeCount >= 1 || triggerType === 'geofence' || triggerType === 'health_steps') {
+        Alert.alert(
+          'Opal Pro Schedule Limit',
+          triggerType === 'geofence'
+            ? 'GPS Location auto-lock is an Opal Pro feature.'
+            : triggerType === 'health_steps'
+            ? 'Step-Gated screen time rules require Opal Pro.'
+            : 'Free tier allows 1 active schedule. Unlock Opal Pro for unlimited automated rules.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Unlock Pro', onPress: () => openModal('paywall') },
+          ]
+        );
+        return;
+      }
+    }
+
+    toggleSchedule(id, !currentlyActive);
   };
 
-  const toggleLocationRule = (id: string) => {
-    setLocationRules((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, isActive: !l.isActive } : l))
-    );
-  };
+  const timeSchedules = schedules.filter((s) => s.trigger_type === 'time');
+  const geofenceSchedules = schedules.filter((s) => s.trigger_type === 'geofence');
+  const stepSchedules = schedules.filter((s) => s.trigger_type === 'health_steps');
+  const stepGoal = stepSchedules[0]?.step_goal || 5000;
+  const isStepGoalMet = todaySteps >= stepGoal;
 
   return (
     <View style={styles.container}>
@@ -102,10 +69,14 @@ export const SchedulesScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.screenTitle}>Smart Schedules</Text>
-        <Text style={styles.screenSubtitle}>
-          Automate blocking by time, GPS geofence, and physical activity
-        </Text>
+        <View style={styles.titleRow}>
+          <View>
+            <Text style={styles.screenTitle}>Smart Schedules</Text>
+            <Text style={styles.screenSubtitle}>
+              PostgreSQL backed schedules with offline 0ms execution
+            </Text>
+          </View>
+        </View>
 
         {/* 1. TIME-BASED RECURRING RULES */}
         <View style={styles.sectionHeaderRow}>
@@ -113,7 +84,13 @@ export const SchedulesScreen: React.FC = () => {
             <Clock size={18} color={colors.primaryAccent} />
             <Text style={styles.sectionTitle}>TIME-BASED SCHEDULES</Text>
           </View>
-          <TouchableOpacity style={styles.addBtn}>
+          <TouchableOpacity
+            style={styles.addBtn}
+            onPress={() => {
+              if (!profile.is_pro) openModal('paywall');
+              else Alert.alert('Add Schedule', 'Configure custom recurring hour windows.');
+            }}
+          >
             <Plus size={16} color={colors.primaryAccent} />
             <Text style={styles.addBtnText}>Add</Text>
           </TouchableOpacity>
@@ -124,13 +101,19 @@ export const SchedulesScreen: React.FC = () => {
             <GlassCard key={schedule.id} style={styles.scheduleCard}>
               <View style={styles.cardTopRow}>
                 <View style={styles.scheduleInfoCol}>
-                  <Text style={styles.scheduleName}>{schedule.name}</Text>
-                  <Text style={styles.scheduleTime}>{schedule.timeRange}</Text>
-                  <Text style={styles.scheduleDays}>{schedule.days}</Text>
+                  <Text style={styles.scheduleName}>{schedule.title}</Text>
+                  <Text style={styles.scheduleTime}>
+                    {schedule.start_time?.slice(0, 5)} – {schedule.end_time?.slice(0, 5)}
+                  </Text>
+                  <Text style={styles.scheduleDays}>
+                    Days: {schedule.days_of_week.join(', ')}
+                  </Text>
                 </View>
                 <Switch
-                  value={schedule.isActive}
-                  onValueChange={() => toggleTimeSchedule(schedule.id)}
+                  value={schedule.is_active}
+                  onValueChange={() =>
+                    handleToggle(schedule.id, schedule.is_active, schedule.trigger_type)
+                  }
                   trackColor={{
                     false: colors.hairlineBorder,
                     true: colors.primaryAccent,
@@ -141,7 +124,7 @@ export const SchedulesScreen: React.FC = () => {
               <View style={styles.cardFooterRow}>
                 <Shield size={14} color={colors.secondaryMutedText} />
                 <Text style={styles.cardFooterText}>
-                  {schedule.blockedAppsCount} apps locked automatically
+                  {blockedTargets.length} apps locked automatically
                 </Text>
               </View>
             </GlassCard>
@@ -153,29 +136,33 @@ export const SchedulesScreen: React.FC = () => {
           <View style={styles.sectionHeaderLeft}>
             <MapPin size={18} color={colors.positiveAccent} />
             <Text style={styles.sectionTitle}>GPS LOCATION AUTO-LOCK</Text>
+            {!profile.is_pro && (
+              <View style={styles.proTag}>
+                <Crown size={10} color="#FBBF24" />
+                <Text style={styles.proTagText}>PRO</Text>
+              </View>
+            )}
           </View>
-          <TouchableOpacity style={styles.addBtn}>
-            <Plus size={16} color={colors.positiveAccent} />
-            <Text style={[styles.addBtnText, { color: colors.positiveAccent }]}>
-              Add
-            </Text>
-          </TouchableOpacity>
         </View>
 
         <View style={styles.cardsList}>
-          {locationRules.map((rule) => (
+          {geofenceSchedules.map((rule) => (
             <GlassCard key={rule.id} style={styles.scheduleCard}>
               <View style={styles.cardTopRow}>
                 <View style={styles.scheduleInfoCol}>
-                  <Text style={styles.scheduleName}>{rule.name}</Text>
-                  <Text style={styles.scheduleTime}>{rule.address}</Text>
+                  <Text style={styles.scheduleName}>{rule.title}</Text>
+                  <Text style={styles.scheduleTime}>
+                    {rule.geofence_lat}, {rule.geofence_lng}
+                  </Text>
                   <Text style={styles.scheduleDays}>
-                    Auto-locks within {rule.radiusMeters}m geofence
+                    Auto-locks within {rule.geofence_radius_m || 200}m geofence
                   </Text>
                 </View>
                 <Switch
-                  value={rule.isActive}
-                  onValueChange={() => toggleLocationRule(rule.id)}
+                  value={rule.is_active}
+                  onValueChange={() =>
+                    handleToggle(rule.id, rule.is_active, rule.trigger_type)
+                  }
                   trackColor={{
                     false: colors.hairlineBorder,
                     true: colors.positiveAccent,
@@ -192,45 +179,72 @@ export const SchedulesScreen: React.FC = () => {
           <View style={styles.sectionHeaderLeft}>
             <Footprints size={18} color={colors.warningAccent} />
             <Text style={styles.sectionTitle}>STEP-GATED "EARN TIME"</Text>
+            {!profile.is_pro && (
+              <View style={styles.proTag}>
+                <Crown size={10} color="#FBBF24" />
+                <Text style={styles.proTagText}>PRO</Text>
+              </View>
+            )}
           </View>
         </View>
 
-        <GlassCard style={styles.stepGatedCard}>
-          <View style={styles.cardTopRow}>
-            <View style={styles.scheduleInfoCol}>
-              <Text style={styles.scheduleName}>Physical Activity Gating</Text>
-              <Text style={styles.scheduleTime}>
-                Walk 5,000 steps = Unlock 15 mins Social Screen Time
+        {stepSchedules.map((stepRule) => (
+          <GlassCard key={stepRule.id} style={styles.stepGatedCard}>
+            <View style={styles.cardTopRow}>
+              <View style={styles.scheduleInfoCol}>
+                <Text style={styles.scheduleName}>{stepRule.title}</Text>
+                <Text style={styles.scheduleTime}>
+                  Walk {stepGoal.toLocaleString()} steps = Unlock Social Time
+                </Text>
+              </View>
+              <Switch
+                value={stepRule.is_active}
+                onValueChange={() =>
+                  handleToggle(stepRule.id, stepRule.is_active, stepRule.trigger_type)
+                }
+                trackColor={{
+                  false: colors.hairlineBorder,
+                  true: colors.warningAccent,
+                }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            {/* Step progress bar */}
+            <View style={styles.stepProgressContainer}>
+              <View style={styles.stepProgressHeader}>
+                <Text style={styles.stepCounterText}>
+                  {todaySteps.toLocaleString()} / {stepGoal.toLocaleString()} steps today
+                </Text>
+                <View style={styles.earnedBadge}>
+                  <CheckCircle2
+                    size={12}
+                    color={isStepGoalMet ? colors.positiveAccent : colors.secondaryMutedText}
+                  />
+                  <Text
+                    style={[
+                      styles.earnedBadgeText,
+                      isStepGoalMet && { color: colors.positiveAccent },
+                    ]}
+                  >
+                    {isStepGoalMet ? 'Goal Unlocked' : 'Locked'}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.stepProgressBarBg}>
+                <View
+                  style={[
+                    styles.stepProgressBarFill,
+                    { width: `${Math.min(100, (todaySteps / stepGoal) * 100)}%` },
+                  ]}
+                />
+              </View>
+              <Text style={styles.healthSyncNote}>
+                Synced with Apple HealthKit & Android Health Connect
               </Text>
             </View>
-            <Switch
-              value={stepGatingEnabled}
-              onValueChange={setStepGatingEnabled}
-              trackColor={{
-                false: colors.hairlineBorder,
-                true: colors.warningAccent,
-              }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
-
-          {/* Progress bar toward 5,000 steps */}
-          <View style={styles.stepProgressContainer}>
-            <View style={styles.stepProgressHeader}>
-              <Text style={styles.stepCounterText}>6,420 / 5,000 steps today</Text>
-              <View style={styles.earnedBadge}>
-                <CheckCircle2 size={12} color={colors.positiveAccent} />
-                <Text style={styles.earnedBadgeText}>15m Unlocked</Text>
-              </View>
-            </View>
-            <View style={styles.stepProgressBarBg}>
-              <View style={[styles.stepProgressBarFill, { width: '100%' }]} />
-            </View>
-            <Text style={styles.healthSyncNote}>
-              Synced via Apple Health / Health Connect
-            </Text>
-          </View>
-        </GlassCard>
+          </GlassCard>
+        ))}
       </ScrollView>
     </View>
   );
@@ -246,6 +260,9 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 32,
   },
+  titleRow: {
+    marginBottom: 16,
+  },
   screenTitle: {
     ...typography.displayMedium,
     marginBottom: 4,
@@ -253,7 +270,6 @@ const styles = StyleSheet.create({
   screenSubtitle: {
     ...typography.bodyMedium,
     color: colors.secondaryMutedText,
-    marginBottom: 20,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -270,6 +286,20 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.secondaryMutedText,
     letterSpacing: 1.2,
+  },
+  proTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(251, 191, 36, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    gap: 3,
+  },
+  proTagText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FBBF24',
   },
   addBtn: {
     flexDirection: 'row',
@@ -361,7 +391,7 @@ const styles = StyleSheet.create({
   earnedBadgeText: {
     ...typography.caption,
     fontSize: 10,
-    color: colors.positiveAccent,
+    color: colors.secondaryMutedText,
   },
   stepProgressBarBg: {
     height: 6,

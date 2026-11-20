@@ -5,14 +5,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { X, Clock, ShieldCheck, ChevronRight, Zap, Lock, Users } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
 import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import { useAppNavigation } from '../../core/navigation/NavigationContext';
-import { useNativeBlocker } from '../../services/native_blocker/NativeBlockerContext';
-import { StrictnessLevel } from '../../services/native_blocker/types';
+import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
 
 const DURATION_PRESETS = [
   { minutes: 15, label: '15m', sub: 'Quick Sprint' },
@@ -24,31 +24,36 @@ const DURATION_PRESETS = [
 
 export const NewFocusSessionModal: React.FC = () => {
   const { closeModal, openModal } = useAppNavigation();
-  const { startSession, apps } = useNativeBlocker();
+  const { startSession, blockedTargets, profile } = useFocusEngine();
 
   const [selectedDuration, setSelectedDuration] = useState<number>(25);
-  const [strictness, setStrictness] = useState<StrictnessLevel>('normal');
+  const [strictness, setStrictness] = useState<'normal' | 'deep_focus' | 'friend_or_nfc'>('normal');
   const [sessionTitle, setSessionTitle] = useState<string>('Deep Work Sprint');
 
-  const blockedAppsCount = apps.filter((a) => a.isEntireAppBlocked).length;
+  const handleSelectStrictness = (mode: 'normal' | 'deep_focus' | 'friend_or_nfc') => {
+    if ((mode === 'deep_focus' || mode === 'friend_or_nfc') && !profile.is_pro) {
+      Alert.alert(
+        'Pro Feature',
+        'Deep Focus (Hardcore Mode) and Friend Lock require Opal Pro.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'View Pro Pass', onPress: () => openModal('paywall') },
+        ]
+      );
+      return;
+    }
+    setStrictness(mode);
+  };
 
   const handleStart = async () => {
-    await startSession({
-      id: Date.now().toString(),
-      title: sessionTitle,
-      durationMinutes: selectedDuration,
-      strictness,
-      blockedAppIds: apps.filter((a) => a.isEntireAppBlocked).map((a) => a.id),
-      surgicalFeatureIds: ['reels', 'shorts', 'fyp'],
-      autoDoNotDisturb: true,
-    });
+    await startSession(sessionTitle, selectedDuration, strictness);
     closeModal();
   };
 
   return (
     <View style={styles.modalOverlay}>
       <View style={styles.sheetContainer}>
-        {/* Top Drag Handle & Close */}
+        {/* Top Header */}
         <View style={styles.sheetHeader}>
           <View style={styles.sheetTitleCol}>
             <Text style={styles.sheetTitle}>New Focus Session</Text>
@@ -104,7 +109,7 @@ export const NewFocusSessionModal: React.FC = () => {
             {/* Normal */}
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => setStrictness('normal')}
+              onPress={() => handleSelectStrictness('normal')}
             >
               <GlassCard
                 style={[
@@ -126,15 +131,15 @@ export const NewFocusSessionModal: React.FC = () => {
               </GlassCard>
             </TouchableOpacity>
 
-            {/* Hardcore */}
+            {/* Deep Focus (Hardcore) */}
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => setStrictness('hardcore')}
+              onPress={() => handleSelectStrictness('deep_focus')}
             >
               <GlassCard
                 style={[
                   styles.strictnessCard,
-                  strictness === 'hardcore' && styles.strictnessCardActive,
+                  strictness === 'deep_focus' && styles.strictnessCardActive,
                 ]}
               >
                 <View style={styles.strictRow}>
@@ -147,26 +152,38 @@ export const NewFocusSessionModal: React.FC = () => {
                     <Lock size={20} color={colors.dangerAccent} />
                   </View>
                   <View style={styles.strictTextCol}>
-                    <Text style={[styles.strictTitle, strictness === 'hardcore' && { color: colors.dangerAccent }]}>
-                      Hardcore Mode (Unbreakable)
-                    </Text>
+                    <View style={styles.titleWithBadge}>
+                      <Text
+                        style={[
+                          styles.strictTitle,
+                          strictness === 'deep_focus' && { color: colors.dangerAccent },
+                        ]}
+                      >
+                        Deep Focus (Hardcore Mode)
+                      </Text>
+                      {!profile.is_pro && (
+                        <View style={styles.proTag}>
+                          <Text style={styles.proTagText}>PRO</Text>
+                        </View>
+                      )}
+                    </View>
                     <Text style={styles.strictDesc}>
-                      No pausing, no cancelling, anti-uninstall protection enabled
+                      Unbreakable lock. Anti-uninstall guard active. No cancelling allowed.
                     </Text>
                   </View>
                 </View>
               </GlassCard>
             </TouchableOpacity>
 
-            {/* Friend Lock */}
+            {/* Friend Lock / NFC */}
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => setStrictness('friend_lock')}
+              onPress={() => handleSelectStrictness('friend_or_nfc')}
             >
               <GlassCard
                 style={[
                   styles.strictnessCard,
-                  strictness === 'friend_lock' && styles.strictnessCardActive,
+                  strictness === 'friend_or_nfc' && styles.strictnessCardActive,
                 ]}
               >
                 <View style={styles.strictRow}>
@@ -179,9 +196,16 @@ export const NewFocusSessionModal: React.FC = () => {
                     <Users size={20} color={colors.positiveAccent} />
                   </View>
                   <View style={styles.strictTextCol}>
-                    <Text style={styles.strictTitle}>Friend Lock Partner</Text>
+                    <View style={styles.titleWithBadge}>
+                      <Text style={styles.strictTitle}>Friend & NFC Hardware Lock</Text>
+                      {!profile.is_pro && (
+                        <View style={styles.proTag}>
+                          <Text style={styles.proTagText}>PRO</Text>
+                        </View>
+                      )}
+                    </View>
                     <Text style={styles.strictDesc}>
-                      Requires partner approval code to cancel or unlock early
+                      Requires partner approval code or physical NFC desk tap to unlock
                     </Text>
                   </View>
                 </View>
@@ -200,10 +224,10 @@ export const NewFocusSessionModal: React.FC = () => {
                 <ShieldCheck size={20} color={colors.primaryAccent} />
                 <View style={styles.appPickerTextCol}>
                   <Text style={styles.appPickerTitle}>
-                    {blockedAppsCount} Apps & Surgical Reels Blocked
+                    {blockedTargets.length} Rules Active in Local-First Cache
                   </Text>
                   <Text style={styles.appPickerSub}>
-                    Tap to edit apps and shorts toggles
+                    Configure apps, tokens & surgical shorts locks
                   </Text>
                 </View>
                 <ChevronRight size={18} color={colors.secondaryMutedText} />
@@ -334,6 +358,22 @@ const styles = StyleSheet.create({
   },
   strictTextCol: {
     flex: 1,
+  },
+  titleWithBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  proTag: {
+    backgroundColor: 'rgba(251, 191, 36, 0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  proTagText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FBBF24',
   },
   strictTitle: {
     ...typography.titleMedium,

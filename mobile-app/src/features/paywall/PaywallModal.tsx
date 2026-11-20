@@ -13,21 +13,55 @@ import { colors, typography, spacing } from '../../core/theme/tokens';
 import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import { useAppNavigation } from '../../core/navigation/NavigationContext';
+import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
+import revenueCat from '../../services/revenuecat/RevenueCatService';
 
 export const PaywallModal: React.FC = () => {
   const { closeModal } = useAppNavigation();
+  const { updateProfile } = useFocusEngine();
   const [billingPlan, setBillingPlan] = useState<'annual' | 'monthly'>('annual');
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
-  const handleStartTrial = () => {
-    Alert.alert(
-      'Trial Activated',
-      'Your 7-day free trial of Opal Pro is active. Enjoy unlimited distraction blocking!',
-      [{ text: 'Continue to Dashboard', onPress: closeModal }]
-    );
+  const handleStartTrial = async () => {
+    setIsProcessing(true);
+    try {
+      const packageId = billingPlan === 'annual' ? 'annual_4999_trial' : 'monthly_899';
+      const result = await revenueCat.purchasePackage(packageId);
+
+      if (result.success) {
+        await updateProfile({ is_pro: true });
+        Alert.alert(
+          'Opal Pro Activated ✓',
+          billingPlan === 'annual'
+            ? 'Your 7-day free trial has started. All pro features (Surgical Reels, Deep Focus, Unlimited Schedules) are unlocked!'
+            : 'Opal Pro monthly subscription active. Enjoy full cognitive protection!',
+          [{ text: 'Start Focusing', onPress: closeModal }]
+        );
+      } else {
+        Alert.alert('Purchase Incomplete', result.error || 'Payment was not processed.');
+      }
+    } catch {
+      Alert.alert('Error', 'Unable to reach App Store / Play Store billing.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const handleRestore = () => {
-    Alert.alert('Purchases Restored', 'No previous purchases found for this account.');
+  const handleRestore = async () => {
+    setIsProcessing(true);
+    try {
+      const result = await revenueCat.restorePurchases();
+      if (result.isPro) {
+        await updateProfile({ is_pro: true });
+        Alert.alert('Purchases Restored', 'Your Opal Pro entitlement was restored successfully.', [
+          { text: 'OK', onPress: closeModal },
+        ]);
+      } else {
+        Alert.alert('No Entitlement Found', 'No active subscription was found for your account.');
+      }
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -94,9 +128,9 @@ export const PaywallModal: React.FC = () => {
                 <Lock size={20} color={colors.dangerAccent} />
               </View>
               <View style={styles.benefitTextCol}>
-                <Text style={styles.benefitTitle}>Hardcore Anti-Uninstall Mode</Text>
+                <Text style={styles.benefitTitle}>Deep Focus & Anti-Uninstall Guard</Text>
                 <Text style={styles.benefitDesc}>
-                  Unbreakable locks with friend accountability code verification.
+                  Unbreakable locks with friend accountability code & NFC physical keys.
                 </Text>
               </View>
             </View>
@@ -121,8 +155,8 @@ export const PaywallModal: React.FC = () => {
               </View>
               <View style={styles.planHeader}>
                 <View>
-                  <Text style={styles.planName}>Annual Focus Plan</Text>
-                  <Text style={styles.planBillingNote}>$59.99/year after 7-day trial ($4.99/mo)</Text>
+                  <Text style={styles.planName}>Annual Focus Pass</Text>
+                  <Text style={styles.planBillingNote}>$49.99/year after 7-day trial ($4.16/mo)</Text>
                 </View>
                 <View style={[styles.radioCircle, billingPlan === 'annual' && styles.radioActive]}>
                   {billingPlan === 'annual' && <View style={styles.radioDot} />}
@@ -144,8 +178,8 @@ export const PaywallModal: React.FC = () => {
             >
               <View style={styles.planHeader}>
                 <View>
-                  <Text style={styles.planName}>Monthly Plan</Text>
-                  <Text style={styles.planBillingNote}>$9.99/month • Cancel anytime</Text>
+                  <Text style={styles.planName}>Monthly Pass</Text>
+                  <Text style={styles.planBillingNote}>$8.99/month • Cancel anytime</Text>
                 </View>
                 <View style={[styles.radioCircle, billingPlan === 'monthly' && styles.radioActive]}>
                   {billingPlan === 'monthly' && <View style={styles.radioDot} />}
@@ -161,14 +195,15 @@ export const PaywallModal: React.FC = () => {
         <PrimaryPillButton
           title={
             billingPlan === 'annual'
-              ? 'Start 7-Day Free Trial'
-              : 'Unlock Opal Pro ($9.99/mo)'
+              ? 'Start 7-Day Free Trial ($49.99/yr)'
+              : 'Unlock Opal Pro ($8.99/mo)'
           }
           onPress={handleStartTrial}
+          loading={isProcessing}
           rightIcon={<Sparkles size={18} color={colors.primaryButtonText} />}
         />
         <Text style={styles.disclaimerText}>
-          7 days free, then $59.99/yr. Cancel at least 24 hours before trial ends in App Store settings.
+          7 days free, then $49.99/yr. Cancel at least 24 hours before trial ends in App Store settings.
         </Text>
         <View style={styles.linksRow}>
           <TouchableOpacity onPress={handleRestore}>
@@ -191,7 +226,7 @@ export const PaywallModal: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.obsidianDeep, // #040508
+    backgroundColor: colors.obsidianDeep,
   },
   topBar: {
     flexDirection: 'row',
