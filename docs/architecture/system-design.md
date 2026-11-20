@@ -11,14 +11,14 @@
 ## 1. System Topology & High-Level Architecture
 
 The Daily Habit Tracker ecosystem is structured as a modular monorepo partitioned into three decoupled functional domains:
-1. **Mobile Client Application (`mobile-app/`)**: Responsive, mobile-first Web/PWA application delivering low-friction daily check-ins, visual streak tracking, calendar heatmaps, and offline check-in queuing.
+1. **Mobile Client Application (`mobile-app/`)**: Cross-platform mobile application built with React Native (Expo / TypeScript) delivering low-friction daily check-ins, visual streak tracking, calendar heatmaps, and offline check-in queuing with AsyncStorage.
 2. **Administrative Web Portal (`admin/`)**: High-density operational dashboard for platform analytics, user moderation, curated template management, and security audit log inspection.
 3. **Backend Modular API (`backend/`)**: High-performance Node.js / Express REST API implementing Clean Architecture (Ports & Adapters), strict static typing, deterministic timezone streak calculation, and ACID persistence.
 
 ```mermaid
 flowchart TD
     subgraph Clients["Client Tier"]
-        Mobile["Mobile App (PWA / React)<br>Port: 3000 / 5173<br>End-User Check-in & Analytics"]
+        Mobile["Mobile App (React Native / Expo)<br>iOS, Android & Web<br>End-User Check-in & Analytics"]
         Admin["Admin Portal (Next.js + React)<br>Port: 3001<br>Platform Moderation & Curation"]
     end
 
@@ -176,11 +176,11 @@ backend/
   5. `/admin/audit-logs`: Immutable audit log inspector with filterable actor, action, date range, and JSON diff preview.
 
 #### Mobile Application (`mobile-app/`)
-- **Technology:** React 18, Vite / PWA, TypeScript, Tailwind CSS.
-- **Design Specifications:** Responsive mobile-first layout (min-width 360px up to tablet), accessible touch targets (>= 44x44px), WCAG AA color contrast ratio.
+- **Technology:** React Native (Expo SDK), React, TypeScript.
+- **Design Specifications:** Responsive mobile layouts, accessible touch targets (>= 44x44px), WCAG AA color contrast ratio.
 - **Offline & Optimistic Strategy:**
   - Optimistic UI updates on habit toggle for zero perceived latency (<100ms).
-  - Outbox synchronization queue (`localStorage` backed): if network fails, check-in requests are queued and automatically retried upon reconnection.
+  - Outbox synchronization queue (`AsyncStorage` backed): if network fails, check-in requests are queued and automatically retried upon reconnection.
 - **Key Views:**
   1. `/today`: Daily actionable checklist, quick completion toggle, today's streak badges.
   2. `/habits`: Habit list, category filter, custom habit creation modal with frequency and reminder configuration.

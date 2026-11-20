@@ -11,7 +11,7 @@
 ## 1. Context and Problem Statement
 
 The enterprise needs a highly scalable, robust, and maintainable Daily Habit Tracking platform composed of three primary operational surfaces:
-1. `mobile-app`: A client-side mobile/PWA application delivering low-friction daily check-ins (<5 seconds), visual streak visualizations, offline-first optimistic check-ins, reminders, and personal progress analytics.
+1. `mobile-app`: A cross-platform mobile client application built with React Native (Expo / TypeScript) delivering low-friction daily check-ins (<5 seconds), visual streak visualizations, offline-first optimistic check-ins, reminders, and personal progress analytics.
 2. `admin`: A high-fidelity administrative web dashboard for user moderation, habit template catalog management, system-wide DAU/MAU analytics, and immutable audit logs.
 3. `backend`: A centralized, secure, modular REST API enforcing tenancy isolation, role-based access control (RBAC), deterministic timezone-aware streak calculations, idempotent completion updates, and transactional ACID guarantees.
 
@@ -36,7 +36,7 @@ The engineering organization operates under strict quality standards: modular cl
   *Rejected:* Violates client isolation, complicates independent mobile app packaging/PWA deployment, mixes web SSR with clean headless API contracts.
 - **Option B (Microservices Architecture):** Splitting auth, habits, streaks, analytics, and admin into separate microservices.  
   *Rejected:* Severe operational overhead, distributed transaction complexity, network latency, and premature optimization for current scope.
-- **Option C (Decoupled Modular Monolith with Clean Architecture - SELECTED):** Three decoupled top-level directories (`backend/`, `admin/`, `mobile-app/`). The backend adopts Clean Architecture (Ports & Adapters) on Node.js exposing a versioned REST API. SQLite for development and PostgreSQL compatibility for production. Admin portal built with Next.js + React + TypeScript with SSR/SSG capabilities. Mobile application built with modern React + TypeScript (mobile-first PWA / React Native ready).
+- **Option C (Decoupled Modular Monolith with Clean Architecture - SELECTED):** Three decoupled top-level directories (`backend/`, `admin/`, `mobile-app/`). The backend adopts Clean Architecture (Ports & Adapters) on Node.js exposing a versioned REST API. SQLite for development and PostgreSQL compatibility for production. Admin portal built with Next.js + React + TypeScript with SSR/SSG capabilities. Mobile application built with React Native + TypeScript (iOS, Android, and Web ready).
 
 ---
 
@@ -67,16 +67,13 @@ daily-habit-app/
 │   ├── context/              # Auth context and route guards
 │   ├── package.json
 │   └── next.config.js
-├── mobile-app/               # Mobile-First Client (React / PWA / TypeScript)
-│   ├── src/
-│   │   ├── components/       # Check-in cards, streak rings, heatmaps, badges
-│   │   ├── screens/          # Today, Habits, Templates, Analytics, Profile
-│   │   ├── services/         # Offline-aware API client and synchronization queue
-│   │   ├── hooks/            # Habit state and local mutation hooks
-│   │   ├── store/            # Lightweight offline state (Zustand / LocalStorage)
-│   │   └── types/            # Client entity and API DTO definitions
+├── mobile-app/               # Cross-Platform Mobile Client (React Native + TypeScript)
+│   ├── src/ or app/          # Navigation, Screens, Components, Services
+│   ├── screens/              # Today, Habits, Templates, Analytics, Profile
+│   ├── components/           # Habit cards, streak badges, progress bars
+│   ├── services/             # AsyncStorage offline queue and API client
 │   ├── package.json
-│   └── vite.config.ts
+│   └── app.json
 ├── docs/                     # PRD, Architecture, ADRs, Contracts, and Roadmap
 └── package.json              # Root workspace orchestrator
 ```
