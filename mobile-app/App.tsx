@@ -7,11 +7,18 @@ import { NativeBlockerProvider } from './src/services/native_blocker/NativeBlock
 import { FocusEngineProvider } from './src/services/focus_engine/FocusEngineContext';
 import RootNavigator from './src/core/navigation/RootNavigator';
 import authService from './src/services/supabase/auth';
+import revenueCat from './src/services/revenuecat/RevenueCatService';
 
 export default function App() {
-  // Initialize Supabase Auth on app start (anonymous first-launch session)
+  // Initialize Supabase Auth on app start & RevenueCat customer listener
   useEffect(() => {
-    authService.initializeOrGetSession().catch(() => {});
+    authService
+      .initializeOrGetSession()
+      .then((session) => {
+        const uid = session?.user?.id || 'anonymous_user';
+        revenueCat.initialize(uid).catch(() => {});
+      })
+      .catch(() => {});
   }, []);
 
   return (

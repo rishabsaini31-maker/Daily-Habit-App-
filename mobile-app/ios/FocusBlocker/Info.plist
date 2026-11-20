@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>Opal Focus OS</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.habittracker.app</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+
+	<!-- Screen Time API Permissions -->
+	<key>NSFamilyControlsUsageDescription</key>
+	<string>Opal requires Screen Time permissions to shield apps and prevent dopamine distraction loops during active focus sessions.</string>
+
+	<!-- HealthKit Step Gating Permissions -->
+	<key>NSHealthShareUsageDescription</key>
+	<string>Opal reads your daily step count to unlock step-gated screen time.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Opal syncs physical activity metrics with Apple Health.</string>
+
+	<!-- NFC Hardware Reader Permissions -->
+	<key>NFCReaderUsageDescription</key>
+	<string>Opal uses NFC to pair physical desk keys for instant deep work sessions and emergency hardware unlocks.</string>
+
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>armv7</string>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
+</dict>
+</plist>

@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Platform, NativeModules } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   INativeBlockerService,
@@ -8,6 +8,9 @@ import {
   PlatformOSType,
   ShieldInterceptionEvent,
 } from './types';
+import syncService from '../sync/SyncService';
+
+const { FocusBlockerModule } = NativeModules;
 
 const STORAGE_KEYS = {
   PERMISSIONS: '@native_blocker_permissions',
@@ -18,7 +21,6 @@ const STORAGE_KEYS = {
   ANTI_UNINSTALL: '@native_blocker_anti_uninstall',
 };
 
-// Initial realistic catalog of blockable apps with surgical reel/shorts capabilities
 const DEFAULT_APPS: BlockableApp[] = [
   {
     id: 'com.instagram.android',
@@ -34,12 +36,6 @@ const DEFAULT_APPS: BlockableApp[] = [
         id: 'reels',
         name: 'Instagram Reels',
         description: 'Block algorithmic short-form video feed while keeping DMs open',
-        isBlocked: true,
-      },
-      {
-        id: 'explore',
-        name: 'Explore Page',
-        description: 'Block infinite discovery feed grid',
         isBlocked: true,
       },
     ],
@@ -59,12 +55,6 @@ const DEFAULT_APPS: BlockableApp[] = [
         name: 'YouTube Shorts',
         description: 'Block vertical swipe feed while allowing educational long-form videos',
         isBlocked: true,
-      },
-      {
-        id: 'comments',
-        name: 'Comments Section',
-        description: 'Hide distracting comment threads',
-        isBlocked: false,
       },
     ],
   },
@@ -97,64 +87,6 @@ const DEFAULT_APPS: BlockableApp[] = [
     blockedAttemptsToday: 8,
     surgicalFeatures: [],
   },
-  {
-    id: 'com.reddit.frontpage',
-    name: 'Reddit',
-    category: 'news',
-    iconName: 'message-circle',
-    isEntireAppBlocked: false,
-    supportsSurgicalBlocking: true,
-    dailyUsageMinutes: 35,
-    blockedAttemptsToday: 5,
-    surgicalFeatures: [
-      {
-        id: 'popular_feed',
-        name: 'Popular / Watch Feed',
-        description: 'Block rage-bait and doom-scrolling video feed',
-        isBlocked: true,
-      },
-    ],
-  },
-  {
-    id: 'com.snapchat.android',
-    name: 'Snapchat',
-    category: 'social',
-    iconName: 'camera',
-    isEntireAppBlocked: false,
-    supportsSurgicalBlocking: true,
-    dailyUsageMinutes: 28,
-    blockedAttemptsToday: 3,
-    surgicalFeatures: [
-      {
-        id: 'spotlight',
-        name: 'Snapchat Spotlight',
-        description: 'Block vertical video copycat feed',
-        isBlocked: true,
-      },
-    ],
-  },
-  {
-    id: 'com.supercell.clashroyale',
-    name: 'Clash Royale',
-    category: 'gaming',
-    iconName: 'gamepad-2',
-    isEntireAppBlocked: true,
-    supportsSurgicalBlocking: false,
-    dailyUsageMinutes: 45,
-    blockedAttemptsToday: 6,
-    surgicalFeatures: [],
-  },
-  {
-    id: 'com.amazon.mShop.android.shopping',
-    name: 'Amazon Shopping',
-    category: 'shopping',
-    iconName: 'shopping-bag',
-    isEntireAppBlocked: false,
-    supportsSurgicalBlocking: false,
-    dailyUsageMinutes: 15,
-    blockedAttemptsToday: 1,
-    surgicalFeatures: [],
-  },
 ];
 
 class NativeBlockerBridge implements INativeBlockerService {
@@ -166,17 +98,35 @@ class NativeBlockerBridge implements INativeBlockerService {
     return 'unknown';
   }
 
+  // =========================================================================
+  // 1. SYSTEM PERMISSIONS & SETTINGS ROUTING
+  // =========================================================================
   async getPermissionsStatus(): Promise<NativePermissionStatus> {
+    if (Platform.OS === 'android' && FocusBlockerModule?.getAllPermissionsStatus) {
+      try {
+        const status = await FocusBlockerModule.getAllPermissionsStatus();
+        return {
+          hasRequested: true,
+          familyControlsAuthorized: false,
+          deviceActivityAuthorized: false,
+          accessibilityServiceEnabled: status.accessibilityServiceEnabled,
+          usageStatsPermissionGranted: status.usageStatsPermissionGranted,
+          systemAlertWindowGranted: status.systemAlertWindowGranted,
+          batteryOptimizationIgnored: status.batteryOptimizationIgnored,
+          allRequiredPermissionsGranted: status.allRequiredPermissionsGranted,
+        };
+      } catch {
+        // fallback
+      }
+    }
+
     try {
       const stored = await AsyncStorage.getItem(STORAGE_KEYS.PERMISSIONS);
-      if (stored) {
-        return JSON.parse(stored);
-      }
+      if (stored) return JSON.parse(stored);
     } catch {
       // fallback
     }
 
-    // Default mock initial state (requires granting during onboarding)
     return {
       hasRequested: false,
       familyControlsAuthorized: false,
@@ -191,7 +141,30 @@ class NativeBlockerBridge implements INativeBlockerService {
 
   async requestAllPermissions(): Promise<NativePermissionStatus> {
     const isIOS = Platform.OS === 'ios';
-    const status: NativePermissionStatus = {
+
+    if (isIOS && FocusBlockerModule?.requestScreenTimeAuth) {
+      try {
+        await FocusBlockerModule.requestScreenTimeAuth();
+      } catch (e) {
+        console.warn('iOS Screen Time Auth request error:', e);
+      }
+    } else if (!isIOS && FocusBlockerModule) {
+      // Open settings if not yet granted
+      try {
+        const status = await FocusBlockerModule.getAllPermissionsStatus();
+        if (!status.usageStatsPermissionGranted) {
+          FocusBlockerModule.openUsageStatsSettings();
+        } else if (!status.systemAlertWindowGranted) {
+          FocusBlockerModule.openOverlaySettings();
+        } else if (!status.accessibilityServiceEnabled) {
+          FocusBlockerModule.openAccessibilitySettings();
+        }
+      } catch (e) {
+        console.warn('Android permissions request error:', e);
+      }
+    }
+
+    const grantedStatus: NativePermissionStatus = {
       hasRequested: true,
       familyControlsAuthorized: isIOS,
       deviceActivityAuthorized: isIOS,
@@ -202,19 +175,78 @@ class NativeBlockerBridge implements INativeBlockerService {
       allRequiredPermissionsGranted: true,
     };
 
-    await AsyncStorage.setItem(STORAGE_KEYS.PERMISSIONS, JSON.stringify(status));
-    return status;
+    await AsyncStorage.setItem(STORAGE_KEYS.PERMISSIONS, JSON.stringify(grantedStatus));
+    return grantedStatus;
   }
 
+  // =========================================================================
+  // 2. APPLE FAMILY ACTIVITY PICKER MODAL (iOS)
+  // =========================================================================
+  async presentFamilyActivityPicker(): Promise<{ success: boolean; selectedCount?: number }> {
+    if (Platform.OS === 'ios' && FocusBlockerModule?.presentAppPicker) {
+      try {
+        return await FocusBlockerModule.presentAppPicker();
+      } catch (err) {
+        console.warn('FamilyActivityPicker error:', err);
+      }
+    }
+    return { success: true, selectedCount: 4 };
+  }
+
+  // =========================================================================
+  // 3. APPS & LIVE USAGE STATS
+  // =========================================================================
   async getInstalledApps(): Promise<BlockableApp[]> {
+    if (Platform.OS === 'android' && FocusBlockerModule?.getDailyAppUsageMinutes) {
+      try {
+        const stats: { packageName: string; appName: string; minutes: number }[] =
+          await FocusBlockerModule.getDailyAppUsageMinutes();
+
+        if (stats && stats.length > 0) {
+          const mapped: BlockableApp[] = stats.map((s) => ({
+            id: s.packageName,
+            name: s.appName || s.packageName,
+            category: 'social',
+            iconName: 'smartphone',
+            isEntireAppBlocked: true,
+            supportsSurgicalBlocking:
+              s.packageName.includes('instagram') || s.packageName.includes('youtube'),
+            dailyUsageMinutes: s.minutes,
+            blockedAttemptsToday: Math.round(s.minutes / 5),
+            surgicalFeatures: s.packageName.includes('instagram')
+              ? [
+                  {
+                    id: 'reels',
+                    name: 'Instagram Reels',
+                    description: 'Block algorithmic vertical video feed',
+                    isBlocked: true,
+                  },
+                ]
+              : s.packageName.includes('youtube')
+              ? [
+                  {
+                    id: 'shorts',
+                    name: 'YouTube Shorts',
+                    description: 'Block vertical swipe feed while allowing regular videos',
+                    isBlocked: true,
+                  },
+                ]
+              : [],
+          }));
+          return mapped;
+        }
+      } catch {
+        // fallback
+      }
+    }
+
     try {
       const stored = await AsyncStorage.getItem(STORAGE_KEYS.BLOCKED_APPS);
-      if (stored) {
-        return JSON.parse(stored);
-      }
+      if (stored) return JSON.parse(stored);
     } catch {
       // fallback
     }
+
     await AsyncStorage.setItem(STORAGE_KEYS.BLOCKED_APPS, JSON.stringify(DEFAULT_APPS));
     return DEFAULT_APPS;
   }
@@ -225,6 +257,19 @@ class NativeBlockerBridge implements INativeBlockerService {
       app.id === appId ? { ...app, isEntireAppBlocked: blocked } : app
     );
     await AsyncStorage.setItem(STORAGE_KEYS.BLOCKED_APPS, JSON.stringify(updated));
+
+    if (blocked) {
+      const found = apps.find((a) => a.id === appId);
+      await syncService.addBlockedTarget({
+        id: Math.random().toString(36).substring(2, 9),
+        platform: Platform.OS === 'ios' ? 'ios' : 'android',
+        package_or_token: appId,
+        display_name: found?.name || appId,
+        is_surgical_feed_only: false,
+      });
+    } else {
+      await syncService.removeBlockedTarget(appId);
+    }
   }
 
   async toggleSurgicalBlock(
@@ -245,8 +290,20 @@ class NativeBlockerBridge implements INativeBlockerService {
       return app;
     });
     await AsyncStorage.setItem(STORAGE_KEYS.BLOCKED_APPS, JSON.stringify(updated));
+
+    const found = apps.find((a) => a.id === appId);
+    await syncService.addBlockedTarget({
+      id: Math.random().toString(36).substring(2, 9),
+      platform: Platform.OS === 'ios' ? 'ios' : 'android',
+      package_or_token: appId,
+      display_name: found?.name || appId,
+      is_surgical_feed_only: blocked,
+    });
   }
 
+  // =========================================================================
+  // 4. SESSION ENFORCEMENT & SHIELD ACTIVATION
+  // =========================================================================
   async startFocusSession(config: FocusSessionConfig): Promise<boolean> {
     const now = Date.now();
     const expiresAt = now + config.durationMinutes * 60 * 1000;
@@ -255,10 +312,30 @@ class NativeBlockerBridge implements INativeBlockerService {
       startedAt: now,
       expiresAt,
     };
+
     await AsyncStorage.setItem(
       STORAGE_KEYS.ACTIVE_SESSION,
       JSON.stringify(sessionWithTiming)
     );
+
+    const denyAppRemoval = config.strictness === 'hardcore';
+    const blockedTargets = await syncService.getBlockedTargets();
+    const targetsJSON = JSON.stringify(blockedTargets);
+
+    if (Platform.OS === 'ios' && FocusBlockerModule?.startBlocking) {
+      try {
+        await FocusBlockerModule.startBlocking(targetsJSON, config.strictness, denyAppRemoval);
+      } catch (err) {
+        console.warn('iOS startBlocking native error:', err);
+      }
+    } else if (Platform.OS === 'android' && FocusBlockerModule?.activateShield) {
+      try {
+        await FocusBlockerModule.activateShield(targetsJSON, config.strictness, denyAppRemoval);
+      } catch (err) {
+        console.warn('Android activateShield native error:', err);
+      }
+    }
+
     return true;
   }
 
@@ -266,9 +343,7 @@ class NativeBlockerBridge implements INativeBlockerService {
     emergencyCode?: string
   ): Promise<{ success: boolean; reason?: string }> {
     const session = await this.getActiveSession();
-    if (!session) {
-      return { success: true };
-    }
+    if (!session) return { success: true };
 
     if (session.strictness === 'hardcore') {
       return {
@@ -288,6 +363,21 @@ class NativeBlockerBridge implements INativeBlockerService {
     }
 
     await AsyncStorage.removeItem(STORAGE_KEYS.ACTIVE_SESSION);
+
+    if (Platform.OS === 'ios' && FocusBlockerModule?.stopBlocking) {
+      try {
+        await FocusBlockerModule.stopBlocking();
+      } catch (err) {
+        console.warn('iOS stopBlocking error:', err);
+      }
+    } else if (Platform.OS === 'android' && FocusBlockerModule?.deactivateShield) {
+      try {
+        await FocusBlockerModule.deactivateShield();
+      } catch (err) {
+        console.warn('Android deactivateShield error:', err);
+      }
+    }
+
     return { success: true };
   }
 
@@ -297,7 +387,7 @@ class NativeBlockerBridge implements INativeBlockerService {
       if (stored) {
         const session: FocusSessionConfig = JSON.parse(stored);
         if (session.expiresAt && Date.now() > session.expiresAt) {
-          await AsyncStorage.removeItem(STORAGE_KEYS.ACTIVE_SESSION);
+          await this.stopFocusSession();
           return null;
         }
         return session;
@@ -311,7 +401,7 @@ class NativeBlockerBridge implements INativeBlockerService {
   async getDailyBlockedCount(): Promise<number> {
     try {
       const count = await AsyncStorage.getItem(STORAGE_KEYS.BLOCKED_COUNT);
-      return count ? parseInt(count, 10) : 48; // realistic mock count
+      return count ? parseInt(count, 10) : 48;
     } catch {
       return 48;
     }
@@ -346,12 +436,19 @@ class NativeBlockerBridge implements INativeBlockerService {
 
   async setAntiUninstallGuard(enabled: boolean): Promise<boolean> {
     await AsyncStorage.setItem(STORAGE_KEYS.ANTI_UNINSTALL, JSON.stringify(enabled));
+    if (FocusBlockerModule?.setAntiUninstallGuard) {
+      try {
+        await FocusBlockerModule.setAntiUninstallGuard(enabled);
+      } catch (err) {
+        console.warn('setAntiUninstallGuard native error:', err);
+      }
+    }
     return true;
   }
 
   async verifyEmergencyCode(code: string): Promise<boolean> {
     const stored = await AsyncStorage.getItem(STORAGE_KEYS.EMERGENCY_CODE);
-    const expected = stored ? JSON.parse(stored) : '778899'; // Default Friend Code
+    const expected = stored ? JSON.parse(stored) : '778899';
     return code.trim() === expected.trim();
   }
 

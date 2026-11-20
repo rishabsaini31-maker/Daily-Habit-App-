@@ -22,6 +22,7 @@ import GlassCard from '../../core/theme/components/GlassCard';
 import { useAppNavigation } from '../../core/navigation/NavigationContext';
 import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
 import addonsService from '../../services/addons/AddonsService';
+import healthStepService from '../../services/addons/HealthStepService';
 
 export const SchedulesScreen: React.FC = () => {
   const { openModal } = useAppNavigation();
@@ -55,6 +56,26 @@ export const SchedulesScreen: React.FC = () => {
     }
 
     toggleSchedule(id, !currentlyActive);
+
+    if (triggerType === 'health_steps') {
+      const updatedSchedules = schedules.map((s) =>
+        s.id === id ? { ...s, is_active: !currentlyActive } : s
+      );
+      healthStepService.enforceStepGating(updatedSchedules, blockedTargets);
+    }
+  };
+
+  const handleSimulateSteps = async () => {
+    const newSteps = isStepGoalMet ? 3200 : stepGoal + 500;
+    await healthStepService.setTodaySteps(newSteps);
+    setTodaySteps(newSteps);
+    const result = await healthStepService.enforceStepGating(schedules, blockedTargets);
+    Alert.alert(
+      result.shouldShield ? 'Step Gate Shield Active' : 'Step Goal Reached! Screen Time Unlocked ✓',
+      result.shouldShield
+        ? `Walked ${newSteps.toLocaleString()} / ${stepGoal.toLocaleString()} steps. Apps remain shielded until goal is met.`
+        : `Walked ${newSteps.toLocaleString()} steps! Automatic OS shield has been lifted. Enjoy mindful screen time.`
+    );
   };
 
   const timeSchedules = schedules.filter((s) => s.trigger_type === 'time');
@@ -211,7 +232,11 @@ export const SchedulesScreen: React.FC = () => {
             </View>
 
             {/* Step progress bar */}
-            <View style={styles.stepProgressContainer}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={handleSimulateSteps}
+              style={styles.stepProgressContainer}
+            >
               <View style={styles.stepProgressHeader}>
                 <Text style={styles.stepCounterText}>
                   {todaySteps.toLocaleString()} / {stepGoal.toLocaleString()} steps today
@@ -240,9 +265,9 @@ export const SchedulesScreen: React.FC = () => {
                 />
               </View>
               <Text style={styles.healthSyncNote}>
-                Synced with Apple HealthKit & Android Health Connect
+                Synced with Apple HealthKit & Android Health Connect • Tap to test step sync
               </Text>
-            </View>
+            </TouchableOpacity>
           </GlassCard>
         ))}
       </ScrollView>

@@ -17,7 +17,7 @@ import addonsService from '../../services/addons/AddonsService';
 
 export const AppBlockShieldScreen: React.FC = () => {
   const { closeModal, modalParams } = useAppNavigation();
-  const { recordInterception, profile } = useFocusEngine();
+  const { recordInterception, profile, activeSession } = useFocusEngine();
 
   const [breathTimer, setBreathTimer] = useState<number>(10);
   const [canSnooze, setCanSnooze] = useState<boolean>(false);
@@ -84,9 +84,9 @@ export const AppBlockShieldScreen: React.FC = () => {
             {
               text: 'Verify & Unlock',
               onPress: async (code) => {
-                const isValid = await addonsService.verifyFriendOTP(code || '');
+                const isValid = await addonsService.verifyFriendOTP(code || '', activeSession?.id);
                 if (isValid) {
-                  Alert.alert('Unlocked', 'Friend lock verified. 10-minute grace period granted.');
+                  Alert.alert('Unlocked', 'Friend lock verified. Emergency break granted and session marked broken.');
                   handleDismiss();
                 } else {
                   Alert.alert('Invalid Code', 'The code provided does not match your active OTP or partner PIN.');
@@ -101,7 +101,13 @@ export const AppBlockShieldScreen: React.FC = () => {
           `Partner OTP request generated (${expectedCodeHint || '778899'}). In production simulator, tap OK to simulate partner approval.`,
           [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Approve & Unlock', onPress: handleDismiss },
+            {
+              text: 'Approve & Unlock',
+              onPress: async () => {
+                await addonsService.verifyFriendOTP(expectedCodeHint || '778899', activeSession?.id);
+                handleDismiss();
+              },
+            },
           ]
         );
   };

@@ -2,10 +2,13 @@ import { Linking, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../supabase/client';
 import syncService from '../sync/SyncService';
+import nativeBlocker from '../native_blocker/NativeBlockerBridge';
+import healthStepService from './HealthStepService';
 
 const STORAGE_KEYS = {
   HEALTH_STEPS_TODAY: '@health_steps_today',
   SAVED_NFC_TAG: '@saved_nfc_tag_uid',
+  ACTIVE_OFFLINE_OTP: '@active_offline_friend_otp',
 };
 
 class AddonsService {
@@ -38,7 +41,7 @@ class AddonsService {
       }
     } catch {
       // Offline fallback: save locally
-      await AsyncStorage.setItem('@active_offline_friend_otp', otpCode);
+      await AsyncStorage.setItem(STORAGE_KEYS.ACTIVE_OFFLINE_OTP, otpCode);
     }
 
     // Pre-filled WhatsApp / SMS message text
@@ -51,9 +54,9 @@ class AddonsService {
       : `https://wa.me/?text=${message}`;
 
     // Open WhatsApp if possible, else SMS
-    const supported = await Linking.canOpenURL(shareUrl);
+    const supported = await Linking.canOpenURL(shareUrl).catch(() => false);
     if (supported) {
-      await Linking.openURL(shareUrl);
+      await Linking.openURL(shareUrl).catch(() => {});
     } else {
       const smsUrl = `sms:?body=${message}`;
       await Linking.openURL(smsUrl).catch(() => {});
@@ -63,85 +66,132 @@ class AddonsService {
   }
 
   /**
-   * Verifies the 6-digit OTP against Supabase emergency_unlock_codes
+   * Verifies the 6-digit OTP against Supabase emergency_unlock_codes.
+   * If valid:
+   * 1. Marks OTP code as used (is_used = true).
+   * 2. If an active session is in progress, marks it 'broken' in Supabase & local cache.
+   * 3. Immediately stops native OS blocker shield.
    */
-  async verifyFriendOTP(code: string): Promise<boolean> {
+  async verifyFriendOTP(code: string, activeSessionId?: string): Promise<boolean> {
     const trimmed = code.trim();
     if (!trimmed || trimmed.length !== 6) return false;
 
-    // Fast check for master override code
-    if (trimmed === '778899') return true;
+    let isAuthorized = false;
 
-    try {
-      const { data: authData } = await supabase.auth.getUser();
-      const userId = authData?.user?.id;
+    // Master development / emergency override code
+    if (trimmed === '778899') {
+      isAuthorized = true;
+    } else {
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        const userId = authData?.user?.id;
 
-      if (userId) {
-        const { data, error } = await supabase
-          .from('emergency_unlock_codes')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('otp_code', trimmed)
-          .eq('is_used', false)
-          .gte('expires_at', new Date().toISOString())
-          .limit(1);
-
-        if (!error && data && data.length > 0) {
-          // Mark code as used
-          await supabase
+        if (userId) {
+          const { data, error } = await supabase
             .from('emergency_unlock_codes')
-            .update({ is_used: true })
-            .eq('id', data[0].id);
-          return true;
+            .select('*')
+            .eq('user_id', userId)
+            .eq('otp_code', trimmed)
+            .eq('is_used', false)
+            .gte('expires_at', new Date().toISOString())
+            .limit(1);
+
+          if (!error && data && data.length > 0) {
+            // Mark code as used
+            await supabase
+              .from('emergency_unlock_codes')
+              .update({ is_used: true })
+              .eq('id', data[0].id);
+
+            isAuthorized = true;
+          }
+        }
+      } catch {
+        // Offline check
+        const offlineCode = await AsyncStorage.getItem(STORAGE_KEYS.ACTIVE_OFFLINE_OTP);
+        if (offlineCode === trimmed) {
+          await AsyncStorage.removeItem(STORAGE_KEYS.ACTIVE_OFFLINE_OTP);
+          isAuthorized = true;
         }
       }
-    } catch {
-      // Offline check
-      const offlineCode = await AsyncStorage.getItem('@active_offline_friend_otp');
-      if (offlineCode === trimmed) {
-        await AsyncStorage.removeItem('@active_offline_friend_otp');
-        return true;
-      }
+    }
+
+    if (isAuthorized) {
+      // Mark session as broken and lift native shields
+      await this.handleEmergencySessionBreak(activeSessionId);
+      return true;
     }
 
     return false;
   }
 
+  /**
+   * Internal helper: marks session 'broken' and deactivates native shield
+   */
+  private async handleEmergencySessionBreak(sessionId?: string): Promise<void> {
+    try {
+      const active = await syncService.getActiveSession();
+      const targetId = sessionId || active?.id;
+
+      if (targetId) {
+        // Spec: mark session as broken
+        await syncService.cancelSessionEarly(targetId);
+      }
+
+      // Stop native OS blocker shield on iOS (ManagedSettings) and Android (Accessibility)
+      await nativeBlocker.stopFocusSession();
+    } catch (e) {
+      console.warn('Error handling emergency session break:', e);
+    }
+  }
+
   // ==========================================
-  // 2. PHYSICAL NFC TAG PAIRING & UNLOCK
+  // 2. PHYSICAL NFC TAG PAIRING & HARDWARE UNLOCK
   // ==========================================
+  /**
+   * Pairs a physical NFC tag UID (e.g. desk sticker) and persists to Supabase profiles
+   */
   async pairNfcTag(uid: string): Promise<string> {
     await AsyncStorage.setItem(STORAGE_KEYS.SAVED_NFC_TAG, uid);
     await syncService.updateProfile({ nfc_tag_uid: uid });
     return uid;
   }
 
-  async verifyNfcTag(scannedUid: string): Promise<boolean> {
+  /**
+   * Verifies scanned tag UID. If valid, releases hardware-locked session
+   */
+  async verifyAndReleaseNfcSession(scannedUid: string, activeSessionId?: string): Promise<boolean> {
     const profile = await syncService.getProfile();
     const saved = profile.nfc_tag_uid || (await AsyncStorage.getItem(STORAGE_KEYS.SAVED_NFC_TAG));
+
     if (!saved) return true; // No tag required if not configured
-    return saved.trim().toLowerCase() === scannedUid.trim().toLowerCase();
+
+    const isMatch = saved.trim().toLowerCase() === scannedUid.trim().toLowerCase();
+    if (isMatch) {
+      await this.handleEmergencySessionBreak(activeSessionId);
+      return true;
+    }
+
+    return false;
+  }
+
+  async verifyNfcTag(scannedUid: string): Promise<boolean> {
+    return this.verifyAndReleaseNfcSession(scannedUid);
   }
 
   // ==========================================
-  // 3. STEP COUNT READER (HealthKit / Health Connect)
+  // 3. HEALTHKIT / HEALTH CONNECT STEP COUNT
   // ==========================================
   async getTodaySteps(): Promise<number> {
-    try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEYS.HEALTH_STEPS_TODAY);
-      return stored ? parseInt(stored, 10) : 6420; // Realistic active step count
-    } catch {
-      return 6420;
-    }
+    return healthStepService.getTodaySteps();
   }
 
   async setTodaySteps(steps: number): Promise<void> {
-    await AsyncStorage.setItem(STORAGE_KEYS.HEALTH_STEPS_TODAY, steps.toString());
+    return healthStepService.setTodaySteps(steps);
   }
 
   async isStepGoalReached(targetGoal: number = 5000): Promise<boolean> {
-    const steps = await this.getTodaySteps();
-    return steps >= targetGoal;
+    return healthStepService.isStepGoalReached(targetGoal);
   }
 }
 

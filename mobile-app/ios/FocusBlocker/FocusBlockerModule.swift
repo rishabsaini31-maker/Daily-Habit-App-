@@ -2,13 +2,15 @@
 //  FocusBlockerModule.swift
 //  DailyHabitApp (Opal-Grade Digital Well-Being OS)
 //
-//  Cross-platform bridge implementation for Apple Screen Time API:
-//  - FamilyControls (Authorization)
-//  - ManagedSettings (Shielding applications & Anti-Uninstall Guard)
-//  - DeviceActivity (Schedules & Usage Monitoring)
+//  Real system-level Screen Time API implementation:
+//  - FamilyControls (Authorization & FamilyActivityPicker)
+//  - ManagedSettings (Shielding applications, categories, and Anti-Uninstall Guard)
+//  - DeviceActivity (Background Schedule Monitoring)
 //
 
 import Foundation
+import UIKit
+import SwiftUI
 import FamilyControls
 import ManagedSettings
 import DeviceActivity
@@ -17,7 +19,7 @@ import DeviceActivity
 class FocusBlockerModule: NSObject {
     
     private let store = ManagedSettingsStore()
-    private let appGroupIdentifier = "group.com.app.focus.shared"
+    private let appGroupSuiteName = "group.com.app.focus"
     
     @objc
     static func requiresMainQueueSetup() -> Bool {
@@ -25,11 +27,11 @@ class FocusBlockerModule: NSObject {
     }
     
     // =========================================================================
-    // 1. FAMILY CONTROLS AUTHORIZATION (Onboarding Step 5)
+    // 1. FAMILY CONTROLS AUTHORIZATION
     // =========================================================================
     @objc
-    func requestFamilyControlsAuthorization(_ resolve: @escaping RCTPromiseResolveBlock,
-                                           rejecter reject: @escaping RCTPromiseRejectBlock) {
+    func requestScreenTimeAuth(_ resolve: @escaping RCTPromiseResolveBlock,
+                               rejecter reject: @escaping RCTPromiseRejectBlock) {
         if #available(iOS 16.0, *) {
             Task {
                 do {
@@ -40,7 +42,7 @@ class FocusBlockerModule: NSObject {
                         "familyControlsAuthorized": true
                     ])
                 } catch {
-                    reject("AUTHORIZATION_FAILED", "Failed to grant FamilyControls: \(error.localizedDescription)", error)
+                    reject("AUTHORIZATION_FAILED", "Failed to grant Screen Time authorization: \(error.localizedDescription)", error)
                 }
             }
         } else {
@@ -52,24 +54,63 @@ class FocusBlockerModule: NSObject {
     }
     
     // =========================================================================
-    // 2. ACTIVATE / DEACTIVATE SHIELD (ManagedSettingsStore)
+    // 2. NATIVE FAMILY ACTIVITY PICKER (Apple's Native App/Category Selector)
     // =========================================================================
     @objc
-    func activateShield(_ blockedTokensJSON: String,
-                        strictnessMode: String,
-                        denyAppRemoval: Bool,
-                        resolver resolve: @escaping RCTPromiseResolveBlock,
-                        rejecter reject: @escaping RCTPromiseRejectBlock) {
+    func presentAppPicker(_ resolve: @escaping RCTPromiseResolveBlock,
+                          rejecter reject: @escaping RCTPromiseRejectBlock) {
+        if #available(iOS 16.0, *) {
+            DispatchQueue.main.async {
+                guard let rootVC = UIApplication.shared.windows.first?.rootViewController else {
+                    reject("NO_ROOT_VC", "Unable to locate root view controller for picker modal", nil)
+                    return
+                }
+                
+                let pickerHostingVC = UIHostingController(
+                    rootView: NativeFamilyPickerView(
+                        appGroupSuite: self.appGroupSuiteName,
+                        onComplete: { selectedCount in
+                            rootVC.dismiss(animated: true) {
+                                resolve(["success": true, "selectedCount": selectedCount])
+                            }
+                        },
+                        onCancel: {
+                            rootVC.dismiss(animated: true) {
+                                resolve(["success": false, "cancelled": true])
+                            }
+                        }
+                    )
+                )
+                
+                pickerHostingVC.modalPresentationStyle = .pageSheet
+                rootVC.present(pickerHostingVC, animated: true)
+            }
+        } else {
+            resolve(["success": true, "mock": true])
+        }
+    }
+    
+    // =========================================================================
+    // 3. SHIELD ENFORCEMENT & ANTI-UNINSTALL GUARD
+    // =========================================================================
+    @objc
+    func startBlocking(_ tokensJSON: String,
+                       strictnessMode: String,
+                       denyAppRemoval: Bool,
+                       resolver resolve: @escaping RCTPromiseResolveBlock,
+                       rejecter reject: @escaping RCTPromiseRejectBlock) {
         if #available(iOS 16.0, *) {
             do {
-                let userDefaults = UserDefaults(suiteName: appGroupIdentifier)
-                userDefaults?.set(blockedTokensJSON, forKey: "saved_blocked_tokens")
+                let userDefaults = UserDefaults(suiteName: appGroupSuiteName)
+                userDefaults?.set(tokensJSON, forKey: "saved_blocked_tokens")
                 userDefaults?.set(strictnessMode, forKey: "active_strictness_mode")
+                userDefaults?.set(true, forKey: "is_blocking_active")
                 
-                // Decode serialized ApplicationTokens from App Group UserDefaults
-                if let data = blockedTokensJSON.data(using: .utf8),
-                   let tokens = try? JSONDecoder().decode(Set<ApplicationToken>.self, from: data) {
-                    store.shield.applications = tokens
+                // Decode PropertyList serialized FamilyActivitySelection tokens
+                if let data = userDefaults?.data(forKey: "family_activity_selection_data"),
+                   let selection = try? PropertyListDecoder().decode(FamilyActivitySelection.self, from: data) {
+                    store.shield.applications = selection.applicationTokens
+                    store.shield.applicationCategories = ShieldSettings.ActivityCategoryPolicy.specific(selection.categoryTokens)
                 }
                 
                 // Spec: Anti-Uninstall Guard or deep_focus denies app deletion
@@ -89,20 +130,22 @@ class FocusBlockerModule: NSObject {
     }
     
     @objc
-    func deactivateShield(_ resolver: @escaping RCTPromiseResolveBlock,
-                         rejecter reject: @escaping RCTPromiseRejectBlock) {
+    func stopBlocking(_ resolver: @escaping RCTPromiseResolveBlock,
+                      rejecter reject: @escaping RCTPromiseRejectBlock) {
         if #available(iOS 16.0, *) {
             store.shield.applications = nil
+            store.shield.applicationCategories = nil
             store.application.denyAppRemoval = false
+            
+            let userDefaults = UserDefaults(suiteName: appGroupSuiteName)
+            userDefaults?.set(false, forKey: "is_blocking_active")
+            
             resolve(["success": true, "shieldActive": false])
         } else {
             resolve(["success": true, "mock": true])
         }
     }
     
-    // =========================================================================
-    // 3. ANTI-UNINSTALL GUARD
-    // =========================================================================
     @objc
     func setAntiUninstallGuard(_ enabled: Bool,
                               resolver resolve: @escaping RCTPromiseResolveBlock,
@@ -112,6 +155,42 @@ class FocusBlockerModule: NSObject {
             resolve(["success": true, "denyAppRemoval": enabled])
         } else {
             resolve(["success": true, "mock": true])
+        }
+    }
+}
+
+// SwiftUI Modal View wrapping Apple's native FamilyActivityPicker
+@available(iOS 16.0, *)
+struct NativeFamilyPickerView: View {
+    let appGroupSuite: String
+    let onComplete: (Int) -> Void
+    let onCancel: () -> Void
+    
+    @State private var selection = FamilyActivitySelection()
+    
+    var body: some View {
+        NavigationView {
+            FamilyActivityPicker(headerText: "Select distracting apps & websites to shield", selection: $selection)
+                .navigationTitle("Select Target Apps")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            onCancel()
+                        }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Save Rules") {
+                            // Serialize with PropertyListEncoder to App Group UserDefaults
+                            if let encoded = try? PropertyListEncoder().encode(selection) {
+                                let userDefaults = UserDefaults(suiteName: appGroupSuite)
+                                userDefaults?.set(encoded, forKey: "family_activity_selection_data")
+                            }
+                            let count = selection.applicationTokens.count + selection.categoryTokens.count
+                            onComplete(count)
+                        }
+                    }
+                }
         }
     }
 }

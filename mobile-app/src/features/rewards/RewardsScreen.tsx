@@ -14,7 +14,7 @@ import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
 import addonsService from '../../services/addons/AddonsService';
 
 export const RewardsScreen: React.FC = () => {
-  const { profile, updateProfile } = useFocusEngine();
+  const { profile, updateProfile, activeSession } = useFocusEngine();
   const [isScanningNFC, setIsScanningNFC] = useState<boolean>(false);
 
   const handlePairNFC = () => {
@@ -29,14 +29,24 @@ export const RewardsScreen: React.FC = () => {
           onPress: () => setIsScanningNFC(false),
         },
         {
-          text: 'Simulate NFC Tap',
+          text: 'Register / Tap Key',
           onPress: async () => {
             const simulatedUID = '04:5A:21:7B:9C';
-            await addonsService.pairNfcTag(simulatedUID);
-            Alert.alert(
-              'NFC Key Paired ✓',
-              `Tag UID [${simulatedUID}] registered. Tapping this sticker will now instantly trigger or release your Focus Sessions.`
-            );
+            if (activeSession && activeSession.strictness_mode === 'friend_or_nfc') {
+              const released = await addonsService.verifyAndReleaseNfcSession(simulatedUID, activeSession.id);
+              if (released) {
+                Alert.alert(
+                  'Physical NFC Tag Verified ✓',
+                  'Hardware key verified. Focus session released and shield deactivated.'
+                );
+              }
+            } else {
+              await addonsService.pairNfcTag(simulatedUID);
+              Alert.alert(
+                'NFC Key Paired ✓',
+                `Tag UID [${simulatedUID}] registered. Tapping this sticker will now instantly trigger or release your Focus Sessions.`
+              );
+            }
             setIsScanningNFC(false);
           },
         },

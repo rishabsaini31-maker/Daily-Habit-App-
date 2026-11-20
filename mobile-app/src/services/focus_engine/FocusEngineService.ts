@@ -5,6 +5,8 @@ import syncService, {
   SyncBlockedTarget,
 } from '../sync/SyncService';
 import { UserProfile } from '../supabase/auth';
+import nativeBlocker from '../native_blocker/NativeBlockerBridge';
+import healthStepService from '../addons/HealthStepService';
 
 export interface FocusEngineState {
   profile: UserProfile;
@@ -168,6 +170,30 @@ class FocusEngineService {
     };
 
     await syncService.startSession(session);
+
+    // Enforce system-level native blocking on iOS & Android
+    const strictnessMapped =
+      strictness === 'deep_focus'
+        ? 'hardcore'
+        : strictness === 'friend_or_nfc'
+        ? 'friend_lock'
+        : 'normal';
+
+    const blockedAppIds = this.state.blockedTargets.map((t) => t.package_or_token);
+    await nativeBlocker.startFocusSession({
+      id: session.id,
+      title,
+      durationMinutes,
+      strictness: strictnessMapped,
+      blockedAppIds: blockedAppIds.length > 0 ? blockedAppIds : ['com.instagram.android', 'com.google.android.youtube'],
+      surgicalFeatureIds: ['reels', 'shorts', 'fyp'],
+      autoDoNotDisturb: true,
+    });
+
+    if (strictness === 'deep_focus') {
+      await nativeBlocker.setAntiUninstallGuard(true);
+    }
+
     await this.refreshState();
     return session;
   }
@@ -193,6 +219,8 @@ class FocusEngineService {
     }
 
     await syncService.cancelSessionEarly(active.id);
+    await nativeBlocker.stopFocusSession(emergencyCode);
+    await nativeBlocker.setAntiUninstallGuard(false);
     await this.refreshState();
     return { success: true };
   }
@@ -202,6 +230,8 @@ class FocusEngineService {
   // ==========================================
   private async handleSessionNaturalCompletion(session: SyncFocusSession) {
     await syncService.completeSession(session.id);
+    await nativeBlocker.stopFocusSession();
+    await nativeBlocker.setAntiUninstallGuard(false);
 
     // Spec: +10 Gems per 30 mins of completed Deep Focus
     const gemsAwarded = Math.max(10, Math.floor(session.duration_minutes / 30) * 10);
