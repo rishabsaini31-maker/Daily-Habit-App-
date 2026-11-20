@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { api } from '../../services/api';
 
 const STORAGE_KEYS = {
   COMPLETED: '@onboarding_completed',
@@ -100,6 +101,39 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const finishOnboarding = async () => {
     setHasCompletedOnboarding(true);
     await AsyncStorage.setItem(STORAGE_KEYS.COMPLETED, 'true');
+
+    // Seamlessly register anonymous identity with Node.js backend & sync baseline
+    try {
+      await api.anonymousAuth();
+      await api.updateFocusProfile({
+        daily_baseline_minutes: Math.round(dailyScreenHours * 60),
+      });
+
+      const appPackageMap: Record<string, { pkg: string; name: string; isSurgical: boolean }> = {
+        instagram: { pkg: 'com.instagram.android', name: 'Instagram', isSurgical: true },
+        youtube: { pkg: 'com.google.android.youtube', name: 'YouTube', isSurgical: true },
+        tiktok: { pkg: 'com.zhiliaoapp.musically', name: 'TikTok', isSurgical: false },
+        twitter: { pkg: 'com.twitter.android', name: 'X (Twitter)', isSurgical: false },
+        facebook: { pkg: 'com.facebook.katana', name: 'Facebook', isSurgical: false },
+        reddit: { pkg: 'com.reddit.frontpage', name: 'Reddit', isSurgical: false },
+      };
+
+      for (const appId of selectedApps) {
+        const mapped = appPackageMap[appId.toLowerCase()] || {
+          pkg: `com.${appId.toLowerCase()}.app`,
+          name: appId,
+          isSurgical: false,
+        };
+        await api.addBlockedTarget({
+          packageOrToken: mapped.pkg,
+          displayName: mapped.name,
+          isSurgicalFeedOnly: mapped.isSurgical,
+          platform: 'android',
+        });
+      }
+    } catch {
+      // offline fallback
+    }
   };
 
   const resetOnboarding = async () => {

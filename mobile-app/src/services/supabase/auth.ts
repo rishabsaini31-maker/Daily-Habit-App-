@@ -1,6 +1,7 @@
 import { User, Session } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import supabase from './client';
+import { api } from '../api';
 
 const ANONYMOUS_FLAG_KEY = '@focus_user_is_anonymous';
 
@@ -25,6 +26,9 @@ class AuthService {
    */
   async initializeOrGetSession(): Promise<{ user: User | null; session: Session | null }> {
     try {
+      // Ensure backend session token is active
+      await api.anonymousAuth().catch(() => {});
+
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) {
         console.warn('Error reading session:', sessionError.message);
@@ -44,6 +48,9 @@ class AuthService {
 
   async signInAnonymously(): Promise<{ user: User | null; session: Session | null }> {
     try {
+      // First register with Node.js backend
+      await api.anonymousAuth().catch(() => {});
+
       const { data, error } = await supabase.auth.signInAnonymously();
       if (error) {
         // If Supabase project doesn't have anonymous auth enabled yet, fallback to offline guest identity

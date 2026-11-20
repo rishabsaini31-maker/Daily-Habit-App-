@@ -1,15 +1,35 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { TrendingDown, Sparkles, BookOpen, Dumbbell, Moon, ShieldAlert } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
 import GlassCard from '../../core/theme/components/GlassCard';
 import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
+import { api } from '../../services/api';
 
 export const InsightsScreen: React.FC = () => {
   const { todayMetrics, profile } = useFocusEngine();
+  const [aiInsight, setAiInsight] = useState<{
+    headline: string;
+    opportunityCost: string;
+    reclaimedHours: number;
+  } | null>(null);
+
+  useEffect(() => {
+    api.getWeeklyAiInsight()
+      .then((data) => {
+        if (data && data.success) {
+          setAiInsight({
+            headline: data.ai_headline,
+            opportunityCost: data.ai_opportunity_cost,
+            reclaimedHours: data.reclaimed_hours,
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const totalSavedToday = todayMetrics.blocked_time_min || 108;
-  const totalWeeklySavedHours = Number((16.5 + totalSavedToday / 60).toFixed(1));
+  const totalWeeklySavedHours = aiInsight?.reclaimedHours || Number((16.5 + totalSavedToday / 60).toFixed(1));
 
   const weeklyData = [
     { day: 'Mon', hours: 2.1, heightPercent: 55 },
@@ -80,10 +100,13 @@ export const InsightsScreen: React.FC = () => {
         <GlassCard style={styles.aiCostCard}>
           <View style={styles.aiCostHeader}>
             <Sparkles size={20} color={colors.primaryAccent} />
-            <Text style={styles.aiCostTitle}>AI Opportunity Cost Analysis</Text>
+            <Text style={styles.aiCostTitle}>
+              {aiInsight?.headline || 'AI Opportunity Cost Analysis'}
+            </Text>
           </View>
           <Text style={styles.aiCostDesc}>
-            What {totalWeeklySavedHours} hours of avoided doomscrolling became in real life:
+            {aiInsight?.opportunityCost ||
+              `What ${totalWeeklySavedHours} hours of avoided doomscrolling became in real life:`}
           </Text>
 
           <View style={styles.gainsList}>

@@ -756,4 +756,171 @@ export const api = {
       return days;
     }
   },
+
+  // -------------------------------------------------------------
+  // Digital Well-Being & Opal-Grade OS Blocker Backend Endpoints
+  // -------------------------------------------------------------
+  async anonymousAuth(deviceId?: string, displayName?: string) {
+    const data = await request<{ success: boolean; token: string; user: any; profile: any }>('/auth/anonymous', {
+      method: 'POST',
+      body: JSON.stringify({ deviceId, displayName }),
+    });
+    if (data.token) {
+      await AsyncStorage.setItem(TOKEN_KEY, data.token);
+    }
+    return data;
+  },
+
+  async getFocusProfile() {
+    return await request<{ success: boolean; profile: any }>('/focus/profile');
+  },
+
+  async updateFocusProfile(updates: any) {
+    return await request<{ success: boolean; profile: any }>('/focus/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
+  },
+
+  async getBlockedTargets() {
+    return await request<{ success: boolean; targets: any[] }>('/focus/blocked-targets');
+  },
+
+  async addBlockedTarget(target: { platform?: string; packageOrToken: string; displayName?: string; isSurgicalFeedOnly?: boolean }) {
+    return await request<{ success: boolean; target: any }>('/focus/blocked-targets', {
+      method: 'POST',
+      body: JSON.stringify(target),
+    });
+  },
+
+  async removeBlockedTarget(targetIdOrPackage: string) {
+    return await request<{ success: boolean; removed: boolean }>(`/focus/blocked-targets/${targetIdOrPackage}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async startFocusSession(durationMinutes: number, strictnessMode?: string, id?: string) {
+    return await request<{ success: boolean; session: any }>('/focus/sessions/start', {
+      method: 'POST',
+      body: JSON.stringify({ durationMinutes, strictnessMode, id }),
+    });
+  },
+
+  async getActiveFocusSession() {
+    return await request<{ success: boolean; session: any }>('/focus/sessions/active');
+  },
+
+  async completeFocusSession(sessionId: string, actualMinutes: number) {
+    return await request<{
+      success: boolean;
+      session: any;
+      gemsEarned: number;
+      totalGems: number;
+      tierRank: string;
+      focusScore: number;
+    }>('/focus/sessions/complete', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId, actualMinutes }),
+    });
+  },
+
+  async stopFocusSessionEarly(sessionId?: string) {
+    return await request<{ success: boolean; session: any }>('/focus/sessions/stop-early', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId }),
+    });
+  },
+
+  async getPastFocusSessions(limit: number = 20) {
+    return await request<{ success: boolean; sessions: any[] }>(`/focus/sessions/history?limit=${limit}`);
+  },
+
+  async recordInterception(targetName: string = 'Blocked App') {
+    return await request<{
+      success: boolean;
+      interceptionsCount: number;
+      gemsAwarded: number;
+      totalGems: number;
+      tierRank: string;
+    }>('/focus/interceptions', {
+      method: 'POST',
+      body: JSON.stringify({ targetName }),
+    });
+  },
+
+  async generateFriendUnlockOtp(sessionId?: string) {
+    return await request<{ success: boolean; otpCode: string; expiresAt: string; sessionId?: string }>(
+      '/focus/friend-lock/generate-otp',
+      {
+        method: 'POST',
+        body: JSON.stringify({ sessionId }),
+      }
+    );
+  },
+
+  async verifyFriendUnlockOtp(otpCode: string, sessionId?: string) {
+    return await request<{ unlocked: boolean; reason?: string; sessionId?: string }>(
+      '/focus/friend-lock/verify-otp',
+      {
+        method: 'POST',
+        body: JSON.stringify({ otpCode, sessionId }),
+      }
+    );
+  },
+
+  async getSchedules() {
+    return await request<{ success: boolean; schedules: any[] }>('/focus/schedules');
+  },
+
+  async createSchedule(schedule: any) {
+    return await request<{ success: boolean; schedule: any }>('/focus/schedules', {
+      method: 'POST',
+      body: JSON.stringify(schedule),
+    });
+  },
+
+  async toggleSchedule(id: string, isActive: boolean) {
+    return await request<{ success: boolean; schedule: any }>(`/focus/schedules/${id}/toggle`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isActive }),
+    });
+  },
+
+  async syncDailyScreenTime(totalScreenMin: number, distractingMin: number) {
+    return await request<{
+      success: boolean;
+      metrics: any;
+      focusScore: number;
+      streakDays: number;
+      totalGems: number;
+      streakAwarded: boolean;
+    }>('/focus/sync-screen-time', {
+      method: 'POST',
+      body: JSON.stringify({ totalScreenMin, distractingMin }),
+    });
+  },
+
+  async getTodayMetrics() {
+    return await request<{ success: boolean; metrics: any }>('/focus/metrics/today');
+  },
+
+  async getWeeklyMetrics() {
+    return await request<{ success: boolean; metrics: any[] }>('/focus/metrics/weekly');
+  },
+
+  async getWeeklyAiInsight() {
+    return await request<{
+      success: boolean;
+      reclaimed_hours: number;
+      interceptions_count: number;
+      avg_focus_score: number;
+      ai_headline: string;
+      ai_opportunity_cost: string;
+      ai_full_insight: string;
+    }>('/focus/insights/weekly-ai');
+  },
+
+  async getSubscriptionStatus() {
+    return await request<{ success: boolean; is_pro: boolean; subscription: any }>('/focus/subscription/status');
+  },
 };

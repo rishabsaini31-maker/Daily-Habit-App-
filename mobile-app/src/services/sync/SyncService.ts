@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../supabase/client';
 import { UserProfile } from '../supabase/auth';
+import { api } from '../api';
 
 const STORAGE_KEYS = {
   PROFILE: '@local_cache_profile',
@@ -77,9 +78,23 @@ class SyncService {
   async getProfile(): Promise<UserProfile> {
     try {
       const cached = await AsyncStorage.getItem(STORAGE_KEYS.PROFILE);
-      if (cached) return JSON.parse(cached);
+      if (cached) {
+        // Opportunistic background sync from backend
+        this.refreshProfileFromBackend().catch(() => {});
+        return JSON.parse(cached);
+      }
     } catch {
       // fallback
+    }
+
+    try {
+      const res = await api.getFocusProfile();
+      if (res && res.profile) {
+        await this.setProfileLocal(res.profile);
+        return res.profile;
+      }
+    } catch {
+      // offline fallback
     }
 
     const defaultProfile: UserProfile = {
@@ -98,12 +113,27 @@ class SyncService {
     return defaultProfile;
   }
 
+  private async refreshProfileFromBackend(): Promise<void> {
+    try {
+      const res = await api.getFocusProfile();
+      if (res && res.profile) {
+        await this.setProfileLocal(res.profile);
+      }
+    } catch {
+      // offline
+    }
+  }
+
   async updateProfile(updates: Partial<UserProfile>): Promise<UserProfile> {
     const current = await this.getProfile();
     const updated: UserProfile = { ...current, ...updates };
     await this.setProfileLocal(updated);
 
-    this.queueMutation('profiles', 'upsert', updated as unknown as Record<string, unknown>);
+    try {
+      await api.updateFocusProfile(updates);
+    } catch {
+      this.queueMutation('profiles', 'upsert', updated as unknown as Record<string, unknown>);
+    }
     return updated;
   }
 
@@ -118,9 +148,29 @@ class SyncService {
   async getBlockedTargets(): Promise<SyncBlockedTarget[]> {
     try {
       const cached = await AsyncStorage.getItem(STORAGE_KEYS.BLOCKED_TARGETS);
-      if (cached) return JSON.parse(cached);
+      if (cached) {
+        this.refreshBlockedTargetsFromBackend().catch(() => {});
+        return JSON.parse(cached);
+      }
     } catch {
       // fallback
+    }
+
+    try {
+      const res = await api.getBlockedTargets();
+      if (res && res.targets && res.targets.length > 0) {
+        const mapped: SyncBlockedTarget[] = res.targets.map((t: any) => ({
+          id: t.id,
+          platform: t.platform || 'android',
+          package_or_token: t.package_or_token || t.packageOrToken,
+          display_name: t.display_name || t.displayName,
+          is_surgical_feed_only: Boolean(t.is_surgical_feed_only ?? t.isSurgicalFeedOnly),
+        }));
+        await AsyncStorage.setItem(STORAGE_KEYS.BLOCKED_TARGETS, JSON.stringify(mapped));
+        return mapped;
+      }
+    } catch {
+      // offline fallback
     }
 
     // Default seed targets
@@ -158,11 +208,30 @@ class SyncService {
     return defaults;
   }
 
+  private async refreshBlockedTargetsFromBackend(): Promise<void> {
+    try {
+      const res = await api.getBlockedTargets();
+      if (res && res.targets && res.targets.length > 0) {
+        const mapped: SyncBlockedTarget[] = res.targets.map((t: any) => ({
+          id: t.id,
+          platform: t.platform || 'android',
+          package_or_token: t.package_or_token || t.packageOrToken,
+          display_name: t.display_name || t.displayName,
+          is_surgical_feed_only: Boolean(t.is_surgical_feed_only ?? t.isSurgicalFeedOnly),
+        }));
+        await AsyncStorage.setItem(STORAGE_KEYS.BLOCKED_TARGETS, JSON.stringify(mapped));
+        this.notifyListeners();
+      }
+    } catch {
+      // offline
+    }
+  }
+
   async saveBlockedTargets(targets: SyncBlockedTarget[]): Promise<void> {
     await AsyncStorage.setItem(STORAGE_KEYS.BLOCKED_TARGETS, JSON.stringify(targets));
     this.notifyListeners();
 
-    // Sync to Supabase in background
+    // Sync to backend in background
     for (const target of targets) {
       this.queueMutation('blocked_targets', 'upsert', target as unknown as Record<string, unknown>);
     }
@@ -173,6 +242,17 @@ class SyncService {
     const filtered = targets.filter((t) => t.package_or_token !== target.package_or_token);
     filtered.push(target);
     await this.saveBlockedTargets(filtered);
+
+    try {
+      await api.addBlockedTarget({
+        packageOrToken: target.package_or_token,
+        displayName: target.display_name,
+        isSurgicalFeedOnly: target.is_surgical_feed_only,
+        platform: target.platform,
+      });
+    } catch {
+      // queued via saveBlockedTargets
+    }
   }
 
   async removeBlockedTarget(packageOrToken: string): Promise<void> {
@@ -180,6 +260,12 @@ class SyncService {
     const filtered = targets.filter((t) => t.package_or_token !== packageOrToken);
     await this.saveBlockedTargets(filtered);
     this.queueMutation('blocked_targets', 'delete', { package_or_token: packageOrToken });
+
+    try {
+      await api.removeBlockedTarget(packageOrToken);
+    } catch {
+      // offline fallback
+    }
   }
 
   // ==========================================
@@ -188,9 +274,22 @@ class SyncService {
   async getSchedules(): Promise<SyncSchedule[]> {
     try {
       const cached = await AsyncStorage.getItem(STORAGE_KEYS.SCHEDULES);
-      if (cached) return JSON.parse(cached);
+      if (cached) {
+        this.refreshSchedulesFromBackend().catch(() => {});
+        return JSON.parse(cached);
+      }
     } catch {
       // fallback
+    }
+
+    try {
+      const res = await api.getSchedules();
+      if (res && res.schedules && res.schedules.length > 0) {
+        await AsyncStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(res.schedules));
+        return res.schedules;
+      }
+    } catch {
+      // offline fallback
     }
 
     const defaultSchedules: SyncSchedule[] = [
@@ -235,6 +334,18 @@ class SyncService {
     return defaultSchedules;
   }
 
+  private async refreshSchedulesFromBackend(): Promise<void> {
+    try {
+      const res = await api.getSchedules();
+      if (res && res.schedules && res.schedules.length > 0) {
+        await AsyncStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(res.schedules));
+        this.notifyListeners();
+      }
+    } catch {
+      // offline
+    }
+  }
+
   async saveSchedules(schedules: SyncSchedule[]): Promise<void> {
     await AsyncStorage.setItem(STORAGE_KEYS.SCHEDULES, JSON.stringify(schedules));
     this.notifyListeners();
@@ -247,6 +358,11 @@ class SyncService {
     const schedules = await this.getSchedules();
     const updated = schedules.map((s) => (s.id === id ? { ...s, is_active: isActive } : s));
     await this.saveSchedules(updated);
+    try {
+      await api.toggleSchedule(id, isActive);
+    } catch {
+      // queued or offline
+    }
   }
 
   // ==========================================
@@ -399,13 +515,6 @@ class SyncService {
     this.isSyncing = true;
 
     try {
-      const { data: authData } = await supabase.auth.getUser();
-      const user = authData?.user;
-      if (!user) {
-        this.isSyncing = false;
-        return; // Not logged in yet
-      }
-
       const rawQueue = await AsyncStorage.getItem(STORAGE_KEYS.MUTATION_QUEUE);
       if (!rawQueue) {
         this.isSyncing = false;
@@ -421,25 +530,100 @@ class SyncService {
       const remainingQueue: MutationTask[] = [];
 
       for (const task of queue) {
+        let handled = false;
+        // 1. First attempt to route via Node.js Backend API
         try {
-          const payloadWithUser = { ...task.payload, user_id: user.id };
-
-          if (task.action === 'upsert' || task.action === 'insert') {
-            await supabase.from(task.table).upsert(payloadWithUser);
-          } else if (task.action === 'update' && task.payload.id) {
-            await supabase.from(task.table).update(task.payload).eq('id', task.payload.id);
-          } else if (task.action === 'delete') {
-            if (task.payload.id) {
-              await supabase.from(task.table).delete().eq('id', task.payload.id);
-            } else if (task.payload.package_or_token) {
-              await supabase
-                .from(task.table)
-                .delete()
-                .eq('package_or_token', task.payload.package_or_token);
+          if (task.table === 'blocked_targets') {
+            if (task.action === 'upsert' || task.action === 'insert') {
+              await api.addBlockedTarget({
+                packageOrToken: (task.payload.package_or_token || task.payload.packageOrToken) as string,
+                displayName: (task.payload.display_name || task.payload.displayName) as string,
+                isSurgicalFeedOnly: Boolean(task.payload.is_surgical_feed_only ?? task.payload.isSurgicalFeedOnly),
+                platform: (task.payload.platform as string) || 'android',
+              });
+              handled = true;
+            } else if (task.action === 'delete') {
+              const targetKey = (task.payload.package_or_token || task.payload.id) as string;
+              if (targetKey) {
+                await api.removeBlockedTarget(targetKey);
+                handled = true;
+              }
+            }
+          } else if (task.table === 'focus_sessions') {
+            if (task.action === 'insert') {
+              await api.startFocusSession(
+                (task.payload.duration_minutes as number) || 25,
+                (task.payload.strictness_mode as string) || 'normal',
+                task.payload.id as string
+              );
+              handled = true;
+            } else if (task.action === 'update') {
+              if (task.payload.status === 'completed') {
+                await api.completeFocusSession(
+                  task.payload.id as string,
+                  (task.payload.time_saved_minutes as number) || 25
+                );
+                handled = true;
+              } else if (task.payload.status === 'broken') {
+                await api.stopFocusSessionEarly(task.payload.id as string);
+                handled = true;
+              }
+            }
+          } else if (task.table === 'schedules') {
+            if (task.action === 'upsert' || task.action === 'insert') {
+              await api.createSchedule(task.payload);
+              handled = true;
+            }
+          } else if (task.table === 'profiles') {
+            if (task.action === 'update' || task.action === 'upsert') {
+              await api.updateFocusProfile(task.payload);
+              handled = true;
+            }
+          } else if (task.table === 'daily_metrics') {
+            if (task.action === 'upsert' || task.action === 'update') {
+              await api.syncDailyScreenTime(
+                Number(task.payload.total_screen_time_min) || 0,
+                Number(task.payload.blocked_time_min) || 0
+              );
+              handled = true;
             }
           }
         } catch {
-          // If remote fails (e.g. offline), retain in queue
+          handled = false;
+        }
+
+        // 2. If backend API call didn't handle it, try Supabase fallback
+        if (!handled) {
+          try {
+            const { data: authData } = await supabase.auth.getUser();
+            const user = authData?.user;
+            if (user) {
+              const payloadWithUser = { ...task.payload, user_id: user.id };
+              if (task.action === 'upsert' || task.action === 'insert') {
+                await supabase.from(task.table).upsert(payloadWithUser);
+                handled = true;
+              } else if (task.action === 'update' && task.payload.id) {
+                await supabase.from(task.table).update(task.payload).eq('id', task.payload.id);
+                handled = true;
+              } else if (task.action === 'delete') {
+                if (task.payload.id) {
+                  await supabase.from(task.table).delete().eq('id', task.payload.id);
+                  handled = true;
+                } else if (task.payload.package_or_token) {
+                  await supabase
+                    .from(task.table)
+                    .delete()
+                    .eq('package_or_token', task.payload.package_or_token);
+                  handled = true;
+                }
+              }
+            }
+          } catch {
+            handled = false;
+          }
+        }
+
+        if (!handled) {
           remainingQueue.push(task);
         }
       }

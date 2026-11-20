@@ -9,6 +9,7 @@ import { SqliteCompletionRepository } from '../infrastructure/database/repositor
 import { SqliteStreakRepository } from '../infrastructure/database/repositories/sqlite-streak.repository.js';
 import { SqliteTemplateRepository } from '../infrastructure/database/repositories/sqlite-template.repository.js';
 import { SqliteAuditLogRepository } from '../infrastructure/database/repositories/sqlite-audit-log.repository.js';
+import { SqliteFocusRepository } from '../infrastructure/database/repositories/sqlite-focus.repository.js';
 
 // Services
 import { JwtTokenService } from '../infrastructure/security/jwt-token.service.js';
@@ -57,6 +58,7 @@ import { createAnalyticsRouter } from './analytics.controller.js';
 import { createTemplateRouter } from './template.controller.js';
 import { createAdminRouter } from './admin.controller.js';
 import { createHealthRouter } from './health.controller.js';
+import { createFocusRouter } from './focus.controller.js';
 
 export function createApiRouter(db: DatabaseType): Router {
   const router = Router();
@@ -69,6 +71,7 @@ export function createApiRouter(db: DatabaseType): Router {
   const streakRepo = new SqliteStreakRepository(db);
   const templateRepo = new SqliteTemplateRepository(db);
   const auditLogRepo = new SqliteAuditLogRepository(db);
+  const focusRepo = new SqliteFocusRepository(db);
 
   // Instantiate Infrastructure Services
   const tokenService = new JwtTokenService();
@@ -199,6 +202,7 @@ export function createApiRouter(db: DatabaseType): Router {
     )
   );
   router.use('/health', createHealthRouter());
+  router.use(createFocusRouter(focusRepo, userRepo, tokenService, authMiddleware));
 
   return router;
 }

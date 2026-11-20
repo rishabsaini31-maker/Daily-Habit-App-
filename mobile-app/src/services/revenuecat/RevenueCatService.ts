@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Purchases, { CustomerInfo, PurchasesPackage } from 'react-native-purchases';
 import syncService from '../sync/SyncService';
+import { api } from '../api';
 
 const STORAGE_KEY_PRO_OVERRIDE = '@revenuecat_pro_entitlement_override';
 const ENTITLEMENT_ID = 'pro_access';
@@ -150,7 +151,18 @@ class RevenueCatService {
         }
       }
 
-      // 3. Check Supabase profile
+      // 3. Check Backend / Subscription API endpoint
+      try {
+        const sub = await api.getSubscriptionStatus();
+        if (sub && typeof sub.is_pro === 'boolean') {
+          this.isProCached = sub.is_pro;
+          return this.isProCached;
+        }
+      } catch {
+        // fallback to cached profile
+      }
+
+      // 4. Check cached profile
       const profile = await syncService.getProfile();
       this.isProCached = Boolean(profile.is_pro);
       return this.isProCached;

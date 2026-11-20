@@ -7,6 +7,7 @@ import syncService, {
 import { UserProfile } from '../supabase/auth';
 import nativeBlocker from '../native_blocker/NativeBlockerBridge';
 import healthStepService from '../addons/HealthStepService';
+import { api } from '../api';
 
 export interface FocusEngineState {
   profile: UserProfile;
@@ -170,6 +171,7 @@ class FocusEngineService {
     };
 
     await syncService.startSession(session);
+    api.startFocusSession(durationMinutes, strictness, session.id).catch(() => {});
 
     // Enforce system-level native blocking on iOS & Android
     const strictnessMapped =
@@ -219,6 +221,7 @@ class FocusEngineService {
     }
 
     await syncService.cancelSessionEarly(active.id);
+    api.stopFocusSessionEarly(active.id).catch(() => {});
     await nativeBlocker.stopFocusSession(emergencyCode);
     await nativeBlocker.setAntiUninstallGuard(false);
     await this.refreshState();
@@ -230,6 +233,7 @@ class FocusEngineService {
   // ==========================================
   private async handleSessionNaturalCompletion(session: SyncFocusSession) {
     await syncService.completeSession(session.id);
+    api.completeFocusSession(session.id, session.duration_minutes).catch(() => {});
     await nativeBlocker.stopFocusSession();
     await nativeBlocker.setAntiUninstallGuard(false);
 
@@ -252,6 +256,7 @@ class FocusEngineService {
    * Spec: Award +5 Gems per blocked app interception
    */
   async recordInterception(appName: string = 'Instagram'): Promise<void> {
+    api.recordInterception(appName).catch(() => {});
     const metrics = await syncService.getTodayMetrics();
     const updatedCount = (metrics.interceptions_count || 0) + 1;
     const updatedGems = (metrics.gems_earned || 0) + 5;

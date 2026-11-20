@@ -4,6 +4,7 @@ import { supabase } from '../supabase/client';
 import syncService from '../sync/SyncService';
 import nativeBlocker from '../native_blocker/NativeBlockerBridge';
 import healthStepService from './HealthStepService';
+import { api } from '../api';
 
 const STORAGE_KEYS = {
   HEALTH_STEPS_TODAY: '@health_steps_today',
@@ -24,24 +25,33 @@ class AddonsService {
     partnerContact?: string
   ): Promise<{ otpCode: string; shareUrl: string }> {
     // Generate random 6-digit OTP
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    let otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
+    // 1. Try Backend API first
     try {
-      const { data: authData } = await supabase.auth.getUser();
-      const userId = authData?.user?.id;
-
-      if (userId) {
-        await supabase.from('emergency_unlock_codes').insert({
-          user_id: userId,
-          otp_code: otpCode,
-          expires_at: expiresAt,
-          is_used: false,
-        });
+      const active = await syncService.getActiveSession();
+      const backendRes = await api.generateFriendUnlockOtp(active?.id);
+      if (backendRes?.otpCode) {
+        otpCode = backendRes.otpCode;
       }
     } catch {
-      // Offline fallback: save locally
-      await AsyncStorage.setItem(STORAGE_KEYS.ACTIVE_OFFLINE_OTP, otpCode);
+      // 2. Fallback to Supabase / offline local storage
+      try {
+        const { data: authData } = await supabase.auth.getUser();
+        const userId = authData?.user?.id;
+
+        if (userId) {
+          await supabase.from('emergency_unlock_codes').insert({
+            user_id: userId,
+            otp_code: otpCode,
+            expires_at: expiresAt,
+            is_used: false,
+          });
+        }
+      } catch {
+        await AsyncStorage.setItem(STORAGE_KEYS.ACTIVE_OFFLINE_OTP, otpCode);
+      }
     }
 
     // Pre-filled WhatsApp / SMS message text
@@ -78,40 +88,47 @@ class AddonsService {
 
     let isAuthorized = false;
 
-    // Master development / emergency override code
+    // 1. Master development / emergency override code
     if (trimmed === '778899') {
       isAuthorized = true;
     } else {
+      // 2. Try Backend API first
       try {
-        const { data: authData } = await supabase.auth.getUser();
-        const userId = authData?.user?.id;
-
-        if (userId) {
-          const { data, error } = await supabase
-            .from('emergency_unlock_codes')
-            .select('*')
-            .eq('user_id', userId)
-            .eq('otp_code', trimmed)
-            .eq('is_used', false)
-            .gte('expires_at', new Date().toISOString())
-            .limit(1);
-
-          if (!error && data && data.length > 0) {
-            // Mark code as used
-            await supabase
-              .from('emergency_unlock_codes')
-              .update({ is_used: true })
-              .eq('id', data[0].id);
-
-            isAuthorized = true;
-          }
+        const backendRes = await api.verifyFriendUnlockOtp(trimmed, activeSessionId);
+        if (backendRes?.unlocked) {
+          isAuthorized = true;
         }
       } catch {
-        // Offline check
-        const offlineCode = await AsyncStorage.getItem(STORAGE_KEYS.ACTIVE_OFFLINE_OTP);
-        if (offlineCode === trimmed) {
-          await AsyncStorage.removeItem(STORAGE_KEYS.ACTIVE_OFFLINE_OTP);
-          isAuthorized = true;
+        // 3. Fallback to Supabase / offline check
+        try {
+          const { data: authData } = await supabase.auth.getUser();
+          const userId = authData?.user?.id;
+
+          if (userId) {
+            const { data, error } = await supabase
+              .from('emergency_unlock_codes')
+              .select('*')
+              .eq('user_id', userId)
+              .eq('otp_code', trimmed)
+              .eq('is_used', false)
+              .gte('expires_at', new Date().toISOString())
+              .limit(1);
+
+            if (!error && data && data.length > 0) {
+              await supabase
+                .from('emergency_unlock_codes')
+                .update({ is_used: true })
+                .eq('id', data[0].id);
+
+              isAuthorized = true;
+            }
+          }
+        } catch {
+          const offlineCode = await AsyncStorage.getItem(STORAGE_KEYS.ACTIVE_OFFLINE_OTP);
+          if (offlineCode === trimmed) {
+            await AsyncStorage.removeItem(STORAGE_KEYS.ACTIVE_OFFLINE_OTP);
+            isAuthorized = true;
+          }
         }
       }
     }
