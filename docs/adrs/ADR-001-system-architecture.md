@@ -36,7 +36,7 @@ The engineering organization operates under strict quality standards: modular cl
   *Rejected:* Violates client isolation, complicates independent mobile app packaging/PWA deployment, mixes web SSR with clean headless API contracts.
 - **Option B (Microservices Architecture):** Splitting auth, habits, streaks, analytics, and admin into separate microservices.  
   *Rejected:* Severe operational overhead, distributed transaction complexity, network latency, and premature optimization for current scope.
-- **Option C (Decoupled Modular Monolith with Clean Architecture - SELECTED):** Three decoupled top-level directories (`backend/`, `admin/`, `mobile-app/`). The backend adopts Clean Architecture (Ports & Adapters) exposing a versioned REST API. SQLite for development and PostgreSQL compatibility for production. Admin portal built with Vite + React + TypeScript. Mobile application built with modern React + TypeScript (mobile-first PWA / React Native ready).
+- **Option C (Decoupled Modular Monolith with Clean Architecture - SELECTED):** Three decoupled top-level directories (`backend/`, `admin/`, `mobile-app/`). The backend adopts Clean Architecture (Ports & Adapters) on Node.js exposing a versioned REST API. SQLite for development and PostgreSQL compatibility for production. Admin portal built with Next.js + React + TypeScript with SSR/SSG capabilities. Mobile application built with modern React + TypeScript (mobile-first PWA / React Native ready).
 
 ---
 
@@ -58,16 +58,15 @@ daily-habit-app/
 │   ├── tests/                # Unit, integration, and contract test suites
 │   ├── package.json
 │   └── tsconfig.json
-├── admin/                    # Vite + React 18 + TypeScript Web Admin Portal
-│   ├── src/
-│   │   ├── components/       # Accessible UI components, charts, tables
-│   │   ├── pages/            # Dashboard, Users, Templates, Audit Logs
-│   │   ├── services/         # Typed API clients for /api/v1/admin/*
-│   │   ├── hooks/            # TanStack Query custom hooks
-│   │   ├── types/            # Admin domain DTOs
-│   │   └── context/          # Auth context and route guards
+├── admin/                    # Next.js + React + TypeScript Web Admin Portal
+│   ├── src/ or app/          # Accessible UI components, charts, tables, Next.js App Router
+│   ├── app/                  # Dashboard, Users, Templates, Audit Logs, Login
+│   ├── components/           # UI components, stat cards, tables, modals
+│   ├── services/             # Typed API clients for /api/v1/admin/*
+│   ├── types/                # Admin domain DTOs
+│   ├── context/              # Auth context and route guards
 │   ├── package.json
-│   └── vite.config.ts
+│   └── next.config.js
 ├── mobile-app/               # Mobile-First Client (React / PWA / TypeScript)
 │   ├── src/
 │   │   ├── components/       # Check-in cards, streak rings, heatmaps, badges
@@ -166,7 +165,7 @@ All REST API endpoints conform to a uniform JSON response structure:
 - `INTERNAL_SERVER_ERROR`: Unhandled exception caught by global safety handler.
 
 ### 4.7 Client Architecture (Admin & Mobile)
-- **Admin Portal (`admin/`):** Single-page application built on Vite + React 18 + TypeScript. Uses React Router v6 for routing with an `<AdminProtectedRoute />` component verifying token role. TanStack Query manages asynchronous server state caching, pagination, and invalidation.
+- **Admin Portal (`admin/`):** Production web application built on Next.js + React + TypeScript with App Router. Uses React Router or Next.js App navigation with an `<AdminProtectedRoute />` / middleware verifying token role. Manages asynchronous server state caching, pagination, and invalidation.
 - **Mobile Client (`mobile-app/`):** React 18 + TypeScript responsive mobile web application styled with Tailwind CSS, touch targets >= 44px, and WCAG AA contrast. Uses an optimistic UI layer: when a user checks off a habit, the UI updates immediately and queues an HTTP request to `POST /api/v1/habits/:id/completions`. If offline, the check-in is buffered in `localStorage` and flushed upon reconnection.
 
 ---

@@ -19,7 +19,7 @@ The Daily Habit Tracker ecosystem is structured as a modular monorepo partitione
 flowchart TD
     subgraph Clients["Client Tier"]
         Mobile["Mobile App (PWA / React)<br>Port: 3000 / 5173<br>End-User Check-in & Analytics"]
-        Admin["Admin Portal (React + Vite)<br>Port: 3001 / 5174<br>Platform Moderation & Curation"]
+        Admin["Admin Portal (Next.js + React)<br>Port: 3001<br>Platform Moderation & Curation"]
     end
 
     subgraph Gateway["HTTP Gateway & Security"]
@@ -165,8 +165,8 @@ backend/
 ### 2.2 Client Module Architecture
 
 #### Admin Portal (`admin/`)
-- **Technology:** React 18, Vite, TypeScript, Tailwind CSS, Lucide icons.
-- **Routing:** React Router v6 with `<AdminAuthGuard>` protecting private routes.
+- **Technology:** Next.js, React, TypeScript, Tailwind CSS, Lucide icons.
+- **Routing:** Next.js App Router with route protection verifying admin role.
 - **State Management:** TanStack Query (React Query) for server caching, optimistic invalidation, and automated refetching; React Context for authentication session.
 - **Key Views:**
   1. `/admin/login`: Secure administrator sign-in.
