@@ -42,7 +42,8 @@ export const SettingsScreen: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   useEffect(() => {
-    oAuthService.getCurrentOAuthUser().then((u) => setIsAnonymous(u.isGuest));
+    const u = oAuthService.getCurrentOAuthUser();
+    setIsAnonymous(!u || u.isGuest);
   }, []);
 
   const handleDeleteAccount = () => {

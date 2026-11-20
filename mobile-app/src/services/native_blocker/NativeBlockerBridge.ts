@@ -1,5 +1,4 @@
 import { Platform, NativeModules } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   INativeBlockerService,
   NativePermissionStatus,
@@ -11,15 +10,6 @@ import {
 import syncService from '../sync/SyncService';
 
 const { FocusBlockerModule } = NativeModules;
-
-const STORAGE_KEYS = {
-  PERMISSIONS: '@native_blocker_permissions',
-  ACTIVE_SESSION: '@native_blocker_active_session',
-  BLOCKED_APPS: '@native_blocker_apps',
-  BLOCKED_COUNT: '@native_blocker_daily_count',
-  EMERGENCY_CODE: '@native_blocker_emergency_code',
-  ANTI_UNINSTALL: '@native_blocker_anti_uninstall',
-};
 
 const DEFAULT_APPS: BlockableApp[] = [
   {
@@ -89,8 +79,31 @@ const DEFAULT_APPS: BlockableApp[] = [
   },
 ];
 
+/**
+ * Pure In-Memory Native Blocker Bridge:
+ * - 0% local database / 0% AsyncStorage / 0% SQLite
+ * - On iOS: ManagedSettingsStore & DeviceActivityCenter persist shields in OS natively
+ * - On Android: In-memory platform channel to FocusAccessibilityService
+ */
 class NativeBlockerBridge implements INativeBlockerService {
   private listeners: ((event: ShieldInterceptionEvent) => void)[] = [];
+
+  // In-Memory State
+  private inMemoryPermissions: NativePermissionStatus = {
+    hasRequested: true,
+    familyControlsAuthorized: Platform.OS === 'ios',
+    deviceActivityAuthorized: Platform.OS === 'ios',
+    accessibilityServiceEnabled: Platform.OS === 'android',
+    usageStatsPermissionGranted: Platform.OS === 'android',
+    systemAlertWindowGranted: Platform.OS === 'android',
+    batteryOptimizationIgnored: true,
+    allRequiredPermissionsGranted: true,
+  };
+  private inMemoryApps: BlockableApp[] = DEFAULT_APPS;
+  private inMemoryActiveSession: FocusSessionConfig | null = null;
+  private inMemoryBlockedCount: number = 48;
+  private inMemoryAntiUninstall: boolean = false;
+  private inMemoryEmergencyCode: string = '778899';
 
   getPlatform(): PlatformOSType {
     if (Platform.OS === 'ios') return 'ios';
@@ -105,7 +118,7 @@ class NativeBlockerBridge implements INativeBlockerService {
     if (Platform.OS === 'android' && FocusBlockerModule?.getAllPermissionsStatus) {
       try {
         const status = await FocusBlockerModule.getAllPermissionsStatus();
-        return {
+        this.inMemoryPermissions = {
           hasRequested: true,
           familyControlsAuthorized: false,
           deviceActivityAuthorized: false,
@@ -115,28 +128,12 @@ class NativeBlockerBridge implements INativeBlockerService {
           batteryOptimizationIgnored: status.batteryOptimizationIgnored,
           allRequiredPermissionsGranted: status.allRequiredPermissionsGranted,
         };
+        return this.inMemoryPermissions;
       } catch {
-        // fallback
+        // fallback to in-memory
       }
     }
-
-    try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEYS.PERMISSIONS);
-      if (stored) return JSON.parse(stored);
-    } catch {
-      // fallback
-    }
-
-    return {
-      hasRequested: false,
-      familyControlsAuthorized: false,
-      deviceActivityAuthorized: false,
-      accessibilityServiceEnabled: false,
-      usageStatsPermissionGranted: false,
-      systemAlertWindowGranted: false,
-      batteryOptimizationIgnored: false,
-      allRequiredPermissionsGranted: false,
-    };
+    return this.inMemoryPermissions;
   }
 
   async requestAllPermissions(): Promise<NativePermissionStatus> {
@@ -149,7 +146,6 @@ class NativeBlockerBridge implements INativeBlockerService {
         console.warn('iOS Screen Time Auth request error:', e);
       }
     } else if (!isIOS && FocusBlockerModule) {
-      // Open settings if not yet granted
       try {
         const status = await FocusBlockerModule.getAllPermissionsStatus();
         if (!status.usageStatsPermissionGranted) {
@@ -164,7 +160,7 @@ class NativeBlockerBridge implements INativeBlockerService {
       }
     }
 
-    const grantedStatus: NativePermissionStatus = {
+    this.inMemoryPermissions = {
       hasRequested: true,
       familyControlsAuthorized: isIOS,
       deviceActivityAuthorized: isIOS,
@@ -175,8 +171,7 @@ class NativeBlockerBridge implements INativeBlockerService {
       allRequiredPermissionsGranted: true,
     };
 
-    await AsyncStorage.setItem(STORAGE_KEYS.PERMISSIONS, JSON.stringify(grantedStatus));
-    return grantedStatus;
+    return this.inMemoryPermissions;
   }
 
   // =========================================================================
@@ -233,33 +228,24 @@ class NativeBlockerBridge implements INativeBlockerService {
                 ]
               : [],
           }));
+          this.inMemoryApps = mapped;
           return mapped;
         }
       } catch {
-        // fallback
+        // in-memory fallback
       }
     }
 
-    try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEYS.BLOCKED_APPS);
-      if (stored) return JSON.parse(stored);
-    } catch {
-      // fallback
-    }
-
-    await AsyncStorage.setItem(STORAGE_KEYS.BLOCKED_APPS, JSON.stringify(DEFAULT_APPS));
-    return DEFAULT_APPS;
+    return this.inMemoryApps;
   }
 
   async toggleAppBlock(appId: string, blocked: boolean): Promise<void> {
-    const apps = await this.getInstalledApps();
-    const updated = apps.map((app) =>
+    this.inMemoryApps = this.inMemoryApps.map((app) =>
       app.id === appId ? { ...app, isEntireAppBlocked: blocked } : app
     );
-    await AsyncStorage.setItem(STORAGE_KEYS.BLOCKED_APPS, JSON.stringify(updated));
 
     if (blocked) {
-      const found = apps.find((a) => a.id === appId);
+      const found = this.inMemoryApps.find((a) => a.id === appId);
       await syncService.addBlockedTarget({
         id: Math.random().toString(36).substring(2, 9),
         platform: Platform.OS === 'ios' ? 'ios' : 'android',
@@ -277,8 +263,7 @@ class NativeBlockerBridge implements INativeBlockerService {
     featureId: string,
     blocked: boolean
   ): Promise<void> {
-    const apps = await this.getInstalledApps();
-    const updated = apps.map((app) => {
+    this.inMemoryApps = this.inMemoryApps.map((app) => {
       if (app.id === appId) {
         return {
           ...app,
@@ -289,9 +274,8 @@ class NativeBlockerBridge implements INativeBlockerService {
       }
       return app;
     });
-    await AsyncStorage.setItem(STORAGE_KEYS.BLOCKED_APPS, JSON.stringify(updated));
 
-    const found = apps.find((a) => a.id === appId);
+    const found = this.inMemoryApps.find((a) => a.id === appId);
     await syncService.addBlockedTarget({
       id: Math.random().toString(36).substring(2, 9),
       platform: Platform.OS === 'ios' ? 'ios' : 'android',
@@ -313,10 +297,7 @@ class NativeBlockerBridge implements INativeBlockerService {
       expiresAt,
     };
 
-    await AsyncStorage.setItem(
-      STORAGE_KEYS.ACTIVE_SESSION,
-      JSON.stringify(sessionWithTiming)
-    );
+    this.inMemoryActiveSession = sessionWithTiming;
 
     const denyAppRemoval = config.strictness === 'hardcore';
     const blockedTargets = await syncService.getBlockedTargets();
@@ -330,7 +311,12 @@ class NativeBlockerBridge implements INativeBlockerService {
       }
     } else if (Platform.OS === 'android' && FocusBlockerModule?.activateShield) {
       try {
-        await FocusBlockerModule.activateShield(targetsJSON, config.strictness, denyAppRemoval);
+        await FocusBlockerModule.activateShield(
+          targetsJSON,
+          config.strictness,
+          denyAppRemoval,
+          expiresAt
+        );
       } catch (err) {
         console.warn('Android activateShield native error:', err);
       }
@@ -362,7 +348,7 @@ class NativeBlockerBridge implements INativeBlockerService {
       }
     }
 
-    await AsyncStorage.removeItem(STORAGE_KEYS.ACTIVE_SESSION);
+    this.inMemoryActiveSession = null;
 
     if (Platform.OS === 'ios' && FocusBlockerModule?.stopBlocking) {
       try {
@@ -382,36 +368,26 @@ class NativeBlockerBridge implements INativeBlockerService {
   }
 
   async getActiveSession(): Promise<FocusSessionConfig | null> {
-    try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEYS.ACTIVE_SESSION);
-      if (stored) {
-        const session: FocusSessionConfig = JSON.parse(stored);
-        if (session.expiresAt && Date.now() > session.expiresAt) {
-          await this.stopFocusSession();
-          return null;
-        }
-        return session;
+    if (this.inMemoryActiveSession) {
+      if (
+        this.inMemoryActiveSession.expiresAt &&
+        Date.now() > this.inMemoryActiveSession.expiresAt
+      ) {
+        await this.stopFocusSession();
+        return null;
       }
-    } catch {
-      // fallback
+      return this.inMemoryActiveSession;
     }
     return null;
   }
 
   async getDailyBlockedCount(): Promise<number> {
-    try {
-      const count = await AsyncStorage.getItem(STORAGE_KEYS.BLOCKED_COUNT);
-      return count ? parseInt(count, 10) : 48;
-    } catch {
-      return 48;
-    }
+    return this.inMemoryBlockedCount;
   }
 
   async incrementBlockedCount(): Promise<number> {
-    const current = await this.getDailyBlockedCount();
-    const updated = current + 1;
-    await AsyncStorage.setItem(STORAGE_KEYS.BLOCKED_COUNT, updated.toString());
-    return updated;
+    this.inMemoryBlockedCount += 1;
+    return this.inMemoryBlockedCount;
   }
 
   async simulateAppLaunch(appId: string): Promise<ShieldInterceptionEvent | null> {
@@ -435,7 +411,7 @@ class NativeBlockerBridge implements INativeBlockerService {
   }
 
   async setAntiUninstallGuard(enabled: boolean): Promise<boolean> {
-    await AsyncStorage.setItem(STORAGE_KEYS.ANTI_UNINSTALL, JSON.stringify(enabled));
+    this.inMemoryAntiUninstall = enabled;
     if (FocusBlockerModule?.setAntiUninstallGuard) {
       try {
         await FocusBlockerModule.setAntiUninstallGuard(enabled);
@@ -447,9 +423,7 @@ class NativeBlockerBridge implements INativeBlockerService {
   }
 
   async verifyEmergencyCode(code: string): Promise<boolean> {
-    const stored = await AsyncStorage.getItem(STORAGE_KEYS.EMERGENCY_CODE);
-    const expected = stored ? JSON.parse(stored) : '778899';
-    return code.trim() === expected.trim();
+    return code.trim() === this.inMemoryEmergencyCode.trim();
   }
 
   onShieldInterception(listener: (event: ShieldInterceptionEvent) => void) {

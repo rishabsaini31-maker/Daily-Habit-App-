@@ -5,15 +5,73 @@ import android.content.Context
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
-import android.view.Gravity
-import android.view.LayoutInflater
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
-import android.widget.TextView
 import android.widget.Toast
 import org.json.JSONArray
 
+/**
+ * Pure In-Memory Android Focus Accessibility Service:
+ * - 0% SharedPreferences / 0% SQLite / 0% local database
+ * - State passed directly into memory over platform channel by FocusBlockerModule
+ * - Intercepts full apps & surgical reels/shorts feeds in real-time
+ */
 class FocusAccessibilityService : AccessibilityService() {
+
+    data class ActiveBlockRule(
+        val packageName: String,
+        val displayName: String,
+        val isSurgicalOnly: Boolean
+    )
+
+    companion object {
+        @Volatile var isShieldActive: Boolean = false
+        @Volatile var antiUninstallGuard: Boolean = false
+        @Volatile var strictnessMode: String = "normal"
+        @Volatile var sessionEndTimeMillis: Long = 0L
+        @Volatile var blockedRules: List<ActiveBlockRule> = emptyList()
+        @Volatile var interceptionsCount: Int = 0
+
+        fun updateBlockingState(
+            active: Boolean,
+            rules: List<ActiveBlockRule>,
+            strictness: String,
+            antiUninstall: Boolean,
+            endTimeMillis: Long = 0L
+        ) {
+            isShieldActive = active
+            blockedRules = rules
+            strictnessMode = strictness
+            antiUninstallGuard = antiUninstall
+            sessionEndTimeMillis = endTimeMillis
+        }
+
+        fun clearBlockingState() {
+            isShieldActive = false
+            antiUninstallGuard = false
+            strictnessMode = "normal"
+            sessionEndTimeMillis = 0L
+            blockedRules = emptyList()
+        }
+
+        fun parseRulesFromJson(jsonStr: String): List<ActiveBlockRule> {
+            val list = mutableListOf<ActiveBlockRule>()
+            try {
+                val array = JSONArray(jsonStr)
+                for (i in 0 until array.length()) {
+                    val obj = array.getJSONObject(i)
+                    list.add(
+                        ActiveBlockRule(
+                            packageName = obj.optString("package_or_token"),
+                            displayName = obj.optString("display_name", "App"),
+                            isSurgicalOnly = obj.optBoolean("is_surgical_feed_only", false)
+                        )
+                    )
+                }
+            } catch (_: Exception) {}
+            return list
+        }
+    }
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var lastToastTime = 0L
@@ -22,12 +80,15 @@ class FocusAccessibilityService : AccessibilityService() {
         if (event == null) return
 
         val packageName = event.packageName?.toString() ?: return
-        val prefs = getSharedPreferences(FocusBlockerModule.PREFS_NAME, Context.MODE_PRIVATE)
-        val isShieldActive = prefs.getBoolean(FocusBlockerModule.KEY_IS_SHIELD_ACTIVE, false)
-        val antiUninstallGuard = prefs.getBoolean(FocusBlockerModule.KEY_ANTI_UNINSTALL, false)
+
+        // 0. Auto-expiration check in memory
+        if (sessionEndTimeMillis > 0 && System.currentTimeMillis() >= sessionEndTimeMillis) {
+            clearBlockingState()
+            return
+        }
 
         // =========================================================================
-        // 1. ANTI-UNINSTALL GUARD
+        // 1. ANTI-UNINSTALL GUARD (In-Memory)
         // When active, blocks navigating to Settings -> App Info for our app
         // =========================================================================
         if (antiUninstallGuard && packageName == "com.android.settings") {
@@ -38,7 +99,6 @@ class FocusAccessibilityService : AccessibilityService() {
                 inspectNodeContainsText(rootNode, "Uninstall") ||
                 inspectNodeContainsText(rootNode, "Force stop")
             ) {
-                // Instantly redirect to home launcher and present interception shield
                 performGlobalAction(GLOBAL_ACTION_HOME)
                 triggerInterceptionOverlay("System Settings (Anti-Uninstall Active)", packageName)
                 return
@@ -47,22 +107,19 @@ class FocusAccessibilityService : AccessibilityService() {
 
         if (!isShieldActive) return
 
-        val blockedPackagesStr = prefs.getString(FocusBlockerModule.KEY_BLOCKED_PACKAGES, "[]") ?: "[]"
-        val blockedList = parseBlockedList(blockedPackagesStr)
-        val targetRule = blockedList.find { it.packageName == packageName } ?: return
+        val targetRule = blockedRules.find { it.packageName == packageName } ?: return
 
         // =========================================================================
         // 2. ENTIRE APP BLOCK -> Launch App Block Interception Shield Overlay
         // =========================================================================
         if (!targetRule.isSurgicalOnly) {
-            incrementInterceptionsCount(prefs)
+            interceptionsCount++
             triggerInterceptionOverlay(targetRule.displayName, packageName)
             return
         }
 
         // =========================================================================
-        // 3. SURGICAL REELS & SHORTS MODE
-        // Inspects accessibility tree for vertical video swipe feeds
+        // 3. SURGICAL REELS & SHORTS MODE (In-Memory Inspection)
         // =========================================================================
         if (targetRule.isSurgicalOnly) {
             val rootNode = rootInActiveWindow ?: return
@@ -89,11 +146,9 @@ class FocusAccessibilityService : AccessibilityService() {
             )
 
             if (isInstagramReels || isYouTubeShorts || isTikTokFeed) {
-                // Exit the distraction feed back to previous safe screen (DMs, home, search)
                 performGlobalAction(GLOBAL_ACTION_BACK)
-                incrementInterceptionsCount(prefs)
+                interceptionsCount++
 
-                // Show subtle obsidian toast overlay: "Reels Blocked • Stay Focused"
                 showSurgicalToast(
                     if (isInstagramReels) "Instagram Reels Blocked • Stay Focused"
                     else if (isYouTubeShorts) "YouTube Shorts Blocked • Learn with Long-form"
@@ -116,7 +171,7 @@ class FocusAccessibilityService : AccessibilityService() {
 
     private fun showSurgicalToast(message: String) {
         val now = System.currentTimeMillis()
-        if (now - lastToastTime < 2500) return // Throttle toasts
+        if (now - lastToastTime < 2500) return
         lastToastTime = now
 
         mainHandler.post {
@@ -124,11 +179,6 @@ class FocusAccessibilityService : AccessibilityService() {
                 Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
             } catch (_: Exception) {}
         }
-    }
-
-    private fun incrementInterceptionsCount(prefs: android.content.SharedPreferences) {
-        val current = prefs.getInt(FocusBlockerModule.KEY_INTERCEPTIONS_COUNT, 0)
-        prefs.edit().putInt(FocusBlockerModule.KEY_INTERCEPTIONS_COUNT, current + 1).apply()
     }
 
     private fun hasNodeWithId(root: AccessibilityNodeInfo, targetIdFragment: String): Boolean {
@@ -155,24 +205,4 @@ class FocusAccessibilityService : AccessibilityService() {
     }
 
     override fun onInterrupt() {}
-
-    private data class BlockRule(val packageName: String, val displayName: String, val isSurgicalOnly: Boolean)
-
-    private fun parseBlockedList(jsonStr: String): List<BlockRule> {
-        val list = mutableListOf<BlockRule>()
-        try {
-            val array = JSONArray(jsonStr)
-            for (i in 0 until array.length()) {
-                val obj = array.getJSONObject(i)
-                list.add(
-                    BlockRule(
-                        packageName = obj.optString("package_or_token"),
-                        displayName = obj.optString("display_name", "App"),
-                        isSurgicalOnly = obj.optBoolean("is_surgical_feed_only", false)
-                    )
-                )
-            }
-        } catch (_: Exception) {}
-        return list
-    }
 }

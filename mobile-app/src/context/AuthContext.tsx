@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '../types';
 import { api } from '../services/api';
 
@@ -18,9 +17,11 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const TOKEN_KEY = '@habit_tracker_token';
-const USER_KEY = '@habit_tracker_user';
-
+/**
+ * Pure In-Memory Auth Context:
+ * - 0% local database / 0% AsyncStorage / 0% SQLite
+ * - Session state managed in memory
+ */
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -29,44 +30,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isOffline, setIsOffline] = useState<boolean>(false);
 
   useEffect(() => {
-    loadStoredSession();
+    loadSession();
   }, []);
 
-  const loadStoredSession = async () => {
+  const loadSession = async () => {
     try {
       setIsLoading(true);
-      const storedToken = await AsyncStorage.getItem(TOKEN_KEY);
-      const storedUser = await AsyncStorage.getItem(USER_KEY);
+      // Initialize friendly in-memory default user session
+      const defaultUser: User = {
+        id: 'user-demo-1',
+        email: 'alex@habit-tracker.internal',
+        displayName: 'Alex Johnson',
+        role: 'USER',
+        status: 'ACTIVE',
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      const defaultToken = 'mock-demo-token';
+      setToken(defaultToken);
+      setUser(defaultUser);
 
-      if (storedToken && storedUser) {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
-        // Verify with /auth/me in background
-        api.getMe()
-          .then(me => {
-            if (me) setUser(me);
-          })
-          .catch(() => {
-            setIsOffline(true);
-          });
-      } else {
-        // Pre-initialize a friendly default user session for instant mobile onboarding
-        const defaultUser: User = {
-          id: 'user-demo-1',
-          email: 'alex@habit-tracker.internal',
-          displayName: 'Alex Johnson',
-          role: 'USER',
-          status: 'ACTIVE',
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        const defaultToken = 'mock-demo-token';
-        await AsyncStorage.setItem(TOKEN_KEY, defaultToken);
-        await AsyncStorage.setItem(USER_KEY, JSON.stringify(defaultUser));
-        setToken(defaultToken);
-        setUser(defaultUser);
-      }
+      // Verify with backend if connected
+      api.getMe()
+        .then((me) => {
+          if (me) setUser(me);
+        })
+        .catch(() => {
+          setIsOffline(true);
+        });
     } catch (err: any) {
       console.warn('Error loading session:', err);
     } finally {
@@ -107,7 +99,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = async () => {
     try {
       setIsLoading(true);
-      await api.logout();
+      await api.logout().catch(() => {});
       setUser(null);
       setToken(null);
     } finally {

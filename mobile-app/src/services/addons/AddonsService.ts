@@ -1,18 +1,19 @@
-import { Linking, Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Linking } from 'react-native';
 import { supabase } from '../supabase/client';
 import syncService from '../sync/SyncService';
 import nativeBlocker from '../native_blocker/NativeBlockerBridge';
 import healthStepService from './HealthStepService';
 import { api } from '../api';
 
-const STORAGE_KEYS = {
-  HEALTH_STEPS_TODAY: '@health_steps_today',
-  SAVED_NFC_TAG: '@saved_nfc_tag_uid',
-  ACTIVE_OFFLINE_OTP: '@active_offline_friend_otp',
-};
-
+/**
+ * Pure In-Memory Addons Service (Friend Lock & NFC Tag Pairing):
+ * - 0% local database / 0% AsyncStorage / 0% SQLite
+ * - Direct Supabase emergency_unlock_codes & profiles single source of truth
+ */
 class AddonsService {
+  private inMemoryOfflineOtp: string | null = null;
+  private inMemorySavedNfcTag: string | null = null;
+
   // ==========================================
   // 1. FRIEND LOCK EMERGENCY UNLOCK (WhatsApp/SMS + Supabase OTP)
   // ==========================================
@@ -24,7 +25,6 @@ class AddonsService {
     partnerName: string = 'Alex',
     partnerContact?: string
   ): Promise<{ otpCode: string; shareUrl: string }> {
-    // Generate random 6-digit OTP
     let otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
@@ -36,10 +36,10 @@ class AddonsService {
         otpCode = backendRes.otpCode;
       }
     } catch {
-      // 2. Fallback to Supabase / offline local storage
+      // 2. Direct Supabase RPC / table insertion
       try {
-        const { data: authData } = await supabase.auth.getUser();
-        const userId = authData?.user?.id;
+        const profile = await syncService.getProfile();
+        const userId = profile.id;
 
         if (userId) {
           await supabase.from('emergency_unlock_codes').insert({
@@ -50,11 +50,10 @@ class AddonsService {
           });
         }
       } catch {
-        await AsyncStorage.setItem(STORAGE_KEYS.ACTIVE_OFFLINE_OTP, otpCode);
+        this.inMemoryOfflineOtp = otpCode;
       }
     }
 
-    // Pre-filled WhatsApp / SMS message text
     const message = encodeURIComponent(
       `Hey ${partnerName}! I am currently locked in a Deep Focus Session and urgently need your partner unlock code. My emergency OTP is: ${otpCode} (valid for 10 mins).`
     );
@@ -63,7 +62,6 @@ class AddonsService {
       ? `https://wa.me/${partnerContact.replace(/[^0-9]/g, '')}?text=${message}`
       : `https://wa.me/?text=${message}`;
 
-    // Open WhatsApp if possible, else SMS
     const supported = await Linking.canOpenURL(shareUrl).catch(() => false);
     if (supported) {
       await Linking.openURL(shareUrl).catch(() => {});
@@ -76,11 +74,7 @@ class AddonsService {
   }
 
   /**
-   * Verifies the 6-digit OTP against Supabase emergency_unlock_codes.
-   * If valid:
-   * 1. Marks OTP code as used (is_used = true).
-   * 2. If an active session is in progress, marks it 'broken' in Supabase & local cache.
-   * 3. Immediately stops native OS blocker shield.
+   * Verifies the 6-digit OTP against Supabase emergency_unlock_codes or RPC
    */
   async verifyFriendOTP(code: string, activeSessionId?: string): Promise<boolean> {
     const trimmed = code.trim();
@@ -92,41 +86,25 @@ class AddonsService {
     if (trimmed === '778899') {
       isAuthorized = true;
     } else {
-      // 2. Try Backend API first
-      try {
-        const backendRes = await api.verifyFriendUnlockOtp(trimmed, activeSessionId);
-        if (backendRes?.unlocked) {
+      // 2. Direct Supabase RPC verification
+      if (activeSessionId) {
+        const verified = await syncService.verifyFriendUnlockOtp(activeSessionId, trimmed);
+        if (verified) {
           isAuthorized = true;
         }
-      } catch {
-        // 3. Fallback to Supabase / offline check
+      }
+
+      if (!isAuthorized) {
+        // 3. Check Backend API
         try {
-          const { data: authData } = await supabase.auth.getUser();
-          const userId = authData?.user?.id;
-
-          if (userId) {
-            const { data, error } = await supabase
-              .from('emergency_unlock_codes')
-              .select('*')
-              .eq('user_id', userId)
-              .eq('otp_code', trimmed)
-              .eq('is_used', false)
-              .gte('expires_at', new Date().toISOString())
-              .limit(1);
-
-            if (!error && data && data.length > 0) {
-              await supabase
-                .from('emergency_unlock_codes')
-                .update({ is_used: true })
-                .eq('id', data[0].id);
-
-              isAuthorized = true;
-            }
+          const backendRes = await api.verifyFriendUnlockOtp(trimmed, activeSessionId);
+          if (backendRes?.unlocked) {
+            isAuthorized = true;
           }
         } catch {
-          const offlineCode = await AsyncStorage.getItem(STORAGE_KEYS.ACTIVE_OFFLINE_OTP);
-          if (offlineCode === trimmed) {
-            await AsyncStorage.removeItem(STORAGE_KEYS.ACTIVE_OFFLINE_OTP);
+          // 4. In-Memory fallback check
+          if (this.inMemoryOfflineOtp === trimmed) {
+            this.inMemoryOfflineOtp = null;
             isAuthorized = true;
           }
         }
@@ -134,7 +112,6 @@ class AddonsService {
     }
 
     if (isAuthorized) {
-      // Mark session as broken and lift native shields
       await this.handleEmergencySessionBreak(activeSessionId);
       return true;
     }
@@ -151,11 +128,9 @@ class AddonsService {
       const targetId = sessionId || active?.id;
 
       if (targetId) {
-        // Spec: mark session as broken
         await syncService.cancelSessionEarly(targetId);
       }
 
-      // Stop native OS blocker shield on iOS (ManagedSettings) and Android (Accessibility)
       await nativeBlocker.stopFocusSession();
     } catch (e) {
       console.warn('Error handling emergency session break:', e);
@@ -166,10 +141,10 @@ class AddonsService {
   // 2. PHYSICAL NFC TAG PAIRING & HARDWARE UNLOCK
   // ==========================================
   /**
-   * Pairs a physical NFC tag UID (e.g. desk sticker) and persists to Supabase profiles
+   * Pairs a physical NFC tag UID and persists directly to Supabase profiles
    */
   async pairNfcTag(uid: string): Promise<string> {
-    await AsyncStorage.setItem(STORAGE_KEYS.SAVED_NFC_TAG, uid);
+    this.inMemorySavedNfcTag = uid;
     await syncService.updateProfile({ nfc_tag_uid: uid });
     return uid;
   }
@@ -179,9 +154,9 @@ class AddonsService {
    */
   async verifyAndReleaseNfcSession(scannedUid: string, activeSessionId?: string): Promise<boolean> {
     const profile = await syncService.getProfile();
-    const saved = profile.nfc_tag_uid || (await AsyncStorage.getItem(STORAGE_KEYS.SAVED_NFC_TAG));
+    const saved = profile.nfc_tag_uid || this.inMemorySavedNfcTag;
 
-    if (!saved) return true; // No tag required if not configured
+    if (!saved) return true;
 
     const isMatch = saved.trim().toLowerCase() === scannedUid.trim().toLowerCase();
     if (isMatch) {

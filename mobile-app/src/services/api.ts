@@ -1,4 +1,14 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// Pure in-memory key-value adapter (Zero local database / Zero AsyncStorage / Zero SQLite)
+const inMemoryStorageMap = new Map<string, string>();
+const AsyncStorage = {
+  getItem: async (key: string): Promise<string | null> => inMemoryStorageMap.get(key) ?? null,
+  setItem: async (key: string, value: string): Promise<void> => {
+    inMemoryStorageMap.set(key, value);
+  },
+  removeItem: async (key: string): Promise<void> => {
+    inMemoryStorageMap.delete(key);
+  },
+};
 import {
   User,
   Habit,

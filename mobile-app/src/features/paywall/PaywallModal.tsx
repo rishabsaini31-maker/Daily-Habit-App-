@@ -32,8 +32,8 @@ export const PaywallModal: React.FC = () => {
   const executePurchase = async () => {
     setIsProcessing(true);
     try {
-      const oAuthUser = await oAuthService.getCurrentOAuthUser();
-      if (!oAuthUser.isGuest && oAuthUser.sub) {
+      const oAuthUser = oAuthService.getCurrentOAuthUser();
+      if (oAuthUser && !oAuthUser.isGuest && oAuthUser.sub) {
         // Pass verified OAuth sub ID directly into Purchases.logIn(oauthSubId)
         await revenueCat.logIn(oAuthUser.sub);
       }
@@ -63,8 +63,8 @@ export const PaywallModal: React.FC = () => {
   // Spec: Enforce mandatory OAuth sign-in BEFORE initiating payment for anonymous guests
   const handleStartTrial = async () => {
     try {
-      const oAuthUser = await oAuthService.getCurrentOAuthUser();
-      if (oAuthUser.isGuest) {
+      const oAuthUser = oAuthService.getCurrentOAuthUser();
+      if (!oAuthUser || oAuthUser.isGuest) {
         setShowAuthGate(true);
         return;
       }
@@ -77,8 +77,8 @@ export const PaywallModal: React.FC = () => {
   const handleRestore = async () => {
     setIsProcessing(true);
     try {
-      const oAuthUser = await oAuthService.getCurrentOAuthUser();
-      if (!oAuthUser.isGuest && oAuthUser.sub) {
+      const oAuthUser = oAuthService.getCurrentOAuthUser();
+      if (oAuthUser && !oAuthUser.isGuest && oAuthUser.sub) {
         await revenueCat.logIn(oAuthUser.sub);
       }
       const result = await revenueCat.restorePurchases();

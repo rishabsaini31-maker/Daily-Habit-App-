@@ -1,12 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import syncService from '../../services/sync/SyncService';
 import { api } from '../../services/api';
-
-const STORAGE_KEYS = {
-  COMPLETED: '@onboarding_completed',
-  APPS: '@onboarding_selected_apps',
-  SCREEN_HOURS: '@onboarding_screen_hours',
-};
 
 interface OnboardingContextType {
   hasCompletedOnboarding: boolean;
@@ -26,6 +20,11 @@ interface OnboardingContextType {
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
 
+/**
+ * Pure In-Memory Onboarding Context:
+ * - 0% local database / 0% AsyncStorage / 0% SQLite
+ * - Onboarding completes directly into Supabase profile & blocked targets
+ */
 export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean>(false);
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
@@ -42,30 +41,20 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const lifetimeYearsLost = Number(((dailyScreenHours / 16) * 60).toFixed(1));
 
   useEffect(() => {
-    const loadState = async () => {
+    // Check if user profile already has baseline configured in Supabase
+    const initCheck = async () => {
       try {
-        const [completed, apps, hours] = await Promise.all([
-          AsyncStorage.getItem(STORAGE_KEYS.COMPLETED),
-          AsyncStorage.getItem(STORAGE_KEYS.APPS),
-          AsyncStorage.getItem(STORAGE_KEYS.SCREEN_HOURS),
-        ]);
-
-        if (completed === 'true') {
+        const profile = await syncService.getProfile();
+        if (profile && profile.daily_baseline_minutes && profile.daily_baseline_minutes > 0) {
           setHasCompletedOnboarding(true);
         }
-        if (apps) {
-          setSelectedApps(JSON.parse(apps));
-        }
-        if (hours) {
-          setDailyScreenHours(parseFloat(hours));
-        }
       } catch {
-        // ignore
+        // start onboarding
       } finally {
         setIsLoading(false);
       }
     };
-    loadState();
+    initCheck();
   }, []);
 
   const nextStep = () => {
@@ -87,28 +76,31 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const toggleAppSelection = (appId: string) => {
     setSelectedApps((prev) => {
       const exists = prev.includes(appId);
-      const updated = exists ? prev.filter((id) => id !== appId) : [...prev, appId];
-      AsyncStorage.setItem(STORAGE_KEYS.APPS, JSON.stringify(updated)).catch(() => {});
-      return updated;
+      return exists ? prev.filter((id) => id !== appId) : [...prev, appId];
     });
   };
 
   const setDailyHours = (hours: number) => {
     setDailyScreenHours(hours);
-    AsyncStorage.setItem(STORAGE_KEYS.SCREEN_HOURS, hours.toString()).catch(() => {});
   };
 
   const finishOnboarding = async () => {
     setHasCompletedOnboarding(true);
-    await AsyncStorage.setItem(STORAGE_KEYS.COMPLETED, 'true');
 
-    // Seamlessly register anonymous identity with Node.js backend & sync baseline
     try {
-      await api.anonymousAuth();
-      await api.updateFocusProfile({
-        daily_baseline_minutes: Math.round(dailyScreenHours * 60),
+      // 1. Update Supabase profile directly with baseline screen time
+      const baselineMinutes = Math.round(dailyScreenHours * 60);
+      await syncService.updateProfile({
+        daily_baseline_minutes: baselineMinutes,
       });
 
+      // 2. Also record in Node.js backend if reachable
+      await api.anonymousAuth().catch(() => {});
+      await api.updateFocusProfile({
+        daily_baseline_minutes: baselineMinutes,
+      }).catch(() => {});
+
+      // 3. Map and persist blocked targets directly to Supabase
       const appPackageMap: Record<string, { pkg: string; name: string; isSurgical: boolean }> = {
         instagram: { pkg: 'com.instagram.android', name: 'Instagram', isSurgical: true },
         youtube: { pkg: 'com.google.android.youtube', name: 'YouTube', isSurgical: true },
@@ -124,22 +116,22 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           name: appId,
           isSurgical: false,
         };
-        await api.addBlockedTarget({
-          packageOrToken: mapped.pkg,
-          displayName: mapped.name,
-          isSurgicalFeedOnly: mapped.isSurgical,
+        await syncService.addBlockedTarget({
+          id: Math.random().toString(36).substring(2, 10),
           platform: 'android',
+          package_or_token: mapped.pkg,
+          display_name: mapped.name,
+          is_surgical_feed_only: mapped.isSurgical,
         });
       }
-    } catch {
-      // offline fallback
+    } catch (e) {
+      console.warn('Error finishing onboarding to Supabase:', e);
     }
   };
 
   const resetOnboarding = async () => {
     setHasCompletedOnboarding(false);
     setCurrentStep(1);
-    await AsyncStorage.removeItem(STORAGE_KEYS.COMPLETED);
   };
 
   return (
@@ -165,12 +157,10 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   );
 };
 
-export const useOnboarding = () => {
+export const useOnboarding = (): OnboardingContextType => {
   const context = useContext(OnboardingContext);
   if (!context) {
     throw new Error('useOnboarding must be used within an OnboardingProvider');
   }
   return context;
 };
-
-export default OnboardingContext;

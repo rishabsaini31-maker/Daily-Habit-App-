@@ -21,7 +21,6 @@ class FocusBlockerModule(private val reactContext: ReactApplicationContext) :
     override fun getName(): String = "FocusBlockerModule"
 
     companion object {
-        const val PREFS_NAME = "focus_blocker_prefs"
         const val KEY_BLOCKED_PACKAGES = "blocked_packages"
         const val KEY_IS_SHIELD_ACTIVE = "is_shield_active"
         const val KEY_ANTI_UNINSTALL = "anti_uninstall_guard"
@@ -219,40 +218,39 @@ class FocusBlockerModule(private val reactContext: ReactApplicationContext) :
     }
 
     // =========================================================================
-    // 3. SHIELD ENFORCEMENT & PREFERENCES SYNC
+    // 3. SHIELD ENFORCEMENT & IN-MEMORY BRIDGE
     // =========================================================================
     @ReactMethod
     fun activateShield(
         blockedPackagesJSON: String,
         strictnessMode: String,
         denyAppRemoval: Boolean,
+        endTimeMillisDouble: Double = 0.0,
         promise: Promise
     ) {
-        val prefs = reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit()
-            .putString(KEY_BLOCKED_PACKAGES, blockedPackagesJSON)
-            .putString(KEY_STRICTNESS_MODE, strictnessMode)
-            .putBoolean(KEY_IS_SHIELD_ACTIVE, true)
-            .putBoolean(KEY_ANTI_UNINSTALL, denyAppRemoval || strictnessMode == "deep_focus")
-            .apply()
+        val rules = FocusAccessibilityService.parseRulesFromJson(blockedPackagesJSON)
+        val endMillis = if (endTimeMillisDouble > 0) endTimeMillisDouble.toLong() else 0L
+
+        FocusAccessibilityService.updateBlockingState(
+            active = true,
+            rules = rules,
+            strictness = strictnessMode,
+            antiUninstall = denyAppRemoval || strictnessMode == "deep_focus",
+            endTimeMillis = endMillis
+        )
 
         promise.resolve(true)
     }
 
     @ReactMethod
     fun deactivateShield(promise: Promise) {
-        val prefs = reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit()
-            .putBoolean(KEY_IS_SHIELD_ACTIVE, false)
-            .putBoolean(KEY_ANTI_UNINSTALL, false)
-            .apply()
+        FocusAccessibilityService.clearBlockingState()
         promise.resolve(true)
     }
 
     @ReactMethod
     fun setAntiUninstallGuard(enabled: Boolean, promise: Promise) {
-        val prefs = reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putBoolean(KEY_ANTI_UNINSTALL, enabled).apply()
+        FocusAccessibilityService.antiUninstallGuard = enabled
         promise.resolve(enabled)
     }
 

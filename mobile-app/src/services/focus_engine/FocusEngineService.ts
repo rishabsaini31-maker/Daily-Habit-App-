@@ -232,7 +232,7 @@ class FocusEngineService {
   // REWARDS & GAMIFICATION ENGINE
   // ==========================================
   private async handleSessionNaturalCompletion(session: SyncFocusSession) {
-    await syncService.completeSession(session.id);
+    await syncService.completeSession(session.id, session.duration_minutes);
     api.completeFocusSession(session.id, session.duration_minutes).catch(() => {});
     await nativeBlocker.stopFocusSession();
     await nativeBlocker.setAntiUninstallGuard(false);
@@ -241,32 +241,16 @@ class FocusEngineService {
     const gemsAwarded = Math.max(10, Math.floor(session.duration_minutes / 30) * 10);
     await this.awardGems(gemsAwarded, 'session_completed');
 
-    // Update time saved today
-    const currentMetrics = await syncService.getTodayMetrics();
-    const updatedBlockedTime = (currentMetrics.blocked_time_min || 0) + session.duration_minutes;
-    await syncService.updateTodayMetrics({
-      blocked_time_min: updatedBlockedTime,
-    });
-
     await this.checkDailyStreakMilestone();
     await this.refreshState();
   }
 
   /**
-   * Spec: Award +5 Gems per blocked app interception
+   * Spec: Award +5 Gems per blocked app interception directly via Supabase RPC
    */
   async recordInterception(appName: string = 'Instagram'): Promise<void> {
+    await syncService.recordInterception(appName);
     api.recordInterception(appName).catch(() => {});
-    const metrics = await syncService.getTodayMetrics();
-    const updatedCount = (metrics.interceptions_count || 0) + 1;
-    const updatedGems = (metrics.gems_earned || 0) + 5;
-
-    await syncService.updateTodayMetrics({
-      interceptions_count: updatedCount,
-      gems_earned: updatedGems,
-    });
-
-    await this.awardGems(5, 'app_interception');
     await this.refreshState();
   }
 

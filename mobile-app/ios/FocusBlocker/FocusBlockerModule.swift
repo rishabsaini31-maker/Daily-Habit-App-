@@ -19,7 +19,10 @@ import DeviceActivity
 class FocusBlockerModule: NSObject {
     
     private let store = ManagedSettingsStore()
-    private let appGroupSuiteName = "group.com.app.focus"
+    
+    // In-memory Apple FamilyActivitySelection (Zero UserDefaults / Zero local database)
+    static var inMemorySelection = FamilyActivitySelection()
+    static var isBlockingActive: Bool = false
     
     @objc
     static func requiresMainQueueSetup() -> Bool {
@@ -101,17 +104,12 @@ class FocusBlockerModule: NSObject {
                        rejecter reject: @escaping RCTPromiseRejectBlock) {
         if #available(iOS 16.0, *) {
             do {
-                let userDefaults = UserDefaults(suiteName: appGroupSuiteName)
-                userDefaults?.set(tokensJSON, forKey: "saved_blocked_tokens")
-                userDefaults?.set(strictnessMode, forKey: "active_strictness_mode")
-                userDefaults?.set(true, forKey: "is_blocking_active")
+                FocusBlockerModule.isBlockingActive = true
                 
-                // Decode PropertyList serialized FamilyActivitySelection tokens
-                if let data = userDefaults?.data(forKey: "family_activity_selection_data"),
-                   let selection = try? PropertyListDecoder().decode(FamilyActivitySelection.self, from: data) {
-                    store.shield.applications = selection.applicationTokens
-                    store.shield.applicationCategories = ShieldSettings.ActivityCategoryPolicy.specific(selection.categoryTokens)
-                }
+                // Directly apply Apple ManagedSettingsStore shield policies in-memory
+                let selection = FocusBlockerModule.inMemorySelection
+                store.shield.applications = selection.applicationTokens
+                store.shield.applicationCategories = ShieldSettings.ActivityCategoryPolicy.specific(selection.categoryTokens)
                 
                 // Spec: Anti-Uninstall Guard or deep_focus denies app deletion
                 if denyAppRemoval || strictnessMode == "deep_focus" {
@@ -136,9 +134,7 @@ class FocusBlockerModule: NSObject {
             store.shield.applications = nil
             store.shield.applicationCategories = nil
             store.application.denyAppRemoval = false
-            
-            let userDefaults = UserDefaults(suiteName: appGroupSuiteName)
-            userDefaults?.set(false, forKey: "is_blocking_active")
+            FocusBlockerModule.isBlockingActive = false
             
             resolve(["success": true, "shieldActive": false])
         } else {
@@ -162,11 +158,10 @@ class FocusBlockerModule: NSObject {
 // SwiftUI Modal View wrapping Apple's native FamilyActivityPicker
 @available(iOS 16.0, *)
 struct NativeFamilyPickerView: View {
-    let appGroupSuite: String
     let onComplete: (Int) -> Void
     let onCancel: () -> Void
     
-    @State private var selection = FamilyActivitySelection()
+    @State private var selection = FocusBlockerModule.inMemorySelection
     
     var body: some View {
         NavigationView {
@@ -181,11 +176,7 @@ struct NativeFamilyPickerView: View {
                     }
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Save Rules") {
-                            // Serialize with PropertyListEncoder to App Group UserDefaults
-                            if let encoded = try? PropertyListEncoder().encode(selection) {
-                                let userDefaults = UserDefaults(suiteName: appGroupSuite)
-                                userDefaults?.set(encoded, forKey: "family_activity_selection_data")
-                            }
+                            FocusBlockerModule.inMemorySelection = selection
                             let count = selection.applicationTokens.count + selection.categoryTokens.count
                             onComplete(count)
                         }

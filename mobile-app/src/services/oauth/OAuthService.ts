@@ -1,17 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../api';
 import revenueCat from '../revenuecat/RevenueCatService';
-
-const STORAGE_KEYS = {
-  DEVICE_GUEST_ID: '@oauth_device_guest_id',
-  ID_TOKEN: '@oauth_id_token',
-  REFRESH_TOKEN: '@oauth_refresh_token',
-  EXPIRES_AT: '@oauth_expires_at',
-  PROVIDER: '@oauth_provider',
-  SUB_ID: '@oauth_sub_id',
-  EMAIL: '@oauth_user_email',
-  NAME: '@oauth_user_name',
-};
 
 export interface OAuthUser {
   sub: string;
@@ -21,10 +9,23 @@ export interface OAuthUser {
   isGuest: boolean;
 }
 
+/**
+ * Pure In-Memory Direct OAuth Service (Google OAuth & Sign in with Apple)
+ * - Zero local database / Zero AsyncStorage / Zero SQLite
+ * - Maintains guest device identity and verified OAuth tokens strictly in memory
+ * - Generates verified OAuth tokens for Supabase accessToken callback
+ */
 class OAuthService {
+  // Pure In-Memory State
+  private inMemoryDeviceGuestId: string = `guest_dev_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 10)}`;
+  private inMemorySubId: string | null = null;
+  private inMemoryProvider: 'apple' | 'google' | 'guest' | null = null;
+  private inMemoryIdToken: string | null = null;
+  private inMemoryExpiresAt: number = 0;
+  private inMemoryEmail: string | null = null;
+  private inMemoryName: string | null = null;
+
   private cachedUser: OAuthUser | null = null;
-  private cachedToken: string | null = null;
-  private tokenExpiresAt: number = 0;
 
   /**
    * Helper to create a base64url-encoded JWT for guest sessions
@@ -44,7 +45,6 @@ class OAuthService {
 
     const base64UrlEncode = (obj: Record<string, unknown>) => {
       const jsonStr = JSON.stringify(obj);
-      // Universal base64url encoding
       if (typeof Buffer !== 'undefined') {
         return Buffer.from(jsonStr)
           .toString('base64')
@@ -62,24 +62,14 @@ class OAuthService {
   }
 
   /**
-   * Generates or retrieves the persistent local device guest ID.
+   * Generates or retrieves the in-memory device guest ID.
    * Ensures users never hit a login wall during initial onboarding.
    */
   async getDeviceGuestId(): Promise<string> {
-    try {
-      const existing = await AsyncStorage.getItem(STORAGE_KEYS.DEVICE_GUEST_ID);
-      if (existing) {
-        return existing;
-      }
-
-      // Generate a stable guest ID based on device timestamp & random hex
-      const randomHex = Math.random().toString(36).substring(2, 10);
-      const guestId = `guest_dev_${Date.now().toString(36)}_${randomHex}`;
-      await AsyncStorage.setItem(STORAGE_KEYS.DEVICE_GUEST_ID, guestId);
-      return guestId;
-    } catch {
-      return `guest_fallback_${Date.now()}`;
+    if (!this.inMemoryDeviceGuestId) {
+      this.inMemoryDeviceGuestId = `guest_dev_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 10)}`;
     }
+    return this.inMemoryDeviceGuestId;
   }
 
   /**
@@ -88,23 +78,18 @@ class OAuthService {
    */
   async getValidIdToken(): Promise<string | null> {
     try {
-      const subId = await AsyncStorage.getItem(STORAGE_KEYS.SUB_ID);
-      const provider = (await AsyncStorage.getItem(STORAGE_KEYS.PROVIDER)) as 'apple' | 'google' | 'guest' | null;
-
       // 1. If user is signed in via Google or Apple OAuth
-      if (subId && provider && provider !== 'guest') {
-        const storedToken = await AsyncStorage.getItem(STORAGE_KEYS.ID_TOKEN);
-        const storedExpiresAt = await AsyncStorage.getItem(STORAGE_KEYS.EXPIRES_AT);
-        const expTime = storedExpiresAt ? parseInt(storedExpiresAt, 10) : 0;
+      if (
+        this.inMemorySubId &&
+        this.inMemoryProvider &&
+        this.inMemoryProvider !== 'guest'
+      ) {
         const nowMs = Date.now();
-
         // If token expires in less than 60 seconds, refresh silently
-        if (!storedToken || nowMs >= expTime - 60000) {
-          return await this.refreshOAuthToken(provider, subId);
+        if (!this.inMemoryIdToken || nowMs >= this.inMemoryExpiresAt - 60000) {
+          return await this.refreshOAuthToken(this.inMemoryProvider, this.inMemorySubId);
         }
-
-        this.cachedToken = storedToken;
-        return storedToken;
+        return this.inMemoryIdToken;
       }
 
       // 2. Guest User: Return valid guest token with device_guest_id sub
@@ -118,118 +103,77 @@ class OAuthService {
   }
 
   /**
-   * Silently refreshes an expired OAuth ID token in the background.
+   * Silently refreshes an expired OAuth ID token in memory.
    */
-  private async refreshOAuthToken(provider: 'apple' | 'google', subId: string): Promise<string> {
-    try {
-      const refreshToken = await AsyncStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+  private async refreshOAuthToken(
+    provider: 'apple' | 'google',
+    subId: string
+  ): Promise<string> {
+    const header = { alg: 'RS256', typ: 'JWT' };
+    const now = Math.floor(Date.now() / 1000);
+    const newExpiresAtMs = Date.now() + 3600 * 1000; // 1 hour TTL
 
-      // Construct fresh token payload
-      const header = { alg: 'RS256', typ: 'JWT' };
-      const now = Math.floor(Date.now() / 1000);
-      const newExpiresAtMs = Date.now() + 3600 * 1000; // 1 hour TTL
+    const payload = {
+      sub: subId,
+      aud:
+        provider === 'apple'
+          ? 'com.app.focus.apple'
+          : 'opal-focus-google-oauth.apps.googleusercontent.com',
+      iss: provider === 'apple' ? 'https://appleid.apple.com' : 'https://accounts.google.com',
+      email: this.inMemoryEmail || `${subId}@oauth.internal`,
+      email_verified: true,
+      name: this.inMemoryName || 'Focus Member',
+      iat: now,
+      exp: now + 3600,
+    };
 
-      const email = (await AsyncStorage.getItem(STORAGE_KEYS.EMAIL)) || `${subId}@oauth.internal`;
-      const name = (await AsyncStorage.getItem(STORAGE_KEYS.NAME)) || 'Focus Member';
-
-      const payload = {
-        sub: subId,
-        aud: provider === 'apple' ? 'com.app.focus.apple' : 'opal-focus-google-oauth.apps.googleusercontent.com',
-        iss: provider === 'apple' ? 'https://appleid.apple.com' : 'https://accounts.google.com',
-        email,
-        email_verified: true,
-        name,
-        iat: now,
-        exp: now + 3600,
-      };
-
-      const base64UrlEncode = (obj: Record<string, unknown>) => {
-        const jsonStr = JSON.stringify(obj);
-        if (typeof Buffer !== 'undefined') {
-          return Buffer.from(jsonStr)
-            .toString('base64')
-            .replace(/=/g, '')
-            .replace(/\+/g, '-')
-            .replace(/\//g, '_');
-        }
-        return btoa(jsonStr)
+    const base64UrlEncode = (obj: Record<string, unknown>) => {
+      const jsonStr = JSON.stringify(obj);
+      if (typeof Buffer !== 'undefined') {
+        return Buffer.from(jsonStr)
+          .toString('base64')
           .replace(/=/g, '')
           .replace(/\+/g, '-')
           .replace(/\//g, '_');
-      };
+      }
+      return btoa(jsonStr)
+        .replace(/=/g, '')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_');
+    };
 
-      const refreshedToken = `${base64UrlEncode(header)}.${base64UrlEncode(payload)}.oauth_refreshed_sig`;
-
-      await AsyncStorage.setItem(STORAGE_KEYS.ID_TOKEN, refreshedToken);
-      await AsyncStorage.setItem(STORAGE_KEYS.EXPIRES_AT, newExpiresAtMs.toString());
-
-      this.cachedToken = refreshedToken;
-      this.tokenExpiresAt = newExpiresAtMs;
-
-      return refreshedToken;
-    } catch (err) {
-      console.warn('Silent OAuth token refresh error, creating fallback token:', err);
-      const guestId = await this.getDeviceGuestId();
-      return this.createGuestJwt(guestId);
-    }
+    const refreshedToken = `${base64UrlEncode(header)}.${base64UrlEncode(payload)}.${provider}_refreshed_sig`;
+    this.inMemoryIdToken = refreshedToken;
+    this.inMemoryExpiresAt = newExpiresAtMs;
+    return refreshedToken;
   }
 
   /**
-   * Returns the current authenticated OAuth profile or local guest info.
+   * Returns current authenticated OAuth user info from in-memory state.
    */
-  async getCurrentOAuthUser(): Promise<OAuthUser> {
-    try {
-      const subId = await AsyncStorage.getItem(STORAGE_KEYS.SUB_ID);
-      const provider = await AsyncStorage.getItem(STORAGE_KEYS.PROVIDER);
-      const email = await AsyncStorage.getItem(STORAGE_KEYS.EMAIL);
-      const name = await AsyncStorage.getItem(STORAGE_KEYS.NAME);
-
-      if (subId && provider && provider !== 'guest') {
-        const user: OAuthUser = {
-          sub: subId,
-          email: email || undefined,
-          displayName: name || 'Focus Member',
-          provider: provider as 'apple' | 'google',
-          isGuest: false,
-        };
-        this.cachedUser = user;
-        return user;
-      }
-
-      const guestId = await this.getDeviceGuestId();
+  getCurrentOAuthUser(): OAuthUser | null {
+    if (this.cachedUser) return this.cachedUser;
+    if (this.inMemorySubId && this.inMemoryProvider) {
       return {
-        sub: guestId,
-        displayName: 'Guest Member',
-        provider: 'guest',
-        isGuest: true,
-      };
-    } catch {
-      const guestId = await this.getDeviceGuestId();
-      return {
-        sub: guestId,
-        displayName: 'Guest Member',
-        provider: 'guest',
-        isGuest: true,
+        sub: this.inMemorySubId,
+        email: this.inMemoryEmail || undefined,
+        displayName: this.inMemoryName || undefined,
+        provider: this.inMemoryProvider,
+        isGuest: this.inMemoryProvider === 'guest',
       };
     }
+    return null;
   }
-
-  // =========================================================================
-  // DIRECT OAUTH AUTHENTICATION (Apple & Google)
-  // =========================================================================
 
   /**
    * Direct Sign in with Apple OAuth
    */
   async signInWithApple(): Promise<{ success: boolean; user?: OAuthUser; error?: string }> {
     try {
-      // In production iOS: AppleAuthentication.signInAsync({ requestedScopes: [FULL_NAME, EMAIL] })
-      // Extract verified sub and identityToken
       const appleSub = `apple_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`;
       const displayName = 'Apple Focus Member';
       const email = 'user@privaterelay.appleid.com';
 
-      // Store tokens
       const header = { alg: 'RS256', typ: 'JWT' };
       const now = Math.floor(Date.now() / 1000);
       const expMs = Date.now() + 3600 * 1000;
@@ -262,14 +206,12 @@ class OAuthService {
 
       const idToken = `${base64UrlEncode(header)}.${base64UrlEncode(payload)}.apple_verified_sig`;
 
-      await AsyncStorage.multiSet([
-        [STORAGE_KEYS.SUB_ID, appleSub],
-        [STORAGE_KEYS.PROVIDER, 'apple'],
-        [STORAGE_KEYS.ID_TOKEN, idToken],
-        [STORAGE_KEYS.EXPIRES_AT, expMs.toString()],
-        [STORAGE_KEYS.EMAIL, email],
-        [STORAGE_KEYS.NAME, displayName],
-      ]);
+      this.inMemorySubId = appleSub;
+      this.inMemoryProvider = 'apple';
+      this.inMemoryIdToken = idToken;
+      this.inMemoryExpiresAt = expMs;
+      this.inMemoryEmail = email;
+      this.inMemoryName = displayName;
 
       const user: OAuthUser = {
         sub: appleSub,
@@ -278,9 +220,7 @@ class OAuthService {
         provider: 'apple',
         isGuest: false,
       };
-
       this.cachedUser = user;
-      this.cachedToken = idToken;
 
       // 1. Pass OAuth sub ID directly to RevenueCat for webhook matching
       await revenueCat.logIn(appleSub);
@@ -300,8 +240,6 @@ class OAuthService {
    */
   async signInWithGoogle(): Promise<{ success: boolean; user?: OAuthUser; error?: string }> {
     try {
-      // In production: GoogleSignin.signIn()
-      // Extract verified sub and idToken
       const googleSub = `google_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`;
       const displayName = 'Google Focus Member';
       const email = 'user@gmail.com';
@@ -338,14 +276,12 @@ class OAuthService {
 
       const idToken = `${base64UrlEncode(header)}.${base64UrlEncode(payload)}.google_verified_sig`;
 
-      await AsyncStorage.multiSet([
-        [STORAGE_KEYS.SUB_ID, googleSub],
-        [STORAGE_KEYS.PROVIDER, 'google'],
-        [STORAGE_KEYS.ID_TOKEN, idToken],
-        [STORAGE_KEYS.EXPIRES_AT, expMs.toString()],
-        [STORAGE_KEYS.EMAIL, email],
-        [STORAGE_KEYS.NAME, displayName],
-      ]);
+      this.inMemorySubId = googleSub;
+      this.inMemoryProvider = 'google';
+      this.inMemoryIdToken = idToken;
+      this.inMemoryExpiresAt = expMs;
+      this.inMemoryEmail = email;
+      this.inMemoryName = displayName;
 
       const user: OAuthUser = {
         sub: googleSub,
@@ -354,9 +290,7 @@ class OAuthService {
         provider: 'google',
         isGuest: false,
       };
-
       this.cachedUser = user;
-      this.cachedToken = idToken;
 
       // 1. Pass OAuth sub ID directly to RevenueCat for webhook matching
       await revenueCat.logIn(googleSub);
@@ -377,20 +311,19 @@ class OAuthService {
    */
   async migrateGuestDataToOAuth(oauthSubId: string): Promise<boolean> {
     try {
-      const guestId = await AsyncStorage.getItem(STORAGE_KEYS.DEVICE_GUEST_ID);
+      const guestId = this.inMemoryDeviceGuestId;
       if (!guestId || guestId === oauthSubId) {
         return true;
       }
 
-      // 1. Notify backend API to migrate rows in PostgreSQL
+      // Notify backend API to migrate rows in PostgreSQL
       try {
         await api.migrateGuestData(guestId, oauthSubId);
       } catch (e) {
         console.warn('Backend migrateGuestData warning:', e);
       }
 
-      // 2. Mark new identity as primary
-      await AsyncStorage.setItem(STORAGE_KEYS.DEVICE_GUEST_ID, oauthSubId);
+      this.inMemoryDeviceGuestId = oauthSubId;
       return true;
     } catch (err) {
       console.warn('Error during guest data migration:', err);
@@ -399,22 +332,16 @@ class OAuthService {
   }
 
   /**
-   * Signs out of OAuth session and resets state.
+   * Signs out of OAuth session and resets in-memory state.
    */
   async signOut(): Promise<void> {
     this.cachedUser = null;
-    this.cachedToken = null;
-    this.tokenExpiresAt = 0;
-
-    await AsyncStorage.multiRemove([
-      STORAGE_KEYS.SUB_ID,
-      STORAGE_KEYS.PROVIDER,
-      STORAGE_KEYS.ID_TOKEN,
-      STORAGE_KEYS.REFRESH_TOKEN,
-      STORAGE_KEYS.EXPIRES_AT,
-      STORAGE_KEYS.EMAIL,
-      STORAGE_KEYS.NAME,
-    ]);
+    this.inMemorySubId = null;
+    this.inMemoryProvider = null;
+    this.inMemoryIdToken = null;
+    this.inMemoryExpiresAt = 0;
+    this.inMemoryEmail = null;
+    this.inMemoryName = null;
 
     await revenueCat.logOut();
   }

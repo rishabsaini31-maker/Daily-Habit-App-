@@ -1,10 +1,7 @@
 import { User, Session } from '@supabase/supabase-js';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import supabase from './client';
 import { api } from '../api';
 import revenueCat from '../revenuecat/RevenueCatService';
-
-const ANONYMOUS_FLAG_KEY = '@focus_user_is_anonymous';
 
 export interface UserProfile {
   id: string;
@@ -20,6 +17,7 @@ export interface UserProfile {
 }
 
 class AuthService {
+  private isAnonymousInMemory: boolean = true;
   /**
    * Initializes auth on app launch:
    * If no existing session exists, seamlessly creates an anonymous user
@@ -67,18 +65,18 @@ class AuthService {
       const { data, error } = await supabase.auth.signInAnonymously();
       if (error) {
         console.warn('Supabase signInAnonymously fallback to guest:', error.message);
-        await AsyncStorage.setItem(ANONYMOUS_FLAG_KEY, 'true');
+        this.isAnonymousInMemory = true;
         return { user: null, session: null };
       }
 
-      await AsyncStorage.setItem(ANONYMOUS_FLAG_KEY, 'true');
+      this.isAnonymousInMemory = true;
       if (data.user) {
         revenueCat.logIn(data.user.id).catch(() => {});
       }
       return { user: data.user, session: data.session };
     } catch (err) {
       console.warn('Anonymous sign-in exception:', err);
-      await AsyncStorage.setItem(ANONYMOUS_FLAG_KEY, 'true');
+      this.isAnonymousInMemory = true;
       return { user: null, session: null };
     }
   }
@@ -87,8 +85,7 @@ class AuthService {
    * Checks whether the current user is still an anonymous guest
    */
   async isAnonymous(): Promise<boolean> {
-    const isAnonFlag = await AsyncStorage.getItem(ANONYMOUS_FLAG_KEY);
-    if (isAnonFlag === 'true') return true;
+    if (this.isAnonymousInMemory) return true;
 
     try {
       const { data } = await supabase.auth.getUser();
@@ -107,7 +104,7 @@ class AuthService {
 
       return false;
     } catch {
-      return isAnonFlag === 'true';
+      return this.isAnonymousInMemory;
     }
   }
 
@@ -131,7 +128,7 @@ class AuthService {
         console.warn('Supabase linkIdentity(apple) dev fallback:', error.message);
       }
 
-      await AsyncStorage.removeItem(ANONYMOUS_FLAG_KEY);
+      this.isAnonymousInMemory = false;
       const user = (await this.getCurrentUser()) || data?.user;
 
       if (user) {
@@ -160,7 +157,7 @@ class AuthService {
         console.warn('Supabase linkIdentity(google) dev fallback:', error.message);
       }
 
-      await AsyncStorage.removeItem(ANONYMOUS_FLAG_KEY);
+      this.isAnonymousInMemory = false;
       const user = (await this.getCurrentUser()) || data?.user;
 
       if (user) {
@@ -220,14 +217,14 @@ class AuthService {
       if (error) {
         // In dev sandbox, accept 123456 or 778899 master codes
         if (trimmedOtp === '123456' || trimmedOtp === '778899') {
-          await AsyncStorage.removeItem(ANONYMOUS_FLAG_KEY);
+          this.isAnonymousInMemory = false;
           const currentUser = await this.getCurrentUser();
           return { success: true, user: currentUser || undefined };
         }
         return { success: false, error: error.message };
       }
 
-      await AsyncStorage.removeItem(ANONYMOUS_FLAG_KEY);
+      this.isAnonymousInMemory = false;
       const user = data.user || (await this.getCurrentUser());
 
       if (user) {
@@ -260,7 +257,7 @@ class AuthService {
         console.warn('Apple signInWithIdToken dev fallback:', error.message);
       }
 
-      await AsyncStorage.removeItem(ANONYMOUS_FLAG_KEY);
+      this.isAnonymousInMemory = false;
       const user = data?.user || (await this.getCurrentUser());
 
       if (user) {
@@ -289,7 +286,7 @@ class AuthService {
         console.warn('Google signInWithIdToken dev fallback:', error.message);
       }
 
-      await AsyncStorage.removeItem(ANONYMOUS_FLAG_KEY);
+      this.isAnonymousInMemory = false;
       const user = data?.user || (await this.getCurrentUser());
 
       if (user) {
@@ -339,14 +336,14 @@ class AuthService {
 
       if (error) {
         if (trimmedOtp === '123456' || trimmedOtp === '778899') {
-          await AsyncStorage.removeItem(ANONYMOUS_FLAG_KEY);
+          this.isAnonymousInMemory = false;
           const currentUser = await this.getCurrentUser();
           return { success: true, user: currentUser || undefined };
         }
         return { success: false, error: error.message };
       }
 
-      await AsyncStorage.removeItem(ANONYMOUS_FLAG_KEY);
+      this.isAnonymousInMemory = false;
       const user = data.user || (await this.getCurrentUser());
 
       if (user) {
@@ -376,7 +373,7 @@ class AuthService {
         // Also verify with backend API
         try {
           const apiRes = await api.login(trimmedEmail, password);
-          await AsyncStorage.removeItem(ANONYMOUS_FLAG_KEY);
+          this.isAnonymousInMemory = false;
           if (apiRes.user) {
             await revenueCat.logIn(apiRes.user.id);
             await revenueCat.restorePurchases();
@@ -387,7 +384,7 @@ class AuthService {
         }
       }
 
-      await AsyncStorage.removeItem(ANONYMOUS_FLAG_KEY);
+      this.isAnonymousInMemory = false;
       if (data.user) {
         await revenueCat.logIn(data.user.id);
         await revenueCat.restorePurchases();
@@ -407,7 +404,7 @@ class AuthService {
   /**
    * Permanently deletes user account from Supabase Auth & PostgreSQL, cascading
    * deletion to profiles, focus_sessions, schedules, and metrics.
-   * Completely wipes all local caches and logs out of RevenueCat.
+   * Completely wipes all in-memory caches and logs out of RevenueCat.
    */
   async deleteAccount(): Promise<{ success: boolean; error?: string }> {
     try {
@@ -436,23 +433,7 @@ class AuthService {
       // 4. Sign out of Supabase Auth
       await supabase.auth.signOut().catch(() => {});
 
-      // 5. Wipe all local storage credentials and onboarding flags
-      const keysToClear = [
-        ANONYMOUS_FLAG_KEY,
-        '@focus_profile_cache',
-        '@focus_active_session',
-        '@focus_today_metrics',
-        '@focus_schedules',
-        '@focus_blocked_targets',
-        '@onboarding_completed',
-        '@onboarding_selected_apps',
-        '@onboarding_screen_hours',
-        '@revenuecat_pro_entitlement_override',
-        '@habit_tracker_token',
-        '@habit_tracker_user',
-      ];
-      await AsyncStorage.multiRemove(keysToClear).catch(() => {});
-
+      this.isAnonymousInMemory = true;
       return { success: true };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -463,7 +444,7 @@ class AuthService {
   async signOut(): Promise<void> {
     await revenueCat.logOut();
     await supabase.auth.signOut();
-    await AsyncStorage.removeItem(ANONYMOUS_FLAG_KEY);
+    this.isAnonymousInMemory = true;
   }
 
   onAuthStateChange(callback: (user: User | null) => void) {

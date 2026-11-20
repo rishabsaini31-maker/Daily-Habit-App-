@@ -174,7 +174,7 @@ export const ProfileScreen: React.FC = () => {
               <Text style={styles.syncStatusSubtitle}>
                 {offlineQueue.length > 0
                   ? 'Check-ins will automatically dispatch when network restores.'
-                  : 'AsyncStorage outbox is currently clear.'}
+                  : 'Supabase Realtime Cloud Sync is active.'}
               </Text>
             </View>
           </View>
@@ -194,7 +194,7 @@ export const ProfileScreen: React.FC = () => {
               ) : (
                 <>
                   <RefreshCw size={15} color="#ffffff" />
-                  <Text style={styles.syncBtnText}>Sync Outbox Now</Text>
+                  <Text style={styles.syncBtnText}>Sync Cloud Now</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -219,7 +219,7 @@ export const ProfileScreen: React.FC = () => {
         <View style={styles.specsCard}>
           <View style={styles.specRow}>
             <Text style={styles.specKey}>Client Framework</Text>
-            <Text style={styles.specVal}>React Native (Expo 51 / TS)</Text>
+            <Text style={styles.specVal}>React Native (Expo 58 / TS)</Text>
           </View>
           <View style={styles.specRow}>
             <Text style={styles.specKey}>Target Architecture</Text>
@@ -230,8 +230,8 @@ export const ProfileScreen: React.FC = () => {
             <Text style={styles.specVal}>WCAG AA (Touch min 44px)</Text>
           </View>
           <View style={styles.specRow}>
-            <Text style={styles.specKey}>Offline Resilience</Text>
-            <Text style={styles.specVal}>AsyncStorage Outbox</Text>
+            <Text style={styles.specKey}>Storage Engine</Text>
+            <Text style={styles.specVal}>Supabase PostgreSQL (In-Memory)</Text>
           </View>
         </View>
 

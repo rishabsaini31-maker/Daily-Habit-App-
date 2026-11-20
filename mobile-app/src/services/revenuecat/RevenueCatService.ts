@@ -1,10 +1,8 @@
 import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Purchases, { CustomerInfo, PurchasesPackage } from 'react-native-purchases';
 import syncService from '../sync/SyncService';
 import { api } from '../api';
 
-const STORAGE_KEY_PRO_OVERRIDE = '@revenuecat_pro_entitlement_override';
 const ENTITLEMENT_ID = 'pro_access';
 
 export interface SubscriptionOffering {
@@ -24,11 +22,17 @@ export type ProFeature =
   | 'step_gated_unlock' // Physical activity unlocks
   | 'unlimited_schedules'; // Multiple smart schedules
 
+/**
+ * Pure In-Memory RevenueCat Service:
+ * - 0% local database / 0% AsyncStorage / 0% SQLite
+ * - Pro entitlements synchronized directly to Supabase profiles
+ */
 class RevenueCatService {
   private isConfigured: boolean = false;
   private currentUserId: string | null = null;
   private isProCached: boolean = false;
   private cachedPackages: PurchasesPackage[] = [];
+  private inMemoryProOverride: boolean = false;
 
   /**
    * Initializes RevenueCat with platform-specific API keys and listens for CustomerInfo updates
@@ -56,7 +60,6 @@ class RevenueCatService {
         this.isConfigured = true;
       }
     } catch (e) {
-      // In Expo Go or non-native sandbox, continue gracefully with local fallback
       console.warn('RevenueCat native configuration warning:', e);
     }
 
@@ -85,7 +88,7 @@ class RevenueCatService {
   async logOut(): Promise<void> {
     this.currentUserId = null;
     this.isProCached = false;
-    await AsyncStorage.removeItem(STORAGE_KEY_PRO_OVERRIDE);
+    this.inMemoryProOverride = false;
     if (this.isConfigured && Purchases && typeof Purchases.logOut === 'function') {
       try {
         await Purchases.logOut();
@@ -103,7 +106,7 @@ class RevenueCatService {
       const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
       this.isProCached = isPro;
 
-      // Sync entitlement directly into Supabase profiles & local-first cache
+      // Sync entitlement directly into Supabase profiles
       await syncService.updateProfile({
         is_pro: isPro,
       });
@@ -138,7 +141,6 @@ class RevenueCatService {
       }
     }
 
-    // Default Offerings fallback
     return [
       {
         id: 'annual_4999_trial',
@@ -157,13 +159,12 @@ class RevenueCatService {
   }
 
   /**
-   * Checks pro entitlement status across local override, Supabase profile, and RevenueCat SDK
+   * Checks pro entitlement status across in-memory override, Supabase profile, and RevenueCat SDK
    */
   async checkProEntitlement(): Promise<boolean> {
     try {
-      // 1. Check local test override
-      const localOverride = await AsyncStorage.getItem(STORAGE_KEY_PRO_OVERRIDE);
-      if (localOverride === 'true') {
+      // 1. Check in-memory test override
+      if (this.inMemoryProOverride) {
         this.isProCached = true;
         return true;
       }
@@ -179,7 +180,7 @@ class RevenueCatService {
             return true;
           }
         } catch {
-          // fallback to cached profile
+          // fallback to profile
         }
       }
 
@@ -191,10 +192,10 @@ class RevenueCatService {
           return this.isProCached;
         }
       } catch {
-        // fallback to cached profile
+        // fallback to profile
       }
 
-      // 4. Check cached profile
+      // 4. Check Supabase profile directly
       const profile = await syncService.getProfile();
       this.isProCached = Boolean(profile.is_pro);
       return this.isProCached;
@@ -216,7 +217,7 @@ class RevenueCatService {
           const { customerInfo } = await Purchases.purchasePackage(targetPkg);
           const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
           if (isPro) {
-            await AsyncStorage.setItem(STORAGE_KEY_PRO_OVERRIDE, 'true');
+            this.inMemoryProOverride = true;
             this.isProCached = true;
             await syncService.updateProfile({ is_pro: true });
             return { success: true, isPro: true };
@@ -224,8 +225,8 @@ class RevenueCatService {
         }
       }
 
-      // Sandbox / Simulator fallback flow
-      await AsyncStorage.setItem(STORAGE_KEY_PRO_OVERRIDE, 'true');
+      // In-Memory test fallback flow
+      this.inMemoryProOverride = true;
       this.isProCached = true;
 
       await syncService.updateProfile({
@@ -248,7 +249,7 @@ class RevenueCatService {
         const customerInfo = await Purchases.restorePurchases();
         const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
         if (isPro) {
-          await AsyncStorage.setItem(STORAGE_KEY_PRO_OVERRIDE, 'true');
+          this.inMemoryProOverride = true;
           this.isProCached = true;
           await syncService.updateProfile({ is_pro: true });
           return { success: true, isPro: true };
@@ -267,8 +268,7 @@ class RevenueCatService {
   }
 
   /**
-   * Centralized Feature Gating Check:
-   * Pro Features: Deep Focus, Anti-Uninstall Guard, Surgical Reels, Geofencing, Step Gating, Unlimited Schedules
+   * Centralized Feature Gating Check
    */
   canAccessFeature(feature: ProFeature, isProUser: boolean): boolean {
     if (isProUser) return true;
