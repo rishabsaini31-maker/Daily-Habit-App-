@@ -4,27 +4,43 @@ module.exports = {
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/**/*.{js,ts,jsx,tsx,mdx}",
+    "./services/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        brand: {
-          50: '#f0fdf4',
-          100: '#dcfce7',
-          500: '#22c55e',
-          600: '#16a34a',
-          700: '#15803d',
-          800: '#166534',
-          900: '#14532d',
+        obsidian: {
+          DEFAULT: '#08090D',
+          bg: '#08090D',
+          card: '#12141D',
+          surface: '#161925',
+          border: '#1E2230',
+        },
+        cyan: {
+          accent: '#38BDF8',
+          glow: 'rgba(56, 189, 248, 0.15)',
+        },
+        emerald: {
+          accent: '#10B981',
+          glow: 'rgba(16, 185, 129, 0.15)',
+        },
+        muted: {
+          DEFAULT: '#8A94A6',
+          dark: '#586274',
         },
         slate: {
           850: '#151f32',
-          950: '#0a0f1d',
+          900: '#12141D',
+          950: '#08090D',
         }
       },
+      borderRadius: {
+        '2xl': '16px',
+        '3xl': '20px',
+      },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
       }
     },

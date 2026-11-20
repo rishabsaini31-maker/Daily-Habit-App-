@@ -1,75 +1,82 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { usePathname } from 'next/navigation';
-import { Globe, Clock, RefreshCw } from 'lucide-react';
+import { Shield, Sparkles, RefreshCw, Zap } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
-export const Navbar: React.FC = () => {
+interface NavbarProps {
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
+}
+
+export const Navbar: React.FC<NavbarProps> = ({ onRefresh, isRefreshing = false }) => {
   const pathname = usePathname();
-  const [utcTime, setUtcTime] = useState<string>('');
+  const { user } = useAuth();
 
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      setUtcTime(now.toUTCString().slice(17, 25) + ' UTC');
-    };
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const pageTitles: Record<string, { title: string; subtitle: string }> = {
-    '/dashboard': {
-      title: 'Executive KPI Dashboard',
-      subtitle: 'Real-time overview of adoption, engagement, and completion velocity',
-    },
-    '/users': {
-      title: 'User Moderation & Management',
-      subtitle: 'Inspect platform accounts, review activity, and enforce moderation policies',
-    },
-    '/templates': {
-      title: 'Curated Habit Templates',
-      subtitle: 'Manage global habit templates catalog available for user discovery',
-    },
-    '/audit-logs': {
-      title: 'Security & Audit Trail',
-      subtitle: 'Immutable record of all administrative actions and security events',
-    },
+  const getPageInfo = () => {
+    switch (pathname) {
+      case '/dashboard':
+        return {
+          title: 'Executive Mission Control',
+          subtitle: 'Live global KPIs, distraction analytics, and platform health',
+        };
+      case '/users':
+        return {
+          title: 'Users & Subscriptions Manager',
+          subtitle: 'Moderate profiles, grant VIP Pro access, adjust Gems, and review active sessions',
+        };
+      case '/remote-config':
+        return {
+          title: 'OTA Remote Config & Feature Flags',
+          subtitle: 'Push dynamic Android Accessibility node selectors and toggle global flags in realtime',
+        };
+      case '/logs':
+        return {
+          title: 'Webhook & Audit Trail',
+          subtitle: 'Inspect server-to-server RevenueCat purchase events and Emergency Unlock audit codes',
+        };
+      default:
+        return {
+          title: 'Admin Platform Portal',
+          subtitle: 'Obsidian luxury dark-mode operations console',
+        };
+    }
   };
 
-  const currentMeta = pageTitles[pathname] || {
-    title: 'Platform Administration',
-    subtitle: 'Daily Habit Platform Enterprise Console',
-  };
+  const { title, subtitle } = getPageInfo();
 
   return (
-    <header className="h-16 bg-slate-900/60 backdrop-blur-md border-b border-slate-800 px-6 flex items-center justify-between sticky top-0 z-30">
+    <header className="h-20 bg-[#08090D] border-b border-[#1E2230] px-8 flex items-center justify-between sticky top-0 z-20 backdrop-blur-md bg-opacity-90">
       <div>
-        <h2 className="text-sm font-bold text-white tracking-wide">{currentMeta.title}</h2>
-        <p className="text-[11px] text-slate-400">{currentMeta.subtitle}</p>
+        <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+          {title}
+          <span className="w-1.5 h-1.5 rounded-full bg-[#38BDF8]" />
+        </h2>
+        <p className="text-xs text-[#8A94A6] mt-0.5">{subtitle}</p>
       </div>
 
       <div className="flex items-center gap-3">
-        {/* Environment Status Badge */}
-        <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-xs">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span className="text-[11px] font-mono text-slate-300">API v1 Connected</span>
+        {onRefresh && (
+          <button
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#12141D] border border-[#1E2230] text-xs font-medium text-[#8A94A6] hover:text-white hover:border-[#38BDF8]/40 transition-all shadow-sm"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-[#38BDF8]' : ''}`} />
+            Refresh
+          </button>
+        )}
+
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#12141D] border border-[#1E2230]">
+          <Zap className="w-3.5 h-3.5 text-[#10B981]" />
+          <span className="text-xs font-mono font-medium text-white">Production V2</span>
         </div>
 
-        {/* UTC Clock */}
-        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-[11px] font-mono text-slate-400">
-          <Clock className="w-3.5 h-3.5 text-slate-400" />
-          <span>{utcTime || 'Loading...'}</span>
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/10 to-emerald-500/10 border border-[#38BDF8]/20">
+          <Shield className="w-3.5 h-3.5 text-[#38BDF8]" />
+          <span className="text-xs font-semibold text-white">{user?.role === 'super_admin' ? 'Super Admin' : 'Support'}</span>
         </div>
-
-        {/* Reload button */}
-        <button
-          onClick={() => window.location.reload()}
-          title="Refresh view data"
-          className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-        </button>
       </div>
     </header>
   );

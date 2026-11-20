@@ -1,279 +1,271 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { api, AdminDashboardData } from '../../services/api';
-import { StatCard } from '../../components/StatCard';
-import { TrendChart } from '../../components/TrendChart';
+import { AdminShell } from '../../components/AdminShell';
+import { AdminService, DashboardStats } from '../../services/admin-service';
 import {
   Users,
+  CreditCard,
+  Clock,
+  ShieldAlert,
+  ArrowUpRight,
+  TrendingUp,
+  Smartphone,
+  Sparkles,
+  Zap,
   Activity,
   CheckCircle2,
-  TrendingUp,
-  Flame,
-  Calendar,
-  ShieldCheck,
-  Server,
-  ArrowUpRight,
-  Loader2,
-  Sparkles,
 } from 'lucide-react';
 
 export default function DashboardPage() {
-  const [data, setData] = useState<AdminDashboardData | null>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchStats = async () => {
+    try {
+      const data = await AdminService.getDashboardStats();
+      setStats(data);
+    } catch (err) {
+      console.error('Failed to load dashboard stats:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    let mounted = true;
-    const fetchDashboard = async () => {
-      try {
-        const res = await api.getDashboardMetrics();
-        if (mounted) setData(res);
-      } catch (e) {
-        console.error('Failed to load dashboard metrics:', e);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-    fetchDashboard();
-    return () => {
-      mounted = false;
-    };
+    fetchStats();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="h-96 flex flex-col items-center justify-center">
-        <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
-        <span className="mt-4 text-xs font-mono text-slate-400">Loading KPI telemetry...</span>
-      </div>
-    );
-  }
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchStats();
+  };
 
-  if (!data) {
-    return (
-      <div className="rounded-2xl bg-slate-900 border border-slate-800 p-8 text-center">
-        <p className="text-slate-400 text-sm">Unable to load platform metrics.</p>
-      </div>
-    );
-  }
-
-  const dauMauRatio = ((data.dau / (data.mau || 1)) * 100).toFixed(1);
+  // Find max value for 14-day chart scaling
+  const maxHours = stats ? Math.max(...stats.chart_14d.map((d) => Math.max(d.reclaimed_hours, d.screen_time_hours, 1)), 5) : 5;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
-      {/* Welcome Banner */}
-      <div className="rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900/95 to-slate-850 border border-slate-800/80 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider bg-brand-500/10 text-brand-400 border border-brand-500/20 font-semibold">
-              Live Production Telemetry
-            </span>
-            <span className="text-xs text-slate-400">• Updated every 60s</span>
+    <AdminShell onRefresh={handleRefresh} isRefreshing={refreshing}>
+      <div className="space-y-8">
+        {/* Top Summary Banner */}
+        <div className="p-6 rounded-2xl bg-gradient-to-r from-[#12141D] via-[#161925] to-[#12141D] border border-[#1E2230] relative overflow-hidden">
+          <div className="absolute right-0 top-0 w-96 h-full bg-gradient-to-l from-cyan-500/10 via-transparent to-transparent pointer-events-none" />
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[#10B981] text-xs font-mono mb-2">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>All Native Blocking Systems Operational</span>
+              </div>
+              <h1 className="text-2xl font-bold tracking-tight text-white">
+                Global Screen-Time Reclamation Engine
+              </h1>
+              <p className="text-xs text-[#8A94A6] mt-1 max-w-2xl">
+                Real-time tracking of active Focus sessions, surgical feeds intercepted on Android & iOS,
+                and paid RevenueCat Pro subscriptions across all active mobile installations.
+              </p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <div className="text-xs text-[#8A94A6] font-mono">Realtime Interceptions</div>
+                <div className="text-lg font-bold text-[#38BDF8] flex items-center justify-end gap-1">
+                  <Activity className="w-4 h-4 animate-pulse" />
+                  <span>Live 0ms Shield</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <h1 className="text-xl font-bold text-white tracking-tight">
-            Executive Performance Overview
-          </h1>
-          <p className="text-xs text-slate-400 max-w-xl">
-            Aggregate habit creation, streak completion momentum, and user lifecycle analytics across the global platform.
-          </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <Link
-            href="/templates"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-medium text-xs shadow-lg shadow-brand-600/20 transition-all"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Curate Templates</span>
-          </Link>
-          <Link
-            href="/users"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs border border-slate-700 transition-all"
-          >
-            <Users className="w-3.5 h-3.5" />
-            <span>Moderate Users</span>
-          </Link>
+        {/* 4 Executive KPI Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {/* KPI 1: Total Users */}
+          <div className="p-6 rounded-2xl bg-[#12141D] border border-[#1E2230] relative group hover:border-[#38BDF8]/40 transition-all shadow-lg shadow-black/20">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-semibold text-[#8A94A6]">TOTAL USERS</span>
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-[#38BDF8]">
+                <Users className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="text-3xl font-extrabold text-white tracking-tight">
+              {loading ? '...' : (stats?.total_users ?? 0).toLocaleString()}
+            </div>
+            <div className="flex items-center gap-1.5 mt-2 text-xs text-[#10B981]">
+              <TrendingUp className="w-3.5 h-3.5" />
+              <span>Direct OAuth & Guest Profiles</span>
+            </div>
+          </div>
+
+          {/* KPI 2: Pro Subscribers */}
+          <div className="p-6 rounded-2xl bg-[#12141D] border border-[#1E2230] relative group hover:border-[#10B981]/40 transition-all shadow-lg shadow-black/20">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-semibold text-[#8A94A6]">PRO SUBSCRIBERS</span>
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-[#10B981]">
+                <CreditCard className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-extrabold text-white tracking-tight">
+                {loading ? '...' : stats?.pro_subscribers ?? 0}
+              </span>
+              <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-[#10B981] border border-emerald-500/30">
+                {stats?.conversion_percentage ?? 0}% conv
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 mt-2 text-xs text-[#8A94A6]">
+              <Sparkles className="w-3.5 h-3.5 text-[#38BDF8]" />
+              <span>RevenueCat Entitlements</span>
+            </div>
+          </div>
+
+          {/* KPI 3: Reclaimed Hours */}
+          <div className="p-6 rounded-2xl bg-[#12141D] border border-[#1E2230] relative group hover:border-[#38BDF8]/40 transition-all shadow-lg shadow-black/20">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-semibold text-[#8A94A6]">HOURS RECLAIMED</span>
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-[#38BDF8]">
+                <Clock className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="text-3xl font-extrabold text-white tracking-tight">
+              {loading ? '...' : `${stats?.total_reclaimed_hours ?? 0} hrs`}
+            </div>
+            <div className="flex items-center gap-1.5 mt-2 text-xs text-[#38BDF8]">
+              <ArrowUpRight className="w-3.5 h-3.5" />
+              <span>Screen Time Prevented</span>
+            </div>
+          </div>
+
+          {/* KPI 4: Distractions Blocked Today */}
+          <div className="p-6 rounded-2xl bg-[#12141D] border border-[#1E2230] relative group hover:border-[#38BDF8]/40 transition-all shadow-lg shadow-black/20">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-semibold text-[#8A94A6]">BLOCKED TODAY</span>
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+            </div>
+            <div className="text-3xl font-extrabold text-white tracking-tight">
+              {loading ? '...' : (stats?.distractions_blocked_today ?? 0).toLocaleString()}
+            </div>
+            <div className="flex items-center gap-1.5 mt-2 text-xs text-purple-400">
+              <Zap className="w-3.5 h-3.5" />
+              <span>Shield Modal Interceptions</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Charts and Leaderboard Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* 14-Day Focus & Reclaimed Hours Trend */}
+          <div className="lg:col-span-2 p-6 rounded-2xl bg-[#12141D] border border-[#1E2230] flex flex-col justify-between shadow-xl">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-base font-bold text-white tracking-tight">
+                  14-Day Global Focus & Reclaimed Hours
+                </h3>
+                <p className="text-xs text-[#8A94A6] mt-0.5">
+                  Comparison of total blocked distraction time vs daily screen-time baseline
+                </p>
+              </div>
+              <div className="flex items-center gap-4 text-xs font-mono">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-[#10B981]" />
+                  <span className="text-[#8A94A6]">Reclaimed (hrs)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-sm bg-[#38BDF8]/40" />
+                  <span className="text-[#8A94A6]">Screen Time (hrs)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Interactive SVG Bar/Area Chart */}
+            <div className="h-64 w-full flex items-end gap-2 pt-6 pb-2 px-2 border-b border-[#1E2230]">
+              {(stats?.chart_14d || []).map((day, idx) => {
+                const reclaimedH = Math.max(8, (day.reclaimed_hours / maxHours) * 100);
+                const screenH = Math.max(12, (day.screen_time_hours / maxHours) * 100);
+                const label = day.date.slice(5); // e.g. "11-20"
+                return (
+                  <div
+                    key={day.date || idx}
+                    className="flex-1 flex flex-col items-center gap-1 group relative h-full justify-end"
+                  >
+                    {/* Tooltip on hover */}
+                    <div className="absolute -top-12 opacity-0 group-hover:opacity-100 transition-opacity bg-[#08090D] border border-[#1E2230] p-1.5 rounded-lg text-[10px] font-mono whitespace-nowrap z-20 pointer-events-none shadow-xl">
+                      <p className="text-white font-bold">{day.date}</p>
+                      <p className="text-[#10B981]">Reclaimed: {day.reclaimed_hours}h</p>
+                      <p className="text-[#38BDF8]">Focus: {day.avg_score}/100</p>
+                    </div>
+
+                    <div className="w-full flex items-end justify-center gap-1 h-full">
+                      {/* Reclaimed Bar */}
+                      <div
+                        style={{ height: `${reclaimedH}%` }}
+                        className="w-full max-w-[14px] rounded-t-sm bg-gradient-to-t from-emerald-600 to-[#10B981] group-hover:brightness-125 transition-all shadow-sm shadow-emerald-500/20"
+                      />
+                      {/* Screen Time Bar */}
+                      <div
+                        style={{ height: `${screenH}%` }}
+                        className="w-full max-w-[14px] rounded-t-sm bg-[#38BDF8]/30 group-hover:bg-[#38BDF8]/50 transition-all"
+                      />
+                    </div>
+                    <span className="text-[10px] font-mono text-[#8A94A6] mt-2 truncate">{label}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex items-center justify-between pt-4 text-xs text-[#8A94A6] font-mono">
+              <span>Source: public.daily_metrics</span>
+              <span className="text-[#10B981] font-bold">14-Day Trend Healthy</span>
+            </div>
+          </div>
+
+          {/* Top Blocked Apps Leaderboard */}
+          <div className="p-6 rounded-2xl bg-[#12141D] border border-[#1E2230] flex flex-col justify-between shadow-xl">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-bold text-white tracking-tight">Top Blocked Apps</h3>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-[#38BDF8] border border-cyan-500/20">
+                  Global Rank
+                </span>
+              </div>
+              <p className="text-xs text-[#8A94A6] mb-4">
+                Apps most frequently targeted by users for full shielding or surgical Reels/Shorts blocking.
+              </p>
+
+              <div className="space-y-3">
+                {(stats?.top_blocked_apps || []).map((app, index) => (
+                  <div
+                    key={app.package_or_token || index}
+                    className="p-3 rounded-xl bg-[#08090D] border border-[#1E2230] flex items-center justify-between hover:border-[#38BDF8]/30 transition-all"
+                  >
+                    <div className="flex items-center gap-3 truncate">
+                      <span className="w-6 h-6 rounded-lg bg-[#161925] text-xs font-mono font-bold flex items-center justify-center text-[#8A94A6]">
+                        {index + 1}
+                      </span>
+                      <div className="truncate">
+                        <p className="text-sm font-semibold text-white truncate">{app.display_name}</p>
+                        <p className="text-[10px] text-[#8A94A6] font-mono truncate">{app.package_or_token}</p>
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0 ml-2">
+                      <span className="text-xs font-mono font-bold text-[#10B981]">{app.count} targets</span>
+                      <p className="text-[10px] text-[#8A94A6] capitalize">{app.platform}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-[#1E2230] flex items-center justify-between text-xs text-[#8A94A6]">
+              <span className="flex items-center gap-1.5 font-mono">
+                <Smartphone className="w-3.5 h-3.5 text-[#38BDF8]" />
+                <span>Android & iOS Active Stores</span>
+              </span>
+            </div>
+          </div>
         </div>
       </div>
-
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <StatCard
-          title="Total Users"
-          value={data.totalUsers}
-          change="+8.4%"
-          trend="up"
-          subtitle="All registered accounts"
-          icon={Users}
-          iconColor="text-blue-400"
-          iconBg="bg-blue-500/10"
-        />
-        <StatCard
-          title="DAU"
-          value={data.dau}
-          change="+14.2%"
-          trend="up"
-          subtitle={`${dauMauRatio}% DAU/MAU ratio`}
-          icon={Activity}
-          iconColor="text-emerald-400"
-          iconBg="bg-emerald-500/10"
-        />
-        <StatCard
-          title="MAU"
-          value={data.mau}
-          change="+5.1%"
-          trend="up"
-          subtitle="Active in last 30 days"
-          icon={Calendar}
-          iconColor="text-indigo-400"
-          iconBg="bg-indigo-500/10"
-        />
-        <StatCard
-          title="Active Habits"
-          value={data.totalActiveHabits}
-          change="+11.0%"
-          trend="up"
-          subtitle="Tracked across accounts"
-          icon={Flame}
-          iconColor="text-amber-400"
-          iconBg="bg-amber-500/10"
-        />
-        <StatCard
-          title="Completions Today"
-          value={data.completionsToday}
-          change="+19.8%"
-          trend="up"
-          subtitle="Idempotent check-ins logged"
-          icon={CheckCircle2}
-          iconColor="text-brand-400"
-          iconBg="bg-brand-500/10"
-        />
-        <StatCard
-          title="Completion Rate"
-          value={`${data.platformCompletionRate}%`}
-          change="+2.4%"
-          trend="up"
-          subtitle="Scheduled vs completed"
-          icon={TrendingUp}
-          iconColor="text-purple-400"
-          iconBg="bg-purple-500/10"
-        />
-      </div>
-
-      {/* Interactive Trend Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <TrendChart
-          title="New User Registration Velocity"
-          subtitle="14-day rolling trend of new verified platform registrations"
-          data={data.signupTrends.map((d) => ({ date: d.date, value: d.newUsers }))}
-          color="#3B82F6"
-          valueFormatter={(v) => `${v.toLocaleString()} signups`}
-        />
-        <TrendChart
-          title="Daily Habit Completion Velocity"
-          subtitle="14-day rolling volume of verified habit check-in executions"
-          data={data.completionVelocityTrends.map((d) => ({ date: d.date, value: d.completions }))}
-          color="#22c55e"
-          valueFormatter={(v) => `${v.toLocaleString()} completions`}
-        />
-      </div>
-
-      {/* Operational Health & System Status Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* System Health */}
-        <div className="rounded-xl bg-slate-900/80 border border-slate-800 p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Backend Health & Latency
-            </h3>
-            <Server className="w-4 h-4 text-emerald-400" />
-          </div>
-
-          <div className="space-y-3 pt-1">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400">REST API Gateway (P95)</span>
-              <span className="font-mono text-emerald-400 font-semibold">38ms</span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400">Database Connection Pool</span>
-              <span className="font-mono text-slate-200">ACID SQLite / Postgres</span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400">Streak Engine Determinism</span>
-              <span className="font-mono text-emerald-400 font-semibold">100% Passed</span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400">Platform SLA Availability</span>
-              <span className="font-mono text-emerald-400 font-semibold">99.98%</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Audit Sentinel */}
-        <div className="rounded-xl bg-slate-900/80 border border-slate-800 p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Security Sentinel
-            </h3>
-            <ShieldCheck className="w-4 h-4 text-blue-400" />
-          </div>
-
-          <div className="space-y-3 pt-1">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400">Immutable Audit Trail</span>
-              <span className="font-mono text-blue-400 font-semibold">Append-Only</span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400">RBAC Role Enforcement</span>
-              <span className="font-mono text-slate-200">USER vs ADMIN</span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400">Rate Limiter Defense</span>
-              <span className="font-mono text-emerald-400 font-semibold">Active (0 blocks)</span>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400">JWT Token Expiry Window</span>
-              <span className="font-mono text-slate-200">60 Minutes</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Link Navigation */}
-        <div className="rounded-xl bg-slate-900/80 border border-slate-800 p-5 space-y-3 flex flex-col justify-between">
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
-              Administrative Workflows
-            </h3>
-            <div className="space-y-2">
-              <Link
-                href="/users"
-                className="flex items-center justify-between p-2 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-xs text-slate-300 hover:text-white transition-colors"
-              >
-                <span>Review Flagged / Suspended Users</span>
-                <ArrowUpRight className="w-3.5 h-3.5 text-slate-500" />
-              </Link>
-              <Link
-                href="/templates"
-                className="flex items-center justify-between p-2 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-xs text-slate-300 hover:text-white transition-colors"
-              >
-                <span>Publish New Curated Habit Template</span>
-                <ArrowUpRight className="w-3.5 h-3.5 text-slate-500" />
-              </Link>
-              <Link
-                href="/audit-logs"
-                className="flex items-center justify-between p-2 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-xs text-slate-300 hover:text-white transition-colors"
-              >
-                <span>Inspect Audit Log Diffs</span>
-                <ArrowUpRight className="w-3.5 h-3.5 text-slate-500" />
-              </Link>
-            </div>
-          </div>
-          <div className="pt-2 text-[11px] text-slate-500 font-mono">
-            Daily Habit Platform Admin Build v1.0.0
-          </div>
-        </div>
-      </div>
-    </div>
+    </AdminShell>
   );
 }

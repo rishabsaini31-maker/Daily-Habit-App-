@@ -254,6 +254,12 @@ class FocusBlockerModule(private val reactContext: ReactApplicationContext) :
         promise.resolve(enabled)
     }
 
+    @ReactMethod
+    fun updateSurgicalSelectors(selectorsJson: String, promise: Promise) {
+        FocusAccessibilityService.updateDynamicSelectors(selectorsJson)
+        promise.resolve(true)
+    }
+
     // =========================================================================
     // 4. BACKGROUND SCHEDULE ALARMS (AlarmManager)
     // =========================================================================

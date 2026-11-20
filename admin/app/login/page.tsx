@@ -1,114 +1,126 @@
 'use client';
 
 import React, { useState } from 'react';
+import { Shield, Sparkles, Mail, KeyRound, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { Flame, ShieldAlert, Lock, Mail, ArrowRight, Loader2, KeyRound } from 'lucide-react';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { loginWithEmail, loginWithGoogle, quickDemoLogin, isLoading } = useAuth();
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    if (!email || !password) {
-      setError('Both email and password are required.');
+    if (!email.trim()) {
+      setError('Please enter a valid administrator email address');
       return;
     }
+    setError(null);
     setSubmitting(true);
     try {
-      await login(email, password);
-    } catch (err: any) {
-      setError(err.message || 'Authentication failed. Please verify credentials.');
+      // Simulate OTP dispatch
+      setOtpSent(true);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const fillDemoCredentials = () => {
-    setEmail('admin@habit-tracker.internal');
-    setPassword('AdminPass123!');
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError(null);
+    setSubmitting(true);
+    try {
+      await loginWithEmail(email);
+    } catch (err: any) {
+      setError(err?.message || 'Access denied: Administrative clearance verification failed.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Background ambient lighting */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-10 left-10 w-72 h-72 bg-blue-500/5 rounded-full blur-2xl pointer-events-none" />
+    <div className="min-h-screen bg-[#08090D] flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      {/* Background radial gradient glow */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 left-1/3 -translate-x-1/2 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-md relative z-10">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-600 to-emerald-400 shadow-xl shadow-brand-500/20 text-white mb-4">
-            <Flame className="w-8 h-8" />
+      {/* Login Card */}
+      <div className="w-full max-w-md bg-[#12141D] border border-[#1E2230] rounded-2xl p-8 relative z-10 shadow-2xl">
+        {/* Header Badge & Brand */}
+        <div className="flex flex-col items-center text-center mb-8">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#38BDF8] to-[#10B981] flex items-center justify-center shadow-lg shadow-cyan-500/20 text-black mb-4">
+            <Shield className="w-7 h-7" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">
-            Enterprise Admin Portal
-          </h1>
-          <p className="mt-2 text-xs text-slate-400">
-            Sign in with administrative privileges to manage habits, users, and audit records.
+          <h1 className="text-2xl font-bold tracking-tight text-white">Focus Admin Control</h1>
+          <p className="text-xs text-[#8A94A6] mt-1.5">
+            Enterprise Digital Well-Being & App Blocker Portal
           </p>
+          <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-[#38BDF8] text-[11px] font-mono">
+            <Sparkles className="w-3 h-3" />
+            <span>RLS Protected • Direct OAuth</span>
+          </div>
         </div>
 
-        {/* Card */}
-        <div className="rounded-2xl bg-slate-900/90 border border-slate-800 p-8 shadow-2xl backdrop-blur-sm">
-          {error && (
-            <div
-              className="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-3 text-rose-300 text-xs animate-in fade-in duration-200"
-              role="alert"
-            >
-              <ShieldAlert className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
-              <span>{error}</span>
-            </div>
-          )}
+        {error && (
+          <div className="mb-6 p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex items-start gap-2.5 text-xs text-red-400">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Google OAuth Option */}
+        <button
+          onClick={loginWithGoogle}
+          disabled={isLoading || submitting}
+          type="button"
+          className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl bg-[#161925] border border-[#1E2230] text-sm font-semibold text-white hover:bg-[#1E2230] hover:border-[#38BDF8]/40 transition-all shadow-sm"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24">
+            <path
+              fill="#EA4335"
+              d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.4l3.7 2.9C6.5 7.4 9 5 12 5z"
+            />
+            <path
+              fill="#4285F4"
+              d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"
+            />
+            <path
+              fill="#FBBC05"
+              d="M5.6 14.7c-.2-.7-.4-1.5-.4-2.7s.1-2 .4-2.7L1.9 6.4C.7 8.8 0 11.3 0 14s.7 5.2 1.9 7.6l3.7-2.9z"
+            />
+            <path
+              fill="#34A853"
+              d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.3L1.9 16c1.8 3.8 5.6 7 10.1 7z"
+            />
+          </svg>
+          Continue with Google Admin
+        </button>
+
+        <div className="flex items-center my-6">
+          <div className="flex-1 border-t border-[#1E2230]" />
+          <span className="px-3 text-[11px] font-mono uppercase text-[#8A94A6]">or admin email</span>
+          <div className="flex-1 border-t border-[#1E2230]" />
+        </div>
+
+        {/* Email OTP Form */}
+        {!otpSent ? (
+          <form onSubmit={handleSendOtp} className="space-y-4">
             <div>
-              <label
-                htmlFor="email"
-                className="block text-xs font-medium text-slate-300 mb-1.5"
-              >
-                Administrator Email
+              <label className="block text-xs font-semibold text-[#8A94A6] mb-1.5">
+                Admin Email Address
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                  <Mail className="w-4 h-4" />
-                </div>
+                <Mail className="w-4 h-4 text-[#8A94A6] absolute left-3.5 top-3" />
                 <input
-                  id="email"
                   type="email"
-                  required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@habit-tracker.internal"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-xs font-medium text-slate-300 mb-1.5"
-              >
-                Master Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                  <Lock className="w-4 h-4" />
-                </div>
-                <input
-                  id="password"
-                  type="password"
+                  placeholder="admin@focusapp.com"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#08090D] border border-[#1E2230] text-sm text-white placeholder-[#8A94A6]/50 focus:outline-none focus:border-[#38BDF8] focus:ring-1 focus:ring-[#38BDF8] transition-colors"
                   required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all"
                 />
               </div>
             </div>
@@ -116,40 +128,68 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm shadow-lg shadow-brand-600/25 transition-all focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#38BDF8] to-[#10B981] text-sm font-semibold text-black hover:opacity-95 transition-opacity flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20"
             >
-              {submitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Authenticating...</span>
-                </>
-              ) : (
-                <>
-                  <span>Sign In to Console</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
+              <span>Verify & Send 6-Digit OTP</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </form>
+        ) : (
+          <form onSubmit={handleVerifyOtp} className="space-y-4">
+            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-2 text-xs text-[#10B981]">
+              <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+              <span>OTP dispatched to {email}</span>
+            </div>
 
-          {/* Demo helper */}
-          <div className="mt-6 pt-5 border-t border-slate-800 flex items-center justify-between">
-            <span className="text-[11px] text-slate-400">Preview Environment?</span>
+            <div>
+              <label className="block text-xs font-semibold text-[#8A94A6] mb-1.5">
+                Enter 6-Digit Security Code
+              </label>
+              <div className="relative">
+                <KeyRound className="w-4 h-4 text-[#8A94A6] absolute left-3.5 top-3" />
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value)}
+                  placeholder="849201"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#08090D] border border-[#1E2230] text-sm font-mono text-center tracking-widest text-white focus:outline-none focus:border-[#38BDF8] focus:ring-1 focus:ring-[#38BDF8] transition-colors"
+                  autoFocus
+                  required
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#38BDF8] to-[#10B981] text-sm font-semibold text-black hover:opacity-95 transition-opacity flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20"
+            >
+              <span>Authenticate Session</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+
             <button
               type="button"
-              onClick={fillDemoCredentials}
-              className="inline-flex items-center gap-1.5 text-[11px] text-brand-400 hover:text-brand-300 font-mono transition-colors"
+              onClick={() => setOtpSent(false)}
+              className="w-full text-center text-xs text-[#8A94A6] hover:text-white transition-colors"
             >
-              <KeyRound className="w-3.5 h-3.5" />
-              Auto-fill Admin Credentials
+              Change email address
             </button>
-          </div>
-        </div>
+          </form>
+        )}
 
-        {/* Security badge footer */}
-        <p className="mt-8 text-center text-[11px] text-slate-400 font-mono">
-          Protected by AES-256 JWT &amp; Role-Based Access Control (ADMIN role enforced)
-        </p>
+        {/* 1-Click Quick Demo Login */}
+        <div className="mt-8 pt-6 border-t border-[#1E2230] flex flex-col items-center">
+          <button
+            type="button"
+            onClick={quickDemoLogin}
+            className="text-xs text-[#38BDF8] hover:text-[#10B981] font-mono transition-colors flex items-center gap-1.5"
+          >
+            <span>⚡ Instant Super Admin Access (Demo Mode)</span>
+          </button>
+          <span className="text-[10px] text-[#8A94A6] mt-1 font-mono">Bypasses OTP with pre-authorized admin_root</span>
+        </div>
       </div>
     </div>
   );

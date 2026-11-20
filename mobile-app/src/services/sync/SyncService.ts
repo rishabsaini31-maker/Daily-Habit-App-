@@ -50,6 +50,25 @@ export interface SyncDailyMetric {
   gems_earned: number;
 }
 
+export interface AppRemoteConfig {
+  surgical_selectors: {
+    instagram: string[];
+    youtube: string[];
+  };
+  paywall_config: {
+    yearly_price: string;
+    monthly_price: string;
+    trial_days: number;
+    headline?: string;
+  };
+  feature_flags: {
+    nfc_lock_enabled: boolean;
+    step_unlock_enabled: boolean;
+    friend_lock_enabled: boolean;
+    anti_uninstall_enabled?: boolean;
+  };
+}
+
 /**
  * Pure In-Memory Reactive State Manager with Direct Supabase Persistence & Realtime:
  * - 0% local database / 0% AsyncStorage / 0% SQLite
@@ -65,6 +84,24 @@ class SyncService {
   private inMemoryActiveSession: SyncFocusSession | null = null;
   private inMemoryPastSessions: SyncFocusSession[] = [];
   private inMemoryDailyMetrics: SyncDailyMetric | null = null;
+  private inMemoryRemoteConfig: AppRemoteConfig = {
+    surgical_selectors: {
+      instagram: ['clips_viewer_view_pager', 'reels_tray_container', 'reel_viewer_container'],
+      youtube: ['reel_recycler', 'shorts_shelf'],
+    },
+    paywall_config: {
+      yearly_price: '$49.99',
+      monthly_price: '$8.99',
+      trial_days: 7,
+      headline: 'Unlock Total Digital Freedom',
+    },
+    feature_flags: {
+      nfc_lock_enabled: true,
+      step_unlock_enabled: true,
+      friend_lock_enabled: true,
+      anti_uninstall_enabled: true,
+    },
+  };
 
   private isInitialized: boolean = false;
   private currentUserId: string = '';
@@ -489,6 +526,26 @@ class SyncService {
   // ==========================================
   // IN-MEMORY GETTERS (0ms Response)
   // ==========================================
+  async fetchRemoteConfig(): Promise<AppRemoteConfig> {
+    try {
+      const { data, error } = await supabase.from('app_remote_config').select('key, value');
+      if (!error && data) {
+        data.forEach((row: any) => {
+          if (row.key === 'surgical_selectors') this.inMemoryRemoteConfig.surgical_selectors = row.value;
+          if (row.key === 'paywall_config') this.inMemoryRemoteConfig.paywall_config = row.value;
+          if (row.key === 'feature_flags') this.inMemoryRemoteConfig.feature_flags = row.value;
+        });
+      }
+    } catch (err) {
+      console.warn('SyncService fetchRemoteConfig warning:', err);
+    }
+    return this.inMemoryRemoteConfig;
+  }
+
+  getRemoteConfig(): AppRemoteConfig {
+    return this.inMemoryRemoteConfig;
+  }
+
   async getProfile(): Promise<UserProfile> {
     if (!this.isInitialized || !this.inMemoryProfile) {
       await this.init();

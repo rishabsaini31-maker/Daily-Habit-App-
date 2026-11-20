@@ -32,6 +32,25 @@ class FocusAccessibilityService : AccessibilityService() {
         @Volatile var blockedRules: List<ActiveBlockRule> = emptyList()
         @Volatile var interceptionsCount: Int = 0
 
+        val dynamicInstagramSelectors = mutableListOf("clips_viewer_view_pager", "reel_viewer_container", "reels_tray_container")
+        val dynamicYouTubeSelectors = mutableListOf("reel_recycler", "shorts_container", "shorts_shelf")
+
+        fun updateDynamicSelectors(jsonStr: String) {
+            try {
+                val json = JSONObject(jsonStr)
+                if (json.has("instagram")) {
+                    val arr = json.getJSONArray("instagram")
+                    dynamicInstagramSelectors.clear()
+                    for (i in 0 until arr.length()) dynamicInstagramSelectors.add(arr.getString(i))
+                }
+                if (json.has("youtube")) {
+                    val arr = json.getJSONArray("youtube")
+                    dynamicYouTubeSelectors.clear()
+                    for (i in 0 until arr.length()) dynamicYouTubeSelectors.add(arr.getString(i))
+                }
+            } catch (_: Exception) {}
+        }
+
         fun updateBlockingState(
             active: Boolean,
             rules: List<ActiveBlockRule>,
@@ -124,18 +143,16 @@ class FocusAccessibilityService : AccessibilityService() {
         if (targetRule.isSurgicalOnly) {
             val rootNode = rootInActiveWindow ?: return
 
-            // Instagram Reels: clips_viewer_view_pager or reel tab content description
+            // Instagram Reels: dynamic selectors from remote config or description
             val isInstagramReels = packageName == "com.instagram.android" && (
-                hasNodeWithId(rootNode, "clips_viewer_view_pager") ||
-                hasNodeWithId(rootNode, "reel_viewer_container") ||
+                dynamicInstagramSelectors.any { hasNodeWithId(rootNode, it) } ||
                 inspectNodeHasContentDescription(rootNode, "Reels") ||
                 inspectNodeHasContentDescription(rootNode, "Reel")
             )
 
-            // YouTube Shorts: reel_recycler or shorts_container
+            // YouTube Shorts: dynamic selectors from remote config or description
             val isYouTubeShorts = packageName == "com.google.android.youtube" && (
-                hasNodeWithId(rootNode, "reel_recycler") ||
-                hasNodeWithId(rootNode, "shorts_container") ||
+                dynamicYouTubeSelectors.any { hasNodeWithId(rootNode, it) } ||
                 inspectNodeHasContentDescription(rootNode, "Shorts")
             )
 

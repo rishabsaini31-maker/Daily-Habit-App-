@@ -104,6 +104,27 @@ class NativeBlockerBridge implements INativeBlockerService {
   private inMemoryBlockedCount: number = 48;
   private inMemoryAntiUninstall: boolean = false;
   private inMemoryEmergencyCode: string = '778899';
+  private inMemorySurgicalSelectors: { instagram: string[]; youtube: string[] } = {
+    instagram: ['clips_viewer_view_pager', 'reels_tray_container', 'reel_viewer_container'],
+    youtube: ['reel_recycler', 'shorts_shelf'],
+  };
+
+  setRemoteSurgicalSelectors(selectors: { instagram: string[]; youtube: string[] }) {
+    if (selectors) {
+      this.inMemorySurgicalSelectors = selectors;
+      if (Platform.OS === 'android' && FocusBlockerModule?.updateSurgicalSelectors) {
+        try {
+          FocusBlockerModule.updateSurgicalSelectors(JSON.stringify(selectors));
+        } catch (err) {
+          console.warn('NativeBlockerBridge.updateSurgicalSelectors warning:', err);
+        }
+      }
+    }
+  }
+
+  getSurgicalSelectors() {
+    return this.inMemorySurgicalSelectors;
+  }
 
   getPlatform(): PlatformOSType {
     if (Platform.OS === 'ios') return 'ios';

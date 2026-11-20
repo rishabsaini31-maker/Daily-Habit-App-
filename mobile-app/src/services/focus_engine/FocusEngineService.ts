@@ -58,6 +58,16 @@ class FocusEngineService {
   }
 
   async init() {
+    // Fetch live OTA Remote Config (surgical node selectors & feature flags)
+    try {
+      const config = await syncService.fetchRemoteConfig();
+      if (config?.surgical_selectors) {
+        nativeBlocker.setRemoteSurgicalSelectors(config.surgical_selectors);
+      }
+    } catch (err) {
+      console.warn('FocusEngineService remote config fetch warning:', err);
+    }
+
     await this.refreshState();
     this.startTimerLoop();
 

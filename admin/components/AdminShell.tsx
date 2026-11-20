@@ -2,13 +2,19 @@
 
 import React, { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useAuth } from '../context/AuthContext';
 import { Sidebar } from './Sidebar';
 import { Navbar } from './Navbar';
-import { Loader2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { Shield } from 'lucide-react';
 
-export const AdminShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading, user } = useAuth();
+interface AdminShellProps {
+  children: React.ReactNode;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
+}
+
+export const AdminShell: React.FC<AdminShellProps> = ({ children, onRefresh, isRefreshing }) => {
+  const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -16,15 +22,15 @@ export const AdminShell: React.FC<{ children: React.ReactNode }> = ({ children }
     if (!isLoading && !isAuthenticated && pathname !== '/login') {
       router.push('/login');
     }
-  }, [isLoading, isAuthenticated, pathname, router]);
+  }, [isAuthenticated, isLoading, pathname, router]);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center">
-        <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
-        <p className="mt-4 text-xs font-mono text-slate-400 tracking-wider uppercase">
-          Verifying administrative credentials...
-        </p>
+      <div className="min-h-screen bg-[#08090D] flex flex-col items-center justify-center gap-4">
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#38BDF8] to-[#10B981] flex items-center justify-center animate-pulse shadow-lg shadow-cyan-500/20 text-black">
+          <Shield className="w-6 h-6" />
+        </div>
+        <p className="text-sm font-mono text-[#8A94A6]">Verifying Administrative Security Clearance...</p>
       </div>
     );
   }
@@ -33,17 +39,12 @@ export const AdminShell: React.FC<{ children: React.ReactNode }> = ({ children }
     return null;
   }
 
-  // Login page does not use the admin sidebar/navbar shell
-  if (pathname === '/login') {
-    return <>{children}</>;
-  }
-
   return (
-    <div className="min-h-screen bg-slate-950 flex">
+    <div className="min-h-screen bg-[#08090D] flex">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
-        <Navbar />
-        <main className="flex-1 p-6 lg:p-8 max-w-7xl w-full mx-auto">{children}</main>
+        <Navbar onRefresh={onRefresh} isRefreshing={isRefreshing} />
+        <main className="flex-1 p-8 overflow-y-auto">{children}</main>
       </div>
     </div>
   );

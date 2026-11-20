@@ -1,106 +1,123 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   Users,
-  Layers,
-  ShieldCheck,
+  Sliders,
+  Terminal,
   LogOut,
-  Flame,
+  Shield,
+  ChevronLeft,
   ChevronRight,
+  Database,
+  Radio,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const [collapsed, setCollapsed] = useState(false);
 
   const navItems = [
     {
       name: 'Executive Dashboard',
       href: '/dashboard',
       icon: LayoutDashboard,
-      badge: 'KPI',
+      badge: 'Live',
     },
     {
-      name: 'User Moderation',
+      name: 'Users & Subscriptions',
       href: '/users',
       icon: Users,
     },
     {
-      name: 'Habit Templates',
-      href: '/templates',
-      icon: Layers,
+      name: 'OTA Remote Config',
+      href: '/remote-config',
+      icon: Sliders,
+      badge: 'OTA',
     },
     {
-      name: 'Security & Audit Logs',
-      href: '/audit-logs',
-      icon: ShieldCheck,
-      badge: 'Immutable',
+      name: 'Webhook & System Logs',
+      href: '/logs',
+      icon: Terminal,
     },
   ];
 
   return (
-    <aside className="w-64 flex-shrink-0 bg-slate-900 border-r border-slate-800 flex flex-col justify-between h-screen sticky top-0">
+    <aside
+      className={`h-screen sticky top-0 flex flex-col justify-between transition-all duration-300 z-30 ${
+        collapsed ? 'w-20' : 'w-64'
+      } bg-[#12141D] border-r border-[#1E2230]`}
+    >
       {/* Brand Header */}
       <div>
-        <div className="h-16 flex items-center px-6 border-b border-slate-800 gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 to-emerald-400 flex items-center justify-center shadow-lg shadow-brand-500/20 text-white">
-            <Flame className="w-5 h-5" />
+        <div className="h-16 flex items-center justify-between px-4 border-b border-[#1E2230]">
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#38BDF8] to-[#10B981] flex items-center justify-center flex-shrink-0 shadow-lg shadow-cyan-500/20 text-black">
+              <Shield className="w-5 h-5 font-bold" />
+            </div>
+            {!collapsed && (
+              <div className="truncate">
+                <h1 className="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
+                  Focus Admin
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/20 text-[#10B981] border border-emerald-500/30">
+                    Pro
+                  </span>
+                </h1>
+                <p className="text-[11px] text-[#8A94A6] font-mono">Control Center</p>
+              </div>
+            )}
           </div>
-          <div>
-            <h1 className="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
-              Habit Tracker
-              <span className="text-[10px] uppercase font-semibold tracking-wider px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-400 border border-brand-500/30">
-                Admin
-              </span>
-            </h1>
-            <p className="text-[11px] text-slate-400 font-mono">Platform Portal</p>
-          </div>
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="p-1.5 rounded-lg text-[#8A94A6] hover:text-white hover:bg-[#1E2230] transition-colors"
+            title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+          >
+            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </button>
         </div>
 
         {/* Navigation Section */}
         <div className="px-3 py-4">
-          <div className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase px-3 mb-2 font-mono">
-            Navigation
-          </div>
-          <nav className="space-y-1">
+          {!collapsed && (
+            <div className="text-[10px] font-bold tracking-wider text-[#8A94A6] uppercase px-3 mb-2 font-mono">
+              Management
+            </div>
+          )}
+          <nav className="space-y-1.5">
             {navItems.map((item) => {
-              const Icon = item.icon;
               const isActive = pathname === item.href;
+              const Icon = item.icon;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all group ${
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                     isActive
-                      ? 'bg-brand-500/10 text-brand-400 border border-brand-500/20 font-semibold'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                  }`}
+                      ? 'bg-gradient-to-r from-cyan-500/15 to-emerald-500/10 text-white border border-[#38BDF8]/30 shadow-sm'
+                      : 'text-[#8A94A6] hover:text-white hover:bg-[#161925]'
+                  } ${collapsed ? 'justify-center' : ''}`}
                 >
-                  <div className="flex items-center gap-3">
-                    <Icon
-                      className={`w-4 h-4 transition-colors ${
-                        isActive
-                          ? 'text-brand-400'
-                          : 'text-slate-400 group-hover:text-slate-200'
-                      }`}
-                    />
-                    <span>{item.name}</span>
-                  </div>
-                  {item.badge ? (
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
-                      {item.badge}
-                    </span>
-                  ) : (
-                    <ChevronRight
-                      className={`w-3.5 h-3.5 transition-transform ${
-                        isActive ? 'text-brand-400 translate-x-0.5' : 'text-slate-600 opacity-0 group-hover:opacity-100'
-                      }`}
-                    />
+                  <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-[#38BDF8]' : 'text-[#8A94A6]'}`} />
+                  {!collapsed && (
+                    <div className="flex items-center justify-between flex-1 truncate">
+                      <span className="truncate">{item.name}</span>
+                      {item.badge && (
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold ${
+                            item.badge === 'Live'
+                              ? 'bg-emerald-500/20 text-[#10B981] border border-emerald-500/30'
+                              : 'bg-cyan-500/20 text-[#38BDF8] border border-cyan-500/30'
+                          }`}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </Link>
               );
@@ -109,26 +126,42 @@ export const Sidebar: React.FC = () => {
         </div>
       </div>
 
-      {/* User Session Footer */}
-      <div className="p-3 border-t border-slate-800 bg-slate-950/40">
-        <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-xs text-brand-400 flex-shrink-0">
-              {user?.displayName ? user.displayName.slice(0, 2).toUpperCase() : 'AD'}
+      {/* Footer / Database Status & Admin Profile */}
+      <div className="p-3 border-t border-[#1E2230] space-y-2">
+        {/* DB Status Badge */}
+        {!collapsed ? (
+          <div className="px-3 py-2 rounded-xl bg-[#08090D] border border-[#1E2230] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Database className="w-3.5 h-3.5 text-[#38BDF8]" />
+              <span className="text-xs font-mono text-[#8A94A6]">Supabase DB</span>
             </div>
-            <div className="truncate">
-              <div className="text-xs font-semibold text-white truncate">
-                {user?.displayName || 'Administrator'}
-              </div>
-              <div className="text-[11px] text-slate-400 truncate font-mono">
-                {user?.email || 'admin@example.com'}
-              </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
+              <span className="text-[10px] font-mono text-[#10B981]">ONLINE</span>
             </div>
           </div>
+        ) : (
+          <div className="flex justify-center" title="Supabase DB Online">
+            <Radio className="w-4 h-4 text-[#10B981] animate-pulse" />
+          </div>
+        )}
+
+        {/* User Card */}
+        <div
+          className={`flex items-center ${
+            collapsed ? 'justify-center' : 'justify-between'
+          } p-2 rounded-xl bg-[#161925] border border-[#1E2230]`}
+        >
+          {!collapsed && (
+            <div className="truncate mr-2">
+              <p className="text-xs font-semibold text-white truncate">{user?.displayName || 'Admin'}</p>
+              <p className="text-[10px] text-[#8A94A6] font-mono truncate">{user?.email || 'admin@focusapp.com'}</p>
+            </div>
+          )}
           <button
             onClick={logout}
-            title="Sign out of Admin Portal"
-            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+            className="p-1.5 rounded-lg text-[#8A94A6] hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            title="Log out"
           >
             <LogOut className="w-4 h-4" />
           </button>

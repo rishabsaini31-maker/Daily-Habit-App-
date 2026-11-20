@@ -3,30 +3,50 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 241, 245, 249;
-  --background-start-rgb: 10, 15, 29;
-  --background-end-rgb: 15, 23, 42;
+  --background: #08090D;
+  --foreground: #FFFFFF;
+  --card: #12141D;
+  --card-border: #1E2230;
+  --muted: #8A94A6;
+  --accent-cyan: #38BDF8;
+  --accent-emerald: #10B981;
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: #0a0f1d;
+  color: #FFFFFF;
+  background-color: #08090D;
   min-height: 100vh;
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  overflow-x: hidden;
 }
 
-/* Custom scrollbars */
+/* Custom Obsidian scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: #08090D;
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #1E2230;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #2E364F;
+}
+
+.glow-cyan {
+  box-shadow: 0 0 25px -5px rgba(56, 189, 248, 0.25);
+}
+
+.glow-emerald {
+  box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.25);
+}
+
+.card-obsidian {
+  background-color: #12141D;
+  border: 1px solid #1E2230;
+  border-radius: 16px;
 }
