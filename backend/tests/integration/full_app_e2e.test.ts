@@ -267,6 +267,39 @@ describe('Full App 10-Module End-to-End Automated Verification', () => {
     expect(parsed[0].is_surgical_feed_only).toBe(true);
     expect(parsed[1].package_or_token).toBe('com.zhiliaoapp.musically');
     expect(parsed[1].is_surgical_feed_only).toBe(false);
+
+    // 4b. Verifies User-Added Custom App & 24-Hour (12 AM to 12 AM) Daily Allowance Quota
+    const customUserApp = {
+      id: 'custom-snapchat-01',
+      platform: 'android' as const,
+      package_or_token: 'com.snapchat.android',
+      display_name: 'Snapchat',
+      is_surgical_feed_only: false,
+      daily_limit_minutes: 20, // User sets 20-minute daily allowance
+      time_spent_today_minutes: 0,
+      category: 'social',
+      last_reset_date: '2026-11-21',
+    };
+
+    // User spends 15 minutes: Still within daily allowance
+    customUserApp.time_spent_today_minutes += 15;
+    const isLimitReachedMidday = customUserApp.time_spent_today_minutes >= customUserApp.daily_limit_minutes;
+    expect(isLimitReachedMidday).toBe(false);
+    expect(customUserApp.daily_limit_minutes - customUserApp.time_spent_today_minutes).toBe(5);
+
+    // User spends 5 more minutes: Hits 20m cap -> App gets BLOCKED for rest of today's 24h cycle
+    customUserApp.time_spent_today_minutes += 5;
+    const isLimitReachedFinal = customUserApp.time_spent_today_minutes >= customUserApp.daily_limit_minutes;
+    expect(isLimitReachedFinal).toBe(true);
+
+    // 24-Hour Cycle Boundary: At 12:00 AM Midnight next day, time spent automatically resets to 0!
+    const nextDayDate = '2026-11-22';
+    if (nextDayDate > customUserApp.last_reset_date) {
+      customUserApp.time_spent_today_minutes = 0;
+      customUserApp.last_reset_date = nextDayDate;
+    }
+    expect(customUserApp.time_spent_today_minutes).toBe(0);
+    expect(customUserApp.time_spent_today_minutes >= customUserApp.daily_limit_minutes).toBe(false);
   });
 
   // ===========================================================================

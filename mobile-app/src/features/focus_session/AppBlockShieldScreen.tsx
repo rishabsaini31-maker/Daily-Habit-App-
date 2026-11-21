@@ -139,6 +139,14 @@ export const AppBlockShieldScreen: React.FC = () => {
 
         <Text style={styles.blockedAppTitle}>{blockedAppName} is Shielded</Text>
         <Text style={styles.reasonText}>{blockReason}</Text>
+        {(blockReason.toLowerCase().includes('limit') ||
+          blockReason.toLowerCase().includes('allowance') ||
+          blockReason.toLowerCase().includes('cycle') ||
+          blockReason.toLowerCase().includes('quota')) && (
+          <View style={styles.cycleBadge}>
+            <Text style={styles.cycleBadgeText}>24h Cycle Complete • Unlocks at 12:00 AM Midnight</Text>
+          </View>
+        )}
 
         {/* Mindful Friction Card */}
         <GlassCard variant="danger" style={styles.frictionCard}>
@@ -285,7 +293,22 @@ const styles = StyleSheet.create({
     ...typography.bodyMedium,
     color: colors.secondaryMutedText,
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
+  },
+  cycleBadge: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.35)',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  cycleBadgeText: {
+    ...typography.caption,
+    color: colors.dangerAccent,
+    fontWeight: '700',
+    fontSize: 11,
   },
   frictionCard: {
     width: '100%',

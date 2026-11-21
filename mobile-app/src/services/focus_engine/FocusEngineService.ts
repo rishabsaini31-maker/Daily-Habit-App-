@@ -137,6 +137,9 @@ class FocusEngineService {
     if (this.timerInterval) clearInterval(this.timerInterval);
 
     this.timerInterval = setInterval(async () => {
+      // Check 24-hour cycle boundary (resets at 12:00 AM midnight)
+      syncService.checkAndReset24HourCycle();
+
       if (this.state.activeSession) {
         const remaining = this.calculateRemainingSeconds(this.state.activeSession);
         if (remaining <= 0) {
@@ -149,6 +152,24 @@ class FocusEngineService {
         }
       }
     }, 1000);
+  }
+
+  async setAppDailyLimit(packageOrToken: string, limitMinutes: number): Promise<void> {
+    await syncService.setAppDailyLimit(packageOrToken, limitMinutes);
+    await this.refreshState();
+  }
+
+  async recordAppUsage(
+    packageOrToken: string,
+    minutes: number
+  ): Promise<{ isLimitReached: boolean; newSpent: number }> {
+    const result = await syncService.recordAppUsage(packageOrToken, minutes);
+    if (result.isLimitReached) {
+      // Trigger system-level app blocking for this target for the rest of today's cycle
+      nativeBlocker.toggleAppBlock(packageOrToken, true).catch(() => {});
+    }
+    await this.refreshState();
+    return result;
   }
 
   private formatTime(totalSeconds: number): string {

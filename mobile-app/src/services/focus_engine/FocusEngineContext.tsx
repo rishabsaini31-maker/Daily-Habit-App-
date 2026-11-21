@@ -16,6 +16,8 @@ interface FocusEngineContextValue extends FocusEngineState {
   toggleSchedule: (id: string, active: boolean) => Promise<void>;
   addBlockedTarget: (target: SyncBlockedTarget) => Promise<void>;
   removeBlockedTarget: (packageOrToken: string) => Promise<void>;
+  setAppDailyLimit: (packageOrToken: string, limitMinutes: number) => Promise<void>;
+  recordAppUsage: (packageOrToken: string, minutes: number) => Promise<{ isLimitReached: boolean; newSpent: number }>;
   refreshState: () => Promise<void>;
 }
 
@@ -71,6 +73,14 @@ export const FocusEngineProvider: React.FC<{ children: React.ReactNode }> = ({ c
     await focusEngine.refreshState();
   };
 
+  const setAppDailyLimit = async (packageOrToken: string, limitMinutes: number) => {
+    await focusEngine.setAppDailyLimit(packageOrToken, limitMinutes);
+  };
+
+  const recordAppUsage = async (packageOrToken: string, minutes: number) => {
+    return await focusEngine.recordAppUsage(packageOrToken, minutes);
+  };
+
   const refreshState = async () => {
     await focusEngine.refreshState();
   };
@@ -87,6 +97,8 @@ export const FocusEngineProvider: React.FC<{ children: React.ReactNode }> = ({ c
         toggleSchedule,
         addBlockedTarget,
         removeBlockedTarget,
+        setAppDailyLimit,
+        recordAppUsage,
         refreshState,
       }}
     >

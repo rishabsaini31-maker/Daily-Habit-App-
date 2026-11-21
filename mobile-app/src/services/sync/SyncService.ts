@@ -10,6 +10,10 @@ export interface SyncBlockedTarget {
   package_or_token: string;
   display_name: string;
   is_surgical_feed_only: boolean;
+  daily_limit_minutes?: number; // 0 = Always blocked during focus, > 0 = Daily allowance (e.g. 20, 30, 60 mins)
+  time_spent_today_minutes?: number; // Usage accumulated today in this 24-hour cycle
+  category?: 'social' | 'entertainment' | 'gaming' | 'productivity' | 'custom' | string;
+  last_reset_date?: string; // YYYY-MM-DD
   created_at?: string;
 }
 
@@ -162,6 +166,7 @@ class SyncService {
       };
     }
     if (this.inMemoryBlockedTargets.length === 0) {
+      const todayStr = new Date().toISOString().split('T')[0];
       this.inMemoryBlockedTargets = [
         {
           id: '1',
@@ -169,6 +174,10 @@ class SyncService {
           package_or_token: 'com.instagram.android',
           display_name: 'Instagram',
           is_surgical_feed_only: true,
+          daily_limit_minutes: 20,
+          time_spent_today_minutes: 12,
+          category: 'social',
+          last_reset_date: todayStr,
         },
         {
           id: '2',
@@ -176,6 +185,10 @@ class SyncService {
           package_or_token: 'com.google.android.youtube',
           display_name: 'YouTube',
           is_surgical_feed_only: true,
+          daily_limit_minutes: 30,
+          time_spent_today_minutes: 18,
+          category: 'entertainment',
+          last_reset_date: todayStr,
         },
         {
           id: '3',
@@ -183,6 +196,10 @@ class SyncService {
           package_or_token: 'com.zhiliaoapp.musically',
           display_name: 'TikTok',
           is_surgical_feed_only: false,
+          daily_limit_minutes: 0,
+          time_spent_today_minutes: 0,
+          category: 'social',
+          last_reset_date: todayStr,
         },
         {
           id: '4',
@@ -190,6 +207,10 @@ class SyncService {
           package_or_token: 'com.twitter.android',
           display_name: 'X (Twitter)',
           is_surgical_feed_only: false,
+          daily_limit_minutes: 60,
+          time_spent_today_minutes: 42,
+          category: 'social',
+          last_reset_date: todayStr,
         },
       ];
     }
@@ -288,17 +309,26 @@ class SyncService {
         .eq('user_id', uid);
 
       if (data && data.length > 0 && !error) {
-        this.inMemoryBlockedTargets = data.map((t: any) => ({
-          id: t.id,
-          user_id: t.user_id,
-          platform: t.platform || 'android',
-          package_or_token: t.package_or_token,
-          display_name: t.display_name,
-          is_surgical_feed_only: Boolean(t.is_surgical_feed_only),
-          created_at: t.created_at,
-        }));
+        const todayStr = new Date().toISOString().split('T')[0];
+        this.inMemoryBlockedTargets = data.map((t: any) => {
+          const isPastDay = t.last_reset_date && t.last_reset_date < todayStr;
+          return {
+            id: t.id,
+            user_id: t.user_id,
+            platform: t.platform || 'android',
+            package_or_token: t.package_or_token,
+            display_name: t.display_name,
+            is_surgical_feed_only: Boolean(t.is_surgical_feed_only),
+            daily_limit_minutes: Number(t.daily_limit_minutes) || 0,
+            time_spent_today_minutes: isPastDay ? 0 : (Number(t.time_spent_today_minutes) || 0),
+            category: t.category || 'social',
+            last_reset_date: isPastDay ? todayStr : (t.last_reset_date || todayStr),
+            created_at: t.created_at,
+          };
+        });
       } else {
         // Seed default blocked targets into Supabase directly
+        const todayStr = new Date().toISOString().split('T')[0];
         const defaults: SyncBlockedTarget[] = [
           {
             id: '1',
@@ -307,6 +337,10 @@ class SyncService {
             package_or_token: 'com.instagram.android',
             display_name: 'Instagram',
             is_surgical_feed_only: true,
+            daily_limit_minutes: 20,
+            time_spent_today_minutes: 12,
+            category: 'social',
+            last_reset_date: todayStr,
           },
           {
             id: '2',
@@ -315,6 +349,10 @@ class SyncService {
             package_or_token: 'com.google.android.youtube',
             display_name: 'YouTube',
             is_surgical_feed_only: true,
+            daily_limit_minutes: 30,
+            time_spent_today_minutes: 18,
+            category: 'entertainment',
+            last_reset_date: todayStr,
           },
           {
             id: '3',
@@ -323,6 +361,10 @@ class SyncService {
             package_or_token: 'com.zhiliaoapp.musically',
             display_name: 'TikTok',
             is_surgical_feed_only: false,
+            daily_limit_minutes: 0,
+            time_spent_today_minutes: 0,
+            category: 'social',
+            last_reset_date: todayStr,
           },
           {
             id: '4',
@@ -331,6 +373,10 @@ class SyncService {
             package_or_token: 'com.twitter.android',
             display_name: 'X (Twitter)',
             is_surgical_feed_only: false,
+            daily_limit_minutes: 60,
+            time_spent_today_minutes: 42,
+            category: 'social',
+            last_reset_date: todayStr,
           },
         ];
         await supabase.from('blocked_targets').upsert(defaults);
@@ -634,10 +680,18 @@ class SyncService {
   }
 
   async addBlockedTarget(target: SyncBlockedTarget): Promise<void> {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const targetWithDefaults: SyncBlockedTarget = {
+      ...target,
+      daily_limit_minutes: target.daily_limit_minutes !== undefined ? target.daily_limit_minutes : 0,
+      time_spent_today_minutes: target.time_spent_today_minutes || 0,
+      category: target.category || 'custom',
+      last_reset_date: target.last_reset_date || todayStr,
+    };
     const filtered = this.inMemoryBlockedTargets.filter(
       (t) => t.package_or_token !== target.package_or_token
     );
-    filtered.push(target);
+    filtered.push(targetWithDefaults);
     this.inMemoryBlockedTargets = filtered;
     this.notifyListeners();
 
@@ -649,7 +703,101 @@ class SyncService {
       package_or_token: target.package_or_token,
       display_name: target.display_name,
       is_surgical_feed_only: target.is_surgical_feed_only,
+      daily_limit_minutes: targetWithDefaults.daily_limit_minutes,
+      time_spent_today_minutes: targetWithDefaults.time_spent_today_minutes,
+      category: targetWithDefaults.category,
+      last_reset_date: targetWithDefaults.last_reset_date,
     });
+  }
+
+  /**
+   * Sets app daily limit (allowance) in minutes (0 = always blocked during focus, 20 = 20m/day, etc.)
+   */
+  async setAppDailyLimit(packageOrToken: string, limitMinutes: number): Promise<void> {
+    const todayStr = new Date().toISOString().split('T')[0];
+    this.inMemoryBlockedTargets = this.inMemoryBlockedTargets.map((t) =>
+      t.package_or_token === packageOrToken
+        ? {
+            ...t,
+            daily_limit_minutes: Math.max(0, limitMinutes),
+            last_reset_date: t.last_reset_date || todayStr,
+          }
+        : t
+    );
+    this.notifyListeners();
+
+    try {
+      await supabase
+        .from('blocked_targets')
+        .update({ daily_limit_minutes: Math.max(0, limitMinutes) })
+        .eq('user_id', this.currentUserId)
+        .eq('package_or_token', packageOrToken);
+    } catch (err) {
+      console.warn('Supabase setAppDailyLimit error:', err);
+    }
+  }
+
+  /**
+   * Records app usage within today's 24-hour cycle (12:00 AM to 12:00 AM)
+   * Automatically resets to 0 if a new midnight cycle has occurred.
+   */
+  async recordAppUsage(
+    packageOrToken: string,
+    minutes: number
+  ): Promise<{ isLimitReached: boolean; newSpent: number }> {
+    const todayStr = new Date().toISOString().split('T')[0];
+    let isLimitReached = false;
+    let newSpent = 0;
+
+    this.inMemoryBlockedTargets = this.inMemoryBlockedTargets.map((t) => {
+      if (t.package_or_token === packageOrToken) {
+        const isPastDay = t.last_reset_date && t.last_reset_date < todayStr;
+        newSpent = isPastDay ? minutes : (t.time_spent_today_minutes || 0) + minutes;
+        const limit = t.daily_limit_minutes || 0;
+        isLimitReached = limit > 0 && newSpent >= limit;
+        return {
+          ...t,
+          time_spent_today_minutes: newSpent,
+          last_reset_date: todayStr,
+        };
+      }
+      return t;
+    });
+    this.notifyListeners();
+
+    try {
+      await supabase.rpc('record_app_usage', {
+        p_package_or_token: packageOrToken,
+        p_minutes_used: minutes,
+      });
+    } catch (err) {
+      console.warn('Supabase record_app_usage error:', err);
+    }
+
+    return { isLimitReached, newSpent };
+  }
+
+  /**
+   * Evaluates 24-hour cycle boundaries and resets allowances at 12:00 AM midnight
+   */
+  checkAndReset24HourCycle(): void {
+    const todayStr = new Date().toISOString().split('T')[0];
+    let hasChanges = false;
+    this.inMemoryBlockedTargets = this.inMemoryBlockedTargets.map((t) => {
+      if (t.last_reset_date && t.last_reset_date < todayStr) {
+        hasChanges = true;
+        return {
+          ...t,
+          time_spent_today_minutes: 0,
+          last_reset_date: todayStr,
+        };
+      }
+      return t;
+    });
+    if (hasChanges) {
+      this.notifyListeners();
+      Promise.resolve(supabase.rpc('reset_daily_cycle_limits')).catch(() => {});
+    }
   }
 
   async removeBlockedTarget(packageOrToken: string): Promise<void> {
