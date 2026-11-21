@@ -3,13 +3,13 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   ScrollView,
   Alert,
 } from 'react-native';
 import { X, Crown, Check, Zap, Shield, Sparkles, Lock } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
+import { useResponsiveLayout } from '../../core/theme/useResponsiveLayout';
 import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import { useAppNavigation } from '../../core/navigation/NavigationContext';
@@ -22,6 +22,7 @@ import SignInModal from '../auth/SignInModal';
 
 export const PaywallModal: React.FC = () => {
   const { closeModal } = useAppNavigation();
+  const { topInset, bottomInset, responsiveContainerStyle, isWide } = useResponsiveLayout();
   const { updateProfile } = useFocusEngine();
   const [billingPlan, setBillingPlan] = useState<'annual' | 'monthly'>('annual');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -96,9 +97,9 @@ export const PaywallModal: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {/* Top Dismiss Bar with "X" */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: topInset + 4 }]}>
         <View style={{ width: 40 }} />
         <View style={styles.proCrownHeader}>
           <Crown size={18} color="#FBBF24" />
@@ -114,7 +115,10 @@ export const PaywallModal: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, responsiveContainerStyle]}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Hero Pitch */}
         <View style={styles.heroSection}>
           <Text style={styles.heroHeadline}>Reclaim 1,000+ Hours Every Year</Text>
@@ -222,38 +226,40 @@ export const PaywallModal: React.FC = () => {
       </ScrollView>
 
       {/* Footer CTA & Disclaimers */}
-      <View style={styles.footer}>
-        <PrimaryPillButton
-          title={
-            billingPlan === 'annual'
-              ? 'Start 7-Day Free Trial ($49.99/yr)'
-              : 'Unlock Opal Pro ($8.99/mo)'
-          }
-          onPress={handleStartTrial}
-          loading={isProcessing}
-          rightIcon={<Sparkles size={18} color={colors.primaryButtonText} />}
-        />
-        <Text style={styles.disclaimerText}>
-          7 days free, then $49.99/yr. Cancel at least 24 hours before trial ends in App Store settings.
-        </Text>
-        <View style={styles.linksRow}>
-          <TouchableOpacity onPress={() => setShowSignIn(true)}>
-            <Text style={[styles.linkText, { color: colors.primaryAccent, fontWeight: '600' }]}>
-              Already Pro? Sign In
-            </Text>
-          </TouchableOpacity>
-          <Text style={styles.linkDivider}>•</Text>
-          <TouchableOpacity onPress={handleRestore}>
-            <Text style={styles.linkText}>Restore</Text>
-          </TouchableOpacity>
-          <Text style={styles.linkDivider}>•</Text>
-          <TouchableOpacity onPress={() => Alert.alert('Terms of Service', 'Standard Apple EULA applies.')}>
-            <Text style={styles.linkText}>Terms</Text>
-          </TouchableOpacity>
-          <Text style={styles.linkDivider}>•</Text>
-          <TouchableOpacity onPress={() => Alert.alert('Privacy Policy', 'Zero screen data collected. 100% on-device.')}>
-            <Text style={styles.linkText}>Privacy</Text>
-          </TouchableOpacity>
+      <View style={[styles.footer, { paddingBottom: Math.max(bottomInset, 16) }]}>
+        <View style={responsiveContainerStyle}>
+          <PrimaryPillButton
+            title={
+              billingPlan === 'annual'
+                ? 'Start 7-Day Free Trial ($49.99/yr)'
+                : 'Unlock Opal Pro ($8.99/mo)'
+            }
+            onPress={handleStartTrial}
+            loading={isProcessing}
+            rightIcon={<Sparkles size={18} color={colors.primaryButtonText} />}
+          />
+          <Text style={styles.disclaimerText}>
+            7 days free, then $49.99/yr. Cancel at least 24 hours before trial ends in App Store settings.
+          </Text>
+          <View style={styles.linksRow}>
+            <TouchableOpacity onPress={() => setShowSignIn(true)}>
+              <Text style={[styles.linkText, { color: colors.primaryAccent, fontWeight: '600' }]}>
+                Already Pro? Sign In
+              </Text>
+            </TouchableOpacity>
+            <Text style={styles.linkDivider}>•</Text>
+            <TouchableOpacity onPress={handleRestore}>
+              <Text style={styles.linkText}>Restore</Text>
+            </TouchableOpacity>
+            <Text style={styles.linkDivider}>•</Text>
+            <TouchableOpacity onPress={() => Alert.alert('Terms of Service', 'Standard Apple EULA applies.')}>
+              <Text style={styles.linkText}>Terms</Text>
+            </TouchableOpacity>
+            <Text style={styles.linkDivider}>•</Text>
+            <TouchableOpacity onPress={() => Alert.alert('Privacy Policy', 'Zero screen data collected. 100% on-device.')}>
+              <Text style={styles.linkText}>Privacy</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -271,7 +277,7 @@ export const PaywallModal: React.FC = () => {
         onClose={() => setShowSignIn(false)}
         onSuccess={closeModal}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 

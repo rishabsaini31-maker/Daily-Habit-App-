@@ -3,12 +3,12 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   Alert,
 } from 'react-native';
 import { ShieldAlert, Lock, Heart, KeyRound, ArrowLeft, Send } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
+import { useResponsiveLayout } from '../../core/theme/useResponsiveLayout';
 import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import { useAppNavigation } from '../../core/navigation/NavigationContext';
@@ -18,6 +18,7 @@ import addonsService from '../../services/addons/AddonsService';
 export const AppBlockShieldScreen: React.FC = () => {
   const { closeModal, modalParams } = useAppNavigation();
   const { recordInterception, profile, activeSession } = useFocusEngine();
+  const { topInset, bottomInset, responsiveContainerStyle } = useResponsiveLayout();
 
   const [breathTimer, setBreathTimer] = useState<number>(10);
   const [canSnooze, setCanSnooze] = useState<boolean>(false);
@@ -113,12 +114,12 @@ export const AppBlockShieldScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {/* Background Glow Ring */}
       <View style={styles.glowBackdrop} />
 
       {/* Top Bar with Dismiss */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: topInset + 4 }]}>
         <TouchableOpacity onPress={handleDismiss} style={styles.backBtn}>
           <ArrowLeft size={22} color={colors.primaryText} />
         </TouchableOpacity>
@@ -126,7 +127,7 @@ export const AppBlockShieldScreen: React.FC = () => {
         <View style={{ width: 40 }} />
       </View>
 
-      <View style={styles.content}>
+      <View style={[styles.content, responsiveContainerStyle]}>
         {/* Pulsing Lock Motif */}
         <View style={styles.shieldIconOuter}>
           <View style={styles.shieldIconMid}>
@@ -165,40 +166,42 @@ export const AppBlockShieldScreen: React.FC = () => {
       </View>
 
       {/* Actions */}
-      <View style={styles.actionsFooter}>
-        <PrimaryPillButton
-          title="Return to Focus"
-          onPress={handleDismiss}
-          style={styles.primaryReturnBtn}
-        />
+      <View style={[styles.actionsFooter, { paddingBottom: Math.max(bottomInset, 24) }]}>
+        <View style={responsiveContainerStyle}>
+          <PrimaryPillButton
+            title="Return to Focus"
+            onPress={handleDismiss}
+            style={styles.primaryReturnBtn}
+          />
 
-        <View style={styles.secondaryActionsRow}>
-          <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={handleSendFriendUnlockRequest}
-          >
-            <KeyRound size={16} color={colors.primaryAccent} />
-            <Text style={[styles.actionBtnText, { color: colors.primaryAccent }]}>
-              Friend Code OTP
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.secondaryActionsRow}>
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={handleSendFriendUnlockRequest}
+            >
+              <KeyRound size={16} color={colors.primaryAccent} />
+              <Text style={[styles.actionBtnText, { color: colors.primaryAccent }]}>
+                Friend Code OTP
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            disabled={!canSnooze}
-            style={[styles.actionBtn, !canSnooze && styles.actionBtnDisabled]}
-            onPress={() => {
-              Alert.alert('Snooze Granted', '5-minute emergency grace period started.');
-              handleDismiss();
-            }}
-          >
-            <ShieldAlert size={16} color={canSnooze ? colors.warningAccent : colors.tertiaryText} />
-            <Text style={[styles.actionBtnText, canSnooze && { color: colors.warningAccent }]}>
-              {canSnooze ? 'Snooze 5m (1 Gem)' : `Wait (${breathTimer}s)`}
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              disabled={!canSnooze}
+              style={[styles.actionBtn, !canSnooze && styles.actionBtnDisabled]}
+              onPress={() => {
+                Alert.alert('Snooze Granted', '5-minute emergency grace period started.');
+                handleDismiss();
+              }}
+            >
+              <ShieldAlert size={16} color={canSnooze ? colors.warningAccent : colors.tertiaryText} />
+              <Text style={[styles.actionBtnText, canSnooze && { color: colors.warningAccent }]}>
+                {canSnooze ? 'Snooze 5m (1 Gem)' : `Wait (${breathTimer}s)`}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

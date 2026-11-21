@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { X, Check, Scissors, Crown } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
+import { useResponsiveLayout } from '../../core/theme/useResponsiveLayout';
 import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import { useAppNavigation } from '../../core/navigation/NavigationContext';
@@ -82,6 +83,7 @@ const APPS_CATALOG: AppItem[] = [
 export const BlockListPickerModal: React.FC = () => {
   const { closeModal, openModal } = useAppNavigation();
   const { blockedTargets, addBlockedTarget, removeBlockedTarget, profile } = useFocusEngine();
+  const { bottomInset, isWide } = useResponsiveLayout();
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'social' | 'entertainment' | 'gaming'>('all');
 
   const filteredCatalog = APPS_CATALOG.filter((app) => {
@@ -128,8 +130,8 @@ export const BlockListPickerModal: React.FC = () => {
   };
 
   return (
-    <View style={styles.modalOverlay}>
-      <View style={styles.sheetContainer}>
+    <View style={[styles.modalOverlay, isWide && styles.modalOverlayWide]}>
+      <View style={[styles.sheetContainer, isWide && styles.sheetContainerWide]}>
         {/* Header */}
         <View style={styles.header}>
           <View>
@@ -238,7 +240,7 @@ export const BlockListPickerModal: React.FC = () => {
         </ScrollView>
 
         {/* Footer */}
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingBottom: Math.max(bottomInset, 16) }]}>
           <PrimaryPillButton
             title="Done & Sync Rules"
             onPress={closeModal}
@@ -256,6 +258,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(4, 5, 8, 0.85)',
     justifyContent: 'flex-end',
   },
+  modalOverlayWide: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
   sheetContainer: {
     backgroundColor: colors.obsidian,
     borderTopLeftRadius: 28,
@@ -263,6 +270,15 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.hairlineBorder,
     height: '92%',
+  },
+  sheetContainerWide: {
+    width: '100%',
+    maxWidth: 640,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',

@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Shield, Calendar, BarChart2, Award, LucideIcon } from 'lucide-react-native';
 import { colors, layout } from '../theme/tokens';
+import { useResponsiveLayout } from '../theme/useResponsiveLayout';
 import { AppTab } from './types';
 
 interface BottomTabBarProps {
@@ -10,6 +11,8 @@ interface BottomTabBarProps {
 }
 
 export const BottomTabBar: React.FC<BottomTabBarProps> = ({ activeTab, onTabPress }) => {
+  const { bottomInset, isWide } = useResponsiveLayout();
+
   const tabs: { key: AppTab; label: string; icon: LucideIcon }[] = [
     { key: 'home', label: 'Home', icon: Shield },
     { key: 'schedules', label: 'Schedules', icon: Calendar },
@@ -18,44 +21,59 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({ activeTab, onTabPres
   ];
 
   return (
-    <View style={styles.container}>
-      {tabs.map((tab) => {
-        const isActive = activeTab === tab.key;
-        const IconComponent = tab.icon;
+    <View style={styles.outerWrapper}>
+      <View
+        style={[
+          styles.container,
+          {
+            paddingBottom: Math.max(bottomInset, 16),
+            height: 56 + Math.max(bottomInset, 16),
+            maxWidth: isWide ? 680 : '100%',
+          },
+        ]}
+      >
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.key;
+          const IconComponent = tab.icon;
 
-        return (
-          <TouchableOpacity
-            key={tab.key}
-            activeOpacity={0.7}
-            onPress={() => onTabPress(tab.key)}
-            style={styles.tabButton}
-          >
-            <View style={[styles.iconWrapper, isActive && styles.activeIconWrapper]}>
-              <IconComponent
-                size={22}
-                color={isActive ? colors.primaryAccent : colors.secondaryMutedText}
-              />
-            </View>
-            <Text style={[styles.tabLabel, isActive && styles.activeTabLabel]}>
-              {tab.label}
-            </Text>
-            {isActive && <View style={styles.activePillIndicator} />}
-          </TouchableOpacity>
-        );
-      })}
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              activeOpacity={0.7}
+              onPress={() => onTabPress(tab.key)}
+              style={styles.tabButton}
+            >
+              <View style={[styles.iconWrapper, isActive && styles.activeIconWrapper]}>
+                <IconComponent
+                  size={22}
+                  color={isActive ? colors.primaryAccent : colors.secondaryMutedText}
+                />
+              </View>
+              <Text style={[styles.tabLabel, isActive && styles.activeTabLabel]}>
+                {tab.label}
+              </Text>
+              {isActive && <View style={styles.activePillIndicator} />}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  outerWrapper: {
+    width: '100%',
+    backgroundColor: colors.obsidian,
+    borderTopWidth: layout.hairlineBorderWidth,
+    borderTopColor: colors.hairlineBorder,
+    alignItems: 'center',
+  },
   container: {
+    width: '100%',
     flexDirection: 'row',
-    height: Platform.OS === 'ios' ? 84 : 68,
-    paddingBottom: Platform.OS === 'ios' ? 22 : 8,
     paddingTop: 8,
     backgroundColor: colors.obsidian, // Obsidian #08090D per spec
-    borderTopWidth: layout.hairlineBorderWidth,
-    borderTopColor: colors.hairlineBorder, // Hairline #1E2230 per spec
     justifyContent: 'space-around',
     alignItems: 'center',
   },

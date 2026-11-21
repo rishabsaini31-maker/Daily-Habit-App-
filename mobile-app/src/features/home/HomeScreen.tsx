@@ -20,6 +20,7 @@ import {
   Zap,
 } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
+import { useResponsiveLayout } from '../../core/theme/useResponsiveLayout';
 import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import FocusRing from '../../core/theme/components/FocusRing';
@@ -28,6 +29,7 @@ import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
 
 export const HomeScreen: React.FC = () => {
   const { openModal, presentShield } = useAppNavigation();
+  const { topInset, bottomInset, responsiveContainerStyle } = useResponsiveLayout();
   const {
     profile,
     activeSession,
@@ -71,15 +73,23 @@ export const HomeScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: topInset + 8,
+            paddingBottom: 80 + bottomInset,
+          },
+          responsiveContainerStyle,
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {/* Top Header Bar */}
         <View style={styles.headerRow}>
           <TouchableOpacity
             activeOpacity={0.75}
-            onPress={() => openModal('settings')}
+            onPress={() => openModal('profile')}
             style={styles.avatarButton}
+            accessibilityLabel="Open Full Screen Profile"
           >
             <View style={styles.avatarCircle}>
               <User size={18} color={colors.primaryText} />

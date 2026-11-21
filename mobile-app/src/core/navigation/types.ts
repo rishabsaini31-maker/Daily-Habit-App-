@@ -5,7 +5,8 @@ export type AppModal =
   | 'block_list_picker'
   | 'shield_interception'
   | 'paywall'
-  | 'settings';
+  | 'settings'
+  | 'profile';
 
 export interface ShieldModalParams {
   appName: string;

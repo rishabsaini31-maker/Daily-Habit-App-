@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { TrendingDown, Sparkles, BookOpen, Dumbbell, Moon, ShieldAlert } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
+import { useResponsiveLayout } from '../../core/theme/useResponsiveLayout';
 import GlassCard from '../../core/theme/components/GlassCard';
 import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
 import { api } from '../../services/api';
 
 export const InsightsScreen: React.FC = () => {
   const { todayMetrics, profile } = useFocusEngine();
+  const { topInset, bottomInset, responsiveContainerStyle } = useResponsiveLayout();
   const [aiInsight, setAiInsight] = useState<{
     headline: string;
     opportunityCost: string;
@@ -54,7 +56,14 @@ export const InsightsScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: topInset + 8,
+            paddingBottom: 80 + bottomInset,
+          },
+          responsiveContainerStyle,
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.screenTitle}>Focus Insights</Text>

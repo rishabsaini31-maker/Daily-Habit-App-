@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, StyleSheet, SafeAreaView } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { colors } from '../../core/theme/tokens';
+import { useResponsiveLayout } from '../../core/theme/useResponsiveLayout';
 import { useOnboarding } from './OnboardingContext';
 import Step1WelcomeHook from './Step1WelcomeHook';
 import Step2DistractionQuiz from './Step2DistractionQuiz';
@@ -10,6 +11,7 @@ import Step5PermissionsGrant from './Step5PermissionsGrant';
 
 export const OnboardingFlow: React.FC = () => {
   const { currentStep } = useOnboarding();
+  const { topInset, bottomInset, responsiveContainerStyle } = useResponsiveLayout();
 
   const renderStep = () => {
     switch (currentStep) {
@@ -29,8 +31,14 @@ export const OnboardingFlow: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.stepProgressBar}>
+    <View style={styles.container}>
+      <View
+        style={[
+          styles.stepProgressBar,
+          { paddingTop: topInset + 8 },
+          responsiveContainerStyle,
+        ]}
+      >
         {[1, 2, 3, 4, 5].map((step) => (
           <View
             key={step}
@@ -41,8 +49,10 @@ export const OnboardingFlow: React.FC = () => {
           />
         ))}
       </View>
-      <View style={styles.content}>{renderStep()}</View>
-    </SafeAreaView>
+      <View style={[styles.content, { paddingBottom: bottomInset }, responsiveContainerStyle]}>
+        {renderStep()}
+      </View>
+    </View>
   );
 };
 

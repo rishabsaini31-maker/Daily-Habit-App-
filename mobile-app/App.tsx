@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { StatusBar } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { colors } from './src/core/theme/tokens';
 import { OnboardingProvider } from './src/features/onboarding/OnboardingContext';
 import { NavigationProvider } from './src/core/navigation/NavigationContext';
@@ -22,15 +23,17 @@ export default function App() {
   }, []);
 
   return (
-    <NativeBlockerProvider>
-      <FocusEngineProvider>
-        <OnboardingProvider>
-          <NavigationProvider>
-            <StatusBar barStyle="light-content" />
-            <RootNavigator />
-          </NavigationProvider>
-        </OnboardingProvider>
-      </FocusEngineProvider>
-    </NativeBlockerProvider>
+    <SafeAreaProvider>
+      <NativeBlockerProvider>
+        <FocusEngineProvider>
+          <OnboardingProvider>
+            <NavigationProvider>
+              <StatusBar barStyle="light-content" />
+              <RootNavigator />
+            </NavigationProvider>
+          </OnboardingProvider>
+        </FocusEngineProvider>
+      </NativeBlockerProvider>
+    </SafeAreaProvider>
   );
 }

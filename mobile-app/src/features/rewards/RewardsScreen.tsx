@@ -9,12 +9,14 @@ import {
 } from 'react-native';
 import { Award, Gem, Flame, Users, Radio, Check, Lock } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
+import { useResponsiveLayout } from '../../core/theme/useResponsiveLayout';
 import GlassCard from '../../core/theme/components/GlassCard';
 import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
 import addonsService from '../../services/addons/AddonsService';
 
 export const RewardsScreen: React.FC = () => {
   const { profile, updateProfile, activeSession } = useFocusEngine();
+  const { topInset, bottomInset, responsiveContainerStyle } = useResponsiveLayout();
   const [isScanningNFC, setIsScanningNFC] = useState<boolean>(false);
 
   const handlePairNFC = () => {
@@ -80,7 +82,14 @@ export const RewardsScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: topInset + 8,
+            paddingBottom: 80 + bottomInset,
+          },
+          responsiveContainerStyle,
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.screenTitle}>Rewards & Focus Gems</Text>

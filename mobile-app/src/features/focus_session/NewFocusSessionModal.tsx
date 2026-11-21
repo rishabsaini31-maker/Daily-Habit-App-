@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { X, Clock, ShieldCheck, ChevronRight, Zap, Lock, Users } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
+import { useResponsiveLayout } from '../../core/theme/useResponsiveLayout';
 import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import { useAppNavigation } from '../../core/navigation/NavigationContext';
@@ -25,6 +26,7 @@ const DURATION_PRESETS = [
 export const NewFocusSessionModal: React.FC = () => {
   const { closeModal, openModal } = useAppNavigation();
   const { startSession, blockedTargets, profile } = useFocusEngine();
+  const { bottomInset, isWide } = useResponsiveLayout();
 
   const [selectedDuration, setSelectedDuration] = useState<number>(25);
   const [strictness, setStrictness] = useState<'normal' | 'deep_focus' | 'friend_or_nfc'>('normal');
@@ -51,8 +53,8 @@ export const NewFocusSessionModal: React.FC = () => {
   };
 
   return (
-    <View style={styles.modalOverlay}>
-      <View style={styles.sheetContainer}>
+    <View style={[styles.modalOverlay, isWide && styles.modalOverlayWide]}>
+      <View style={[styles.sheetContainer, isWide && styles.sheetContainerWide]}>
         {/* Top Header */}
         <View style={styles.sheetHeader}>
           <View style={styles.sheetTitleCol}>
@@ -237,7 +239,7 @@ export const NewFocusSessionModal: React.FC = () => {
         </ScrollView>
 
         {/* Start Button */}
-        <View style={styles.sheetFooter}>
+        <View style={[styles.sheetFooter, { paddingBottom: Math.max(bottomInset, 16) }]}>
           <PrimaryPillButton
             title={`Lock In for ${selectedDuration} Minutes`}
             onPress={handleStart}
@@ -255,6 +257,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(4, 5, 8, 0.85)',
     justifyContent: 'flex-end',
   },
+  modalOverlayWide: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
   sheetContainer: {
     backgroundColor: colors.obsidian,
     borderTopLeftRadius: 28,
@@ -262,6 +269,15 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.hairlineBorder,
     maxHeight: '90%',
+  },
+  sheetContainerWide: {
+    width: '100%',
+    maxWidth: 600,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    overflow: 'hidden',
   },
   sheetHeader: {
     flexDirection: 'row',

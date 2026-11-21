@@ -18,6 +18,7 @@ import {
   Crown,
 } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
+import { useResponsiveLayout } from '../../core/theme/useResponsiveLayout';
 import GlassCard from '../../core/theme/components/GlassCard';
 import { useAppNavigation } from '../../core/navigation/NavigationContext';
 import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
@@ -26,6 +27,7 @@ import healthStepService from '../../services/addons/HealthStepService';
 
 export const SchedulesScreen: React.FC = () => {
   const { openModal } = useAppNavigation();
+  const { topInset, bottomInset, responsiveContainerStyle } = useResponsiveLayout();
   const { schedules, toggleSchedule, profile, blockedTargets } = useFocusEngine();
   const [todaySteps, setTodaySteps] = useState<number>(6420);
 
@@ -87,7 +89,14 @@ export const SchedulesScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: topInset + 8,
+            paddingBottom: 80 + bottomInset,
+          },
+          responsiveContainerStyle,
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.titleRow}>
