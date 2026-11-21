@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Shield, Sparkles, Zap, Lock } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
+import { useResponsiveLayout } from '../../core/theme/useResponsiveLayout';
 import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import { useOnboarding } from './OnboardingContext';
@@ -9,11 +10,30 @@ import SignInModal from '../auth/SignInModal';
 
 export const Step1WelcomeHook: React.FC = () => {
   const { nextStep } = useOnboarding();
+  const { topInset, bottomInset, responsiveContainerStyle } = useResponsiveLayout();
   const [showSignInModal, setShowSignInModal] = useState<boolean>(false);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
+    <View style={[styles.container, { paddingTop: topInset + 8, paddingBottom: bottomInset + 16 }]}>
+      {/* Top Header with Prominent "Already Pro? Sign In" for returning users */}
+      <View style={[styles.topHeader, responsiveContainerStyle]}>
+        <View style={styles.brandBadge}>
+          <Shield size={16} color={colors.primaryAccent} />
+          <Text style={styles.brandTitle}>DAILY HABIT</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.topSignInBtn}
+          activeOpacity={0.7}
+          onPress={() => setShowSignInModal(true)}
+          accessibilityLabel="Already Pro? Sign In"
+        >
+          <Text style={styles.topSignInText}>
+            Already Pro? <Text style={styles.topSignInHighlight}>Sign In</Text>
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={[styles.content, responsiveContainerStyle]}>
         {/* Glow Icon Hero */}
         <View style={styles.heroIconWrapper}>
           <View style={styles.glowOuter}>
@@ -95,8 +115,42 @@ const styles = StyleSheet.create({
     backgroundColor: colors.obsidian,
     justifyContent: 'space-between',
     paddingHorizontal: spacing.screenPadding,
-    paddingTop: 24,
-    paddingBottom: 24,
+  },
+  topHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingBottom: 8,
+  },
+  brandBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  brandTitle: {
+    ...typography.caption,
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.primaryAccent,
+    letterSpacing: 1.5,
+  },
+  topSignInBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: 'rgba(56, 189, 248, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.25)',
+  },
+  topSignInText: {
+    ...typography.caption,
+    fontSize: 12,
+    color: colors.secondaryMutedText,
+  },
+  topSignInHighlight: {
+    color: colors.primaryAccent,
+    fontWeight: '700',
   },
   content: {
     flex: 1,

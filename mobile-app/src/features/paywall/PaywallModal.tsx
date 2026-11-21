@@ -98,9 +98,16 @@ export const PaywallModal: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {/* Top Dismiss Bar with "X" */}
+      {/* Top Dismiss Bar with "Already Pro? Sign In" & "X" */}
       <View style={[styles.topBar, { paddingTop: topInset + 4 }]}>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity
+          style={styles.topSignInPill}
+          activeOpacity={0.7}
+          onPress={() => setShowSignIn(true)}
+          accessibilityLabel="Already Pro? Sign In"
+        >
+          <Text style={styles.topSignInPillText}>Already Pro? Sign In</Text>
+        </TouchableOpacity>
         <View style={styles.proCrownHeader}>
           <Crown size={18} color="#FBBF24" />
           <Text style={styles.proBadgeText}>OPAL PRO PASS</Text>
@@ -292,6 +299,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.screenPadding,
     paddingVertical: 12,
+  },
+  topSignInPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    backgroundColor: 'rgba(56, 189, 248, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.25)',
+  },
+  topSignInPillText: {
+    ...typography.caption,
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.primaryAccent,
   },
   proCrownHeader: {
     flexDirection: 'row',

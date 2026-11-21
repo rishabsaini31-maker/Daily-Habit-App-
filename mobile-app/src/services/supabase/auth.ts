@@ -173,18 +173,27 @@ class AuthService {
   }
 
   /**
-   * Requests a 6-digit OTP code to link anonymous session with an Email address
+   * Requests a 6-digit OTP code to link anonymous session with an Email address via SMTP
    */
   async linkWithEmailOtp(email: string): Promise<{ success: boolean; error?: string }> {
     try {
       const trimmed = email.trim().toLowerCase();
-      // Update current user's email in Supabase Auth (sends confirmation token)
+      // 1. Deliver OTP via SMTP Service
+      try {
+        const smtpRes = await api.sendSmtpOtp(trimmed);
+        if (smtpRes.success) {
+          return { success: true };
+        }
+      } catch (err) {
+        console.warn('Backend SMTP send OTP warning, falling back to Supabase:', err);
+      }
+
+      // 2. Fallback to Supabase Auth OTP
       const { error } = await supabase.auth.updateUser({
         email: trimmed,
       });
 
       if (error) {
-        // Fallback: signInWithOtp if updateUser fails
         const { error: otpError } = await supabase.auth.signInWithOtp({
           email: trimmed,
         });
@@ -208,24 +217,38 @@ class AuthService {
       const trimmedEmail = email.trim().toLowerCase();
       const trimmedOtp = otpCode.trim();
 
-      const { data, error } = await supabase.auth.verifyOtp({
-        email: trimmedEmail,
-        token: trimmedOtp,
-        type: 'email',
-      });
-
-      if (error) {
-        // In dev sandbox, accept 123456 or 778899 master codes
-        if (trimmedOtp === '123456' || trimmedOtp === '778899') {
-          this.isAnonymousInMemory = false;
-          const currentUser = await this.getCurrentUser();
-          return { success: true, user: currentUser || undefined };
+      // 1. Check SMTP Service verification
+      let verified = false;
+      try {
+        const smtpRes = await api.verifySmtpOtp(trimmedEmail, trimmedOtp);
+        if (smtpRes.success) {
+          verified = true;
         }
-        return { success: false, error: error.message };
+      } catch {
+        // Continue to Supabase verification or dev bypass
+      }
+
+      if (!verified) {
+        const { data, error } = await supabase.auth.verifyOtp({
+          email: trimmedEmail,
+          token: trimmedOtp,
+          type: 'email',
+        });
+
+        if (error) {
+          // Dev sandbox bypass codes
+          if (trimmedOtp === '123456' || trimmedOtp === '778899') {
+            verified = true;
+          } else {
+            return { success: false, error: error.message };
+          }
+        } else if (data.user) {
+          verified = true;
+        }
       }
 
       this.isAnonymousInMemory = false;
-      const user = data.user || (await this.getCurrentUser());
+      const user = await this.getCurrentUser();
 
       if (user) {
         await revenueCat.logIn(user.id);
@@ -302,11 +325,22 @@ class AuthService {
   }
 
   /**
-   * Sign in returning user via Email OTP
+   * Sign in returning user via Email OTP (via SMTP with Supabase fallback)
    */
   async sendSignInOtp(email: string): Promise<{ success: boolean; error?: string }> {
     try {
       const trimmed = email.trim().toLowerCase();
+      // 1. Deliver OTP via SMTP Service
+      try {
+        const smtpRes = await api.sendSmtpOtp(trimmed);
+        if (smtpRes.success) {
+          return { success: true };
+        }
+      } catch (err) {
+        console.warn('Backend SMTP send OTP warning, falling back to Supabase:', err);
+      }
+
+      // 2. Fallback to Supabase Auth OTP
       const { error } = await supabase.auth.signInWithOtp({
         email: trimmed,
       });
@@ -328,23 +362,37 @@ class AuthService {
       const trimmedEmail = email.trim().toLowerCase();
       const trimmedOtp = otpCode.trim();
 
-      const { data, error } = await supabase.auth.verifyOtp({
-        email: trimmedEmail,
-        token: trimmedOtp,
-        type: 'email',
-      });
-
-      if (error) {
-        if (trimmedOtp === '123456' || trimmedOtp === '778899') {
-          this.isAnonymousInMemory = false;
-          const currentUser = await this.getCurrentUser();
-          return { success: true, user: currentUser || undefined };
+      // 1. Verify via SMTP Service
+      let verified = false;
+      try {
+        const smtpRes = await api.verifySmtpOtp(trimmedEmail, trimmedOtp);
+        if (smtpRes.success) {
+          verified = true;
         }
-        return { success: false, error: error.message };
+      } catch {
+        // Fall back to Supabase verify or dev sandbox
+      }
+
+      if (!verified) {
+        const { data, error } = await supabase.auth.verifyOtp({
+          email: trimmedEmail,
+          token: trimmedOtp,
+          type: 'email',
+        });
+
+        if (error) {
+          if (trimmedOtp === '123456' || trimmedOtp === '778899') {
+            verified = true;
+          } else {
+            return { success: false, error: error.message };
+          }
+        } else if (data.user) {
+          verified = true;
+        }
       }
 
       this.isAnonymousInMemory = false;
-      const user = data.user || (await this.getCurrentUser());
+      const user = await this.getCurrentUser();
 
       if (user) {
         await revenueCat.logIn(user.id);

@@ -40,6 +40,7 @@ import nativeBlocker from '../../services/native_blocker/NativeBlockerBridge';
 import authService from '../../services/supabase/auth';
 import oAuthService from '../../services/oauth/OAuthService';
 import { useResponsiveLayout } from '../../core/theme/useResponsiveLayout';
+import { AppleIcon, GoogleIcon } from '../../core/theme/components/SocialIcons';
 
 const COMMON_TIMEZONES = [
   'America/New_York',
@@ -374,7 +375,7 @@ export const SettingsScreen: React.FC = () => {
                     disabled={isLinking}
                     activeOpacity={0.75}
                   >
-                    <LogIn size={14} color="#FFFFFF" />
+                    <AppleIcon size={16} color="#FFFFFF" />
                     <Text style={styles.linkSocialText}>
                       {isLinking ? 'Linking...' : 'Apple ID'}
                     </Text>
@@ -386,7 +387,7 @@ export const SettingsScreen: React.FC = () => {
                   disabled={isLinking}
                   activeOpacity={0.75}
                 >
-                  <Globe size={14} color="#FFFFFF" />
+                  <GoogleIcon size={16} />
                   <Text style={styles.linkSocialText}>
                     {isLinking ? 'Linking...' : 'Google Account'}
                   </Text>

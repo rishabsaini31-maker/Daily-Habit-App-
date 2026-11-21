@@ -173,11 +173,12 @@ class FocusEngineService {
   }
 
   private formatTime(totalSeconds: number): string {
-    const mins = Math.floor(totalSeconds / 60);
+    const hours = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
     const secs = totalSeconds % 60;
     const mm = mins < 10 ? `0${mins}` : `${mins}`;
     const ss = secs < 10 ? `0${secs}` : `${secs}`;
-    return `${mm}:${ss}`;
+    return hours > 0 ? `${hours}:${mm}:${ss}` : `${mm}:${ss}`;
   }
 
   // ==========================================
@@ -334,6 +335,7 @@ class FocusEngineService {
   }
 
   private notify() {
+    this.state = { ...this.state };
     this.listeners.forEach((l) => l(this.state));
   }
 }

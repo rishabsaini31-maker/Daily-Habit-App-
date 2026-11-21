@@ -80,4 +80,47 @@ describe('Auth API Endpoints', () => {
     expect(res.body.success).toBe(true);
     expect(res.body.data.email).toBe('user@test.com');
   });
+
+  it('POST /api/v1/auth/send-smtp-otp delivers verification OTP code', async () => {
+    const res = await request(app)
+      .post('/api/v1/auth/send-smtp-otp')
+      .send({ email: 'test_smtp@dailyhabit.app' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.code).toBeDefined();
+    expect(res.body.code).toHaveLength(6);
+  });
+
+  it('POST /api/v1/auth/verify-smtp-otp validates the code and rejects invalid code', async () => {
+    const sendRes = await request(app)
+      .post('/api/v1/auth/send-smtp-otp')
+      .send({ email: 'verify_test@dailyhabit.app' });
+
+    const code = sendRes.body.code;
+
+    // 1. Wrong code rejected
+    const wrongRes = await request(app)
+      .post('/api/v1/auth/verify-smtp-otp')
+      .send({ email: 'verify_test@dailyhabit.app', code: '000000' });
+
+    expect(wrongRes.status).toBe(400);
+    expect(wrongRes.body.success).toBe(false);
+
+    // 2. Correct code accepted
+    const correctRes = await request(app)
+      .post('/api/v1/auth/verify-smtp-otp')
+      .send({ email: 'verify_test@dailyhabit.app', code });
+
+    expect(correctRes.status).toBe(200);
+    expect(correctRes.body.success).toBe(true);
+
+    // 3. Dev bypass code 123456 accepted
+    const devBypassRes = await request(app)
+      .post('/api/v1/auth/verify-smtp-otp')
+      .send({ email: 'any_dev@dailyhabit.app', code: '123456' });
+
+    expect(devBypassRes.status).toBe(200);
+    expect(devBypassRes.body.success).toBe(true);
+  });
 });

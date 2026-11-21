@@ -949,4 +949,18 @@ export const api = {
       }
     );
   },
+
+  async sendSmtpOtp(email: string) {
+    return await request<{ success: boolean; message: string }>('/auth/send-smtp-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  async verifySmtpOtp(email: string, code: string) {
+    return await request<{ success: boolean; message: string }>('/auth/verify-smtp-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email, code }),
+    });
+  },
 };

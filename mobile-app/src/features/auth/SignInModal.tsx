@@ -20,6 +20,7 @@ import {
   Sparkles,
 } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
+import { AppleIcon, GoogleIcon } from '../../core/theme/components/SocialIcons';
 import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import authService from '../../services/supabase/auth';
@@ -250,7 +251,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                 ) : (
                   <>
                     <View style={styles.appleLogoIcon}>
-                      <Text style={styles.appleLogoText}></Text>
+                      <AppleIcon size={20} color="#000000" />
                     </View>
                     <Text style={styles.appleBtnText}>Sign In with Apple</Text>
                   </>
@@ -265,7 +266,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                 disabled={loading}
               >
                 <View style={styles.googleIconBadge}>
-                  <Text style={styles.googleIconText}>G</Text>
+                  <GoogleIcon size={18} />
                 </View>
                 <Text style={styles.googleBtnText}>Sign In with Google</Text>
               </TouchableOpacity>

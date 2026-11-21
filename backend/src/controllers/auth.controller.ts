@@ -5,6 +5,7 @@ import { LoginUseCase } from '../usecases/auth/login.usecase.js';
 import { GetMeUseCase } from '../usecases/auth/get-me.usecase.js';
 import { validateBody } from '../middleware/validation.middleware.js';
 import { authRateLimiter } from '../middleware/rate-limit.middleware.js';
+import { smtpService } from '../infrastructure/email/smtp-service.js';
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -16,6 +17,15 @@ const registerSchema = z.object({
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string(),
+});
+
+const sendSmtpOtpSchema = z.object({
+  email: z.string().email(),
+});
+
+const verifySmtpOtpSchema = z.object({
+  email: z.string().email(),
+  code: z.string().min(4).max(10),
 });
 
 export function createAuthRouter(
@@ -71,6 +81,51 @@ export function createAuthRouter(
       next(err);
     }
   });
+
+  router.post(
+    '/send-smtp-otp',
+    authRateLimiter,
+    validateBody(sendSmtpOtpSchema),
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const { email } = req.body;
+        const result = await smtpService.sendOtp(email);
+        if (!result.success) {
+          res.status(400).json({ success: false, error: result.error });
+          return;
+        }
+        res.status(200).json({
+          success: true,
+          message: 'Verification code sent successfully via SMTP',
+          code: process.env.NODE_ENV === 'test' ? result.code : undefined,
+        });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.post(
+    '/verify-smtp-otp',
+    authRateLimiter,
+    validateBody(verifySmtpOtpSchema),
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const { email, code } = req.body;
+        const result = smtpService.verifyOtp(email, code);
+        if (!result.success) {
+          res.status(400).json({ success: false, error: result.error });
+          return;
+        }
+        res.status(200).json({
+          success: true,
+          message: 'Email OTP verified successfully',
+        });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
 
   return router;
 }

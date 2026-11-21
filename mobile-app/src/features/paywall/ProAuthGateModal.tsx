@@ -23,6 +23,7 @@ import {
   Lock,
 } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
+import { AppleIcon, GoogleIcon } from '../../core/theme/components/SocialIcons';
 import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import oAuthService from '../../services/oauth/OAuthService';
@@ -230,7 +231,7 @@ export const ProAuthGateModal: React.FC<ProAuthGateModalProps> = ({
                 ) : (
                   <>
                     <View style={styles.appleLogoIcon}>
-                      <Text style={styles.appleLogoText}></Text>
+                      <AppleIcon size={20} color="#000000" />
                     </View>
                     <Text style={styles.appleBtnText}>Continue with Apple</Text>
                   </>
@@ -245,7 +246,7 @@ export const ProAuthGateModal: React.FC<ProAuthGateModalProps> = ({
                 disabled={loading}
               >
                 <View style={styles.googleIconBadge}>
-                  <Text style={styles.googleIconText}>G</Text>
+                  <GoogleIcon size={18} />
                 </View>
                 <Text style={styles.googleBtnText}>Continue with Google</Text>
               </TouchableOpacity>
