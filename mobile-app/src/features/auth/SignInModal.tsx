@@ -227,7 +227,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
           {/* Headline */}
           <View style={styles.headerSection}>
             <View style={styles.modalLogoWrapper}>
-              <Image source={APP_LOGO} style={styles.modalLogo} resizeMode="cover" />
+              <Image source={APP_LOGO} style={styles.modalLogo} resizeMode="contain" />
             </View>
             <Text style={styles.headline}>Welcome Back</Text>
             <Text style={styles.subheadline}>
@@ -477,6 +477,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#12141D',
     marginBottom: 12,
     alignSelf: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 4,
     shadowColor: '#38BDF8',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -486,7 +489,6 @@ const styles = StyleSheet.create({
   modalLogo: {
     width: '100%',
     height: '100%',
-    borderRadius: 15,
   },
   headline: {
     ...typography.displayMedium,

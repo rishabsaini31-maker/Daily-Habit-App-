@@ -126,7 +126,7 @@ export const StartupSplashScreen: React.FC<StartupSplashScreenProps> = ({
               <Image
                 source={APP_LOGO}
                 style={styles.logoImage}
-                resizeMode="cover"
+                resizeMode="contain"
                 accessibilityLabel="Daily Habit App Logo"
               />
             </View>
@@ -202,11 +202,13 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(56, 189, 248, 0.45)',
     overflow: 'hidden',
     backgroundColor: '#12141D',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 10,
   },
   logoImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 30,
   },
   textBlock: {
     alignItems: 'center',

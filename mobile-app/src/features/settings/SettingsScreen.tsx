@@ -212,7 +212,7 @@ export const SettingsScreen: React.FC = () => {
           <GlassCard style={styles.heroProfileCard}>
             <View style={styles.avatarRow}>
               <View style={styles.avatarBigCircle}>
-                <Image source={APP_LOGO} style={styles.avatarLogoBig} resizeMode="cover" />
+                <Image source={APP_LOGO} style={styles.avatarLogoBig} resizeMode="contain" />
                 <View style={styles.protectionActiveBadge} />
               </View>
               <View style={styles.userMainCol}>
@@ -735,11 +735,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
     overflow: 'hidden',
+    padding: 4,
   },
   avatarLogoBig: {
     width: '100%',
     height: '100%',
-    borderRadius: 28,
   },
   protectionActiveBadge: {
     position: 'absolute',

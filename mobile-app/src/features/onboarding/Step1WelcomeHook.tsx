@@ -20,7 +20,7 @@ export const Step1WelcomeHook: React.FC = () => {
       {/* Top Header with Prominent "Already Pro? Sign In" for returning users */}
       <View style={[styles.topHeader, responsiveContainerStyle]}>
         <View style={styles.brandBadge}>
-          <Image source={APP_LOGO} style={styles.logoTiny} resizeMode="cover" />
+          <Image source={APP_LOGO} style={styles.logoTiny} resizeMode="contain" />
           <Text style={styles.brandTitle}>Daily Habit Improvement</Text>
         </View>
         <TouchableOpacity
@@ -40,7 +40,7 @@ export const Step1WelcomeHook: React.FC = () => {
         <View style={styles.heroIconWrapper}>
           <View style={styles.glowOuter}>
             <View style={styles.glowInner}>
-              <Image source={APP_LOGO} style={styles.logoHero} resizeMode="cover" />
+              <Image source={APP_LOGO} style={styles.logoHero} resizeMode="contain" />
             </View>
           </View>
         </View>
@@ -200,6 +200,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1.5,
     borderColor: 'rgba(16, 185, 129, 0.4)',
+    padding: 6,
   },
   tagline: {
     ...typography.caption,

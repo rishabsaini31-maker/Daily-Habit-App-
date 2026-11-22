@@ -113,7 +113,7 @@ export const HomeScreen: React.FC = () => {
             accessibilityLabel="Open Full Screen Profile"
           >
             <View style={styles.avatarCircle}>
-              <Image source={APP_LOGO} style={styles.avatarLogo} resizeMode="cover" />
+              <Image source={APP_LOGO} style={styles.avatarLogo} resizeMode="contain" />
             </View>
             <View style={styles.protectionActiveBadge} />
           </TouchableOpacity>
@@ -292,11 +292,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+    padding: 3,
   },
   avatarLogo: {
     width: '100%',
     height: '100%',
-    borderRadius: 22,
   },
   protectionActiveBadge: {
     position: 'absolute',
