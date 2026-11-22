@@ -97,89 +97,97 @@ class FocusAccessibilityService : AccessibilityService() {
     private var lastToastTime = 0L
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event == null) return
+        try {
+            if (event == null) return
 
-        val packageName = event.packageName?.toString() ?: return
+            val packageName = event.packageName?.toString() ?: return
 
-        // 0. Auto-expiration check in memory
-        if (sessionEndTimeMillis > 0 && System.currentTimeMillis() >= sessionEndTimeMillis) {
-            clearBlockingState()
-            return
-        }
+            // Never intercept or inspect our own app (prevents self-closing or UI freezes)
+            if (packageName == applicationContext.packageName) return
 
-        // =========================================================================
-        // 1. ANTI-UNINSTALL GUARD (In-Memory)
-        // When active, blocks navigating to Settings -> App Info for our app
-        // =========================================================================
-        if (antiUninstallGuard && packageName == "com.android.settings") {
-            val rootNode = rootInActiveWindow
-            if (inspectNodeContainsText(rootNode, "Daily Habit") ||
-                inspectNodeContainsText(rootNode, "DHI") ||
-                inspectNodeContainsText(rootNode, "com.scstechnology.dhi") ||
-                inspectNodeContainsText(rootNode, "Uninstall") ||
-                inspectNodeContainsText(rootNode, "Force stop")
-            ) {
-                performGlobalAction(GLOBAL_ACTION_HOME)
-                triggerInterceptionOverlay("System Settings (Anti-Uninstall Active)", packageName)
+            // 0. Auto-expiration check in memory
+            if (sessionEndTimeMillis > 0 && System.currentTimeMillis() >= sessionEndTimeMillis) {
+                clearBlockingState()
                 return
             }
-        }
 
-        if (!isShieldActive) return
-
-        val targetRule = blockedRules.find { it.packageName == packageName } ?: return
-
-        // =========================================================================
-        // 2. ENTIRE APP BLOCK -> Launch App Block Interception Shield Overlay
-        // =========================================================================
-        if (!targetRule.isSurgicalOnly) {
-            interceptionsCount++
-            triggerInterceptionOverlay(targetRule.displayName, packageName)
-            return
-        }
-
-        // =========================================================================
-        // 3. SURGICAL REELS & SHORTS MODE (In-Memory Inspection)
-        // =========================================================================
-        if (targetRule.isSurgicalOnly) {
-            val rootNode = rootInActiveWindow ?: return
-
-            // Instagram Reels: dynamic selectors from remote config or description
-            val isInstagramReels = packageName == "com.instagram.android" && (
-                dynamicInstagramSelectors.any { hasNodeWithId(rootNode, it) } ||
-                inspectNodeHasContentDescription(rootNode, "Reels") ||
-                inspectNodeHasContentDescription(rootNode, "Reel")
-            )
-
-            // YouTube Shorts: dynamic selectors from remote config or description
-            val isYouTubeShorts = packageName == "com.google.android.youtube" && (
-                dynamicYouTubeSelectors.any { hasNodeWithId(rootNode, it) } ||
-                inspectNodeHasContentDescription(rootNode, "Shorts")
-            )
-
-            // TikTok FYP / explore swipe
-            val isTikTokFeed = packageName == "com.zhiliaoapp.musically" && (
-                hasNodeWithId(rootNode, "viewpager") ||
-                inspectNodeHasContentDescription(rootNode, "For You")
-            )
-
-            if (isInstagramReels || isYouTubeShorts || isTikTokFeed) {
-                performGlobalAction(GLOBAL_ACTION_BACK)
-                interceptionsCount++
-
-                showSurgicalToast(
-                    if (isInstagramReels) "Instagram Reels Blocked • Stay Focused"
-                    else if (isYouTubeShorts) "YouTube Shorts Blocked • Learn with Long-form"
-                    else "TikTok FYP Blocked • Reclaim Your Focus"
-                )
+            // =========================================================================
+            // 1. ANTI-UNINSTALL GUARD (In-Memory)
+            // When active, blocks navigating to Settings -> App Info for our app
+            // =========================================================================
+            if (antiUninstallGuard && packageName == "com.android.settings") {
+                val rootNode = rootInActiveWindow
+                if (inspectNodeContainsText(rootNode, "Daily Habit") ||
+                    inspectNodeContainsText(rootNode, "DHI") ||
+                    inspectNodeContainsText(rootNode, "com.scstechnology.dhi") ||
+                    inspectNodeContainsText(rootNode, "Uninstall") ||
+                    inspectNodeContainsText(rootNode, "Force stop")
+                ) {
+                    performGlobalAction(GLOBAL_ACTION_HOME)
+                    triggerInterceptionOverlay("System Settings (Anti-Uninstall Active)", packageName)
+                    return
+                }
             }
+
+            if (!isShieldActive) return
+
+            val targetRule = blockedRules.find { it.packageName == packageName } ?: return
+
+            // =========================================================================
+            // 2. ENTIRE APP BLOCK -> Launch App Block Interception Shield Overlay
+            // =========================================================================
+            if (!targetRule.isSurgicalOnly) {
+                interceptionsCount++
+                triggerInterceptionOverlay(targetRule.displayName, packageName)
+                return
+            }
+
+            // =========================================================================
+            // 3. SURGICAL REELS & SHORTS MODE (In-Memory Inspection)
+            // =========================================================================
+            if (targetRule.isSurgicalOnly) {
+                val rootNode = rootInActiveWindow ?: return
+
+                // Instagram Reels: dynamic selectors from remote config or description
+                val isInstagramReels = packageName == "com.instagram.android" && (
+                    dynamicInstagramSelectors.any { hasNodeWithId(rootNode, it) } ||
+                    inspectNodeHasContentDescription(rootNode, "Reels") ||
+                    inspectNodeHasContentDescription(rootNode, "Reel")
+                )
+
+                // YouTube Shorts: dynamic selectors from remote config or description
+                val isYouTubeShorts = packageName == "com.google.android.youtube" && (
+                    dynamicYouTubeSelectors.any { hasNodeWithId(rootNode, it) } ||
+                    inspectNodeHasContentDescription(rootNode, "Shorts")
+                )
+
+                // TikTok FYP / explore swipe
+                val isTikTokFeed = packageName == "com.zhiliaoapp.musically" && (
+                    hasNodeWithId(rootNode, "viewpager") ||
+                    inspectNodeHasContentDescription(rootNode, "For You")
+                )
+
+                if (isInstagramReels || isYouTubeShorts || isTikTokFeed) {
+                    performGlobalAction(GLOBAL_ACTION_BACK)
+                    interceptionsCount++
+
+                    showSurgicalToast(
+                        if (isInstagramReels) "Instagram Reels Blocked • Stay Focused"
+                        else if (isYouTubeShorts) "YouTube Shorts Blocked • Learn with Long-form"
+                        else "TikTok FYP Blocked • Reclaim Your Focus"
+                    )
+                }
+            }
+        } catch (_: Throwable) {
+            // Safe guard against external app view hierarchy exceptions
         }
     }
 
     private fun triggerInterceptionOverlay(displayName: String, packageName: String) {
+        if (packageName == applicationContext.packageName) return
         val intent = Intent().apply {
             setClassName(applicationContext.packageName, "${applicationContext.packageName}.MainActivity")
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra("SHIELD_TRIGGER", true)
             putExtra("BLOCKED_APP_NAME", displayName)
             putExtra("PACKAGE_NAME", packageName)

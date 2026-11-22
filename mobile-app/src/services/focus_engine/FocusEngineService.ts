@@ -1,3 +1,4 @@
+import { AppState, AppStateStatus, Platform } from 'react-native';
 import syncService, {
   SyncFocusSession,
   SyncDailyMetric,
@@ -70,6 +71,14 @@ class FocusEngineService {
 
     await this.refreshState();
     this.startTimerLoop();
+    this.syncLiveAppUsageFromDevice();
+
+    // Listen to foreground active state to immediately sync app usage time
+    AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'active') {
+        this.syncLiveAppUsageFromDevice();
+      }
+    });
 
     // Listen to local sync changes
     syncService.subscribe(() => {
@@ -133,10 +142,18 @@ class FocusEngineService {
     return diffSec;
   }
 
+  private timerTicks = 0;
+
   private startTimerLoop() {
     if (this.timerInterval) clearInterval(this.timerInterval);
 
     this.timerInterval = setInterval(async () => {
+      this.timerTicks++;
+      // Every 4 seconds, poll real-time foreground app usage from Android UsageStatsManager
+      if (this.timerTicks % 4 === 0) {
+        this.syncLiveAppUsageFromDevice().catch(() => {});
+      }
+
       // Check 24-hour cycle boundary (resets at 12:00 AM midnight)
       syncService.checkAndReset24HourCycle();
 
@@ -152,6 +169,62 @@ class FocusEngineService {
         }
       }
     }, 1000);
+  }
+
+  /**
+   * Synchronizes real hardware app usage from Android UsageStatsManager in real time.
+   * If user uses Instagram for 5 minutes, updates blocked target's time_spent_today_minutes to 5m.
+   */
+  async syncLiveAppUsageFromDevice(): Promise<void> {
+    if (Platform.OS !== 'android') return;
+    try {
+      const usageList = await nativeBlocker.getLiveAppUsage();
+      if (!usageList || usageList.length === 0) return;
+
+      const currentTargets = await syncService.getBlockedTargets();
+      let hasChanges = false;
+
+      for (const target of currentTargets) {
+        const pkgLower = target.package_or_token.toLowerCase();
+        const matched = usageList.find((u) => u.packageName.toLowerCase() === pkgLower);
+        if (matched && typeof matched.minutes === 'number') {
+          if (target.time_spent_today_minutes !== matched.minutes) {
+            target.time_spent_today_minutes = matched.minutes;
+            hasChanges = true;
+
+            // Enforce limit if daily allowance is reached
+            if (target.daily_limit_minutes && target.daily_limit_minutes > 0) {
+              if (matched.minutes >= target.daily_limit_minutes) {
+                nativeBlocker.toggleAppBlock(target.package_or_token, true).catch(() => {});
+              }
+            }
+          }
+        }
+      }
+
+      if (hasChanges) {
+        const totalScreenTime = currentTargets.reduce(
+          (sum, t) => sum + (t.time_spent_today_minutes || 0),
+          0
+        );
+        const metrics = await syncService.getTodayMetrics();
+        metrics.total_screen_time_min = totalScreenTime;
+
+        await this.refreshState();
+      }
+    } catch (e) {
+      console.warn('syncLiveAppUsageFromDevice error:', e);
+    }
+  }
+
+  async createSchedule(schedule: SyncSchedule): Promise<void> {
+    await syncService.createSchedule(schedule);
+    await this.refreshState();
+  }
+
+  async deleteSchedule(id: string): Promise<void> {
+    await syncService.deleteSchedule(id);
+    await this.refreshState();
   }
 
   async setAppDailyLimit(packageOrToken: string, limitMinutes: number): Promise<void> {

@@ -12,6 +12,10 @@ import android.os.Build
 import android.os.PowerManager
 import android.os.Process
 import android.provider.Settings
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import com.facebook.react.bridge.*
 import java.util.Calendar
 
@@ -165,7 +169,7 @@ class FocusBlockerModule(private val reactContext: ReactApplicationContext) :
     }
 
     // =========================================================================
-    // 2. REAL APP USAGE STATS QUERY (UsageStatsManager)
+    // 2. REAL APP USAGE STATS QUERY (UsageStatsManager - queryAndAggregate)
     // =========================================================================
     @ReactMethod
     fun getDailyAppUsageMinutes(promise: Promise) {
@@ -183,37 +187,113 @@ class FocusBlockerModule(private val reactContext: ReactApplicationContext) :
             val startOfDay = calendar.timeInMillis
             val now = System.currentTimeMillis()
 
-            val stats = usageStatsManager.queryUsageStats(
-                UsageStatsManager.INTERVAL_DAILY,
-                startOfDay,
-                now
-            )
+            // 1. Use queryAndAggregateUsageStats for exact cumulative foreground time
+            val aggregatedStats = try {
+                usageStatsManager.queryAndAggregateUsageStats(startOfDay, now)
+            } catch (_: Exception) {
+                emptyMap()
+            }
+
+            val resultMap = mutableMapOf<String, Long>()
+
+            if (!aggregatedStats.isNullOrEmpty()) {
+                for ((pkg, usage) in aggregatedStats) {
+                    if (usage.totalTimeInForeground > 0) {
+                        resultMap[pkg] = usage.totalTimeInForeground
+                    }
+                }
+            } else {
+                // Fallback to queryUsageStats
+                val stats = usageStatsManager.queryUsageStats(
+                    UsageStatsManager.INTERVAL_DAILY,
+                    startOfDay,
+                    now
+                )
+                stats?.forEach { usage ->
+                    val existing = resultMap[usage.packageName] ?: 0L
+                    resultMap[usage.packageName] = Math.max(existing, usage.totalTimeInForeground)
+                }
+            }
 
             val resultArray = Arguments.createArray()
-            val seenPackages = mutableSetOf<String>()
+            resultMap.entries
+                .filter { it.value > 15000L } // Active for at least 15 seconds
+                .sortedByDescending { it.value }
+                .forEach { entry ->
+                    val pkg = entry.key
+                    val totalMs = entry.value
+                    // Round up to 1 minute if at least 15s, otherwise exact rounded minutes
+                    val minutes = if (totalMs in 15000L..59999L) 1 else Math.round(totalMs / 60000.0).toInt()
 
-            stats?.sortedByDescending { it.totalTimeInForeground }?.forEach { usage ->
-                val minutes = (usage.totalTimeInForeground / (1000 * 60)).toInt()
-                if (minutes > 0 && !seenPackages.contains(usage.packageName)) {
-                    seenPackages.add(usage.packageName)
-                    var appName = usage.packageName
+                    var appName = pkg
                     try {
-                        val appInfo = pm.getApplicationInfo(usage.packageName, 0)
+                        val appInfo = pm.getApplicationInfo(pkg, 0)
                         appName = pm.getApplicationLabel(appInfo).toString()
-                    } catch (_: PackageManager.NameNotFoundException) {}
+                    } catch (_: Exception) {}
 
                     val map = Arguments.createMap().apply {
-                        putString("packageName", usage.packageName)
+                        putString("packageName", pkg)
                         putString("appName", appName)
                         putInt("minutes", minutes)
-                        putDouble("lastTimeUsed", usage.lastTimeUsed.toDouble())
+                        putInt("seconds", (totalMs / 1000).toInt())
                     }
                     resultArray.pushMap(map)
                 }
-            }
+
             promise.resolve(resultArray)
         } catch (e: Exception) {
             promise.reject("USAGE_STATS_ERROR", e.localizedMessage, e)
+        }
+    }
+
+    // =========================================================================
+    // 2.1 REAL HARDWARE STEP SENSOR (Pedometer)
+    // =========================================================================
+    private var isSensorRegistered = false
+    private var baseSensorSteps = -1
+    private var liveTodaySteps = 0
+
+    private val stepEventListener = object : SensorEventListener {
+        override fun onSensorChanged(event: SensorEvent?) {
+            if (event == null) return
+            if (event.sensor.type == Sensor.TYPE_STEP_COUNTER) {
+                val totalSteps = event.values[0].toInt()
+                if (baseSensorSteps < 0) {
+                    baseSensorSteps = totalSteps
+                }
+                liveTodaySteps = Math.max(0, totalSteps - baseSensorSteps)
+            } else if (event.sensor.type == Sensor.TYPE_STEP_DETECTOR) {
+                liveTodaySteps += 1
+            }
+        }
+        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+    }
+
+    private fun ensureStepSensorRegistered() {
+        if (isSensorRegistered) return
+        try {
+            val sm = reactContext.getSystemService(Context.SENSOR_SERVICE) as? SensorManager ?: return
+            val counter = sm.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
+            if (counter != null) {
+                sm.registerListener(stepEventListener, counter, SensorManager.SENSOR_DELAY_UI)
+                isSensorRegistered = true
+                return
+            }
+            val detector = sm.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
+            if (detector != null) {
+                sm.registerListener(stepEventListener, detector, SensorManager.SENSOR_DELAY_UI)
+                isSensorRegistered = true
+            }
+        } catch (_: Exception) {}
+    }
+
+    @ReactMethod
+    fun getLiveStepCount(promise: Promise) {
+        try {
+            ensureStepSensorRegistered()
+            promise.resolve(liveTodaySteps)
+        } catch (e: Exception) {
+            promise.resolve(0)
         }
     }
 

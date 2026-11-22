@@ -641,6 +641,47 @@ class SyncService {
     api.removeBlockedTarget(packageOrToken).catch(() => {});
   }
 
+  async createSchedule(schedule: SyncSchedule): Promise<void> {
+    const existingIndex = this.inMemorySchedules.findIndex((s) => s.id === schedule.id);
+    if (existingIndex >= 0) {
+      this.inMemorySchedules[existingIndex] = schedule;
+    } else {
+      this.inMemorySchedules = [schedule, ...this.inMemorySchedules];
+    }
+    this.notifyListeners();
+
+    try {
+      await supabase.from('schedules').upsert({
+        id: schedule.id,
+        user_id: this.currentUserId,
+        title: schedule.title,
+        trigger_type: schedule.trigger_type,
+        start_time: schedule.start_time,
+        end_time: schedule.end_time,
+        days_of_week: schedule.days_of_week,
+        is_active: schedule.is_active,
+        step_goal: schedule.step_goal,
+        geofence_lat: schedule.geofence_lat,
+        geofence_lng: schedule.geofence_lng,
+        geofence_radius_m: schedule.geofence_radius_m,
+      });
+      api.createSchedule(schedule).catch(() => {});
+    } catch (e) {
+      console.warn('createSchedule error:', e);
+    }
+  }
+
+  async deleteSchedule(id: string): Promise<void> {
+    this.inMemorySchedules = this.inMemorySchedules.filter((s) => s.id !== id);
+    this.notifyListeners();
+
+    try {
+      await supabase.from('schedules').delete().eq('id', id);
+    } catch (e) {
+      console.warn('deleteSchedule error:', e);
+    }
+  }
+
   async toggleSchedule(id: string, isActive: boolean): Promise<void> {
     this.inMemorySchedules = this.inMemorySchedules.map((s) =>
       s.id === id ? { ...s, is_active: isActive } : s

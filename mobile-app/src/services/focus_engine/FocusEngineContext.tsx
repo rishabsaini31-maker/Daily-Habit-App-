@@ -13,11 +13,14 @@ interface FocusEngineContextValue extends FocusEngineState {
   recordInterception: (appName?: string) => Promise<void>;
   awardGems: (amount: number, reason: string) => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
+  createSchedule: (schedule: SyncSchedule) => Promise<void>;
+  deleteSchedule: (id: string) => Promise<void>;
   toggleSchedule: (id: string, active: boolean) => Promise<void>;
   addBlockedTarget: (target: SyncBlockedTarget) => Promise<void>;
   removeBlockedTarget: (packageOrToken: string) => Promise<void>;
   setAppDailyLimit: (packageOrToken: string, limitMinutes: number) => Promise<void>;
   recordAppUsage: (packageOrToken: string, minutes: number) => Promise<{ isLimitReached: boolean; newSpent: number }>;
+  syncLiveAppUsageFromDevice: () => Promise<void>;
   refreshState: () => Promise<void>;
 }
 
@@ -58,6 +61,14 @@ export const FocusEngineProvider: React.FC<{ children: React.ReactNode }> = ({ c
     await focusEngine.refreshState();
   };
 
+  const createSchedule = async (schedule: SyncSchedule) => {
+    await focusEngine.createSchedule(schedule);
+  };
+
+  const deleteSchedule = async (id: string) => {
+    await focusEngine.deleteSchedule(id);
+  };
+
   const toggleSchedule = async (id: string, active: boolean) => {
     await syncService.toggleSchedule(id, active);
     await focusEngine.refreshState();
@@ -94,11 +105,14 @@ export const FocusEngineProvider: React.FC<{ children: React.ReactNode }> = ({ c
         recordInterception,
         awardGems,
         updateProfile,
+        createSchedule,
+        deleteSchedule,
         toggleSchedule,
         addBlockedTarget,
         removeBlockedTarget,
         setAppDailyLimit,
         recordAppUsage,
+        syncLiveAppUsageFromDevice: () => focusEngine.syncLiveAppUsageFromDevice(),
         refreshState,
       }}
     >

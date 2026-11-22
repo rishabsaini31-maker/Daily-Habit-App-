@@ -72,6 +72,13 @@ export const StartupSplashScreen: React.FC<StartupSplashScreenProps> = ({
         }),
       ])
     ).start();
+
+    // 3. Fast auto-transition (opens immediately after 900ms brand intro)
+    const autoTimer = setTimeout(() => {
+      handleTapToContinue();
+    }, 900);
+
+    return () => clearTimeout(autoTimer);
   }, []);
 
   // When user taps anywhere on the screen
@@ -79,9 +86,10 @@ export const StartupSplashScreen: React.FC<StartupSplashScreenProps> = ({
     if (isDismissing.current) return;
     isDismissing.current = true;
 
+    // Snappy 120ms fade out for instant responsiveness
     Animated.timing(screenFade, {
       toValue: 0,
-      duration: 320,
+      duration: 120,
       easing: Easing.out(Easing.ease),
       useNativeDriver: true,
     }).start(() => {

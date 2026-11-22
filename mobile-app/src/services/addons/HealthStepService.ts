@@ -15,7 +15,7 @@ export interface HealthStepStatus {
  * - Syncs step goals and physical activity unlocks in-memory
  */
 class HealthStepService {
-  private inMemoryTodaySteps: number = 6420;
+  private inMemoryTodaySteps: number = 3450;
   private inMemoryStepShieldActive: boolean = false;
   private inMemoryLastSync: string = new Date().toISOString();
 
@@ -27,9 +27,17 @@ class HealthStepService {
   }
 
   /**
-   * Reads today's total steps from in-memory sensor cache
+   * Reads today's total steps from real device sensor or cache
    */
   async getTodaySteps(): Promise<number> {
+    try {
+      const live = await nativeBlocker.getLiveStepCount();
+      if (live > 0) {
+        this.inMemoryTodaySteps = live;
+      }
+    } catch {
+      // Fallback to in-memory
+    }
     return this.inMemoryTodaySteps;
   }
 

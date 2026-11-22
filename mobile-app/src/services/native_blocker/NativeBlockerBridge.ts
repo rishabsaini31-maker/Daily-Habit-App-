@@ -260,6 +260,50 @@ class NativeBlockerBridge implements INativeBlockerService {
     return this.inMemoryApps;
   }
 
+  /**
+   * Real-time query of Android UsageStatsManager returning exact minutes and seconds
+   */
+  async getLiveAppUsage(): Promise<{ packageName: string; appName: string; minutes: number; seconds?: number }[]> {
+    if (Platform.OS === 'android' && FocusBlockerModule?.getDailyAppUsageMinutes) {
+      try {
+        const stats = await FocusBlockerModule.getDailyAppUsageMinutes();
+        return stats || [];
+      } catch (err) {
+        console.warn('getLiveAppUsage error:', err);
+        return [];
+      }
+    }
+    return [];
+  }
+
+  /**
+   * Real-time hardware step sensor query (Pedometer)
+   */
+  async getLiveStepCount(): Promise<number> {
+    if (Platform.OS === 'android' && FocusBlockerModule?.getLiveStepCount) {
+      try {
+        const steps = await FocusBlockerModule.getLiveStepCount();
+        return typeof steps === 'number' ? steps : 0;
+      } catch (err) {
+        console.warn('getLiveStepCount error:', err);
+        return 0;
+      }
+    }
+    return 0;
+  }
+
+  openUsageStatsSettings(): void {
+    if (Platform.OS === 'android' && FocusBlockerModule?.openUsageStatsSettings) {
+      FocusBlockerModule.openUsageStatsSettings();
+    }
+  }
+
+  requestIgnoreBatteryOptimization(): void {
+    if (Platform.OS === 'android' && FocusBlockerModule?.requestIgnoreBatteryOptimization) {
+      FocusBlockerModule.requestIgnoreBatteryOptimization();
+    }
+  }
+
   async toggleAppBlock(appId: string, blocked: boolean): Promise<void> {
     this.inMemoryApps = this.inMemoryApps.map((app) =>
       app.id === appId ? { ...app, isEntireAppBlocked: blocked } : app
