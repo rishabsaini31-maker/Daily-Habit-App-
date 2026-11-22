@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.habittracker.app">
+    package="com.scstechnology.dhi">
 
     <!-- System-level permissions for App Blocking and Monitoring -->
     <uses-permission android:name="android.permission.INTERNET" />

@@ -257,34 +257,13 @@ export async function syncOfflineQueue(): Promise<{ syncedCount: number; errors:
 export const api = {
   // Auth
   async login(email: string, password: string): Promise<{ user: User; token: string }> {
-    try {
-      const data = await request<{ user: User; token: string }>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-      });
-      await AsyncStorage.setItem(TOKEN_KEY, data.token);
-      await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
-      return data;
-    } catch (err: any) {
-      // Mock login for offline / standalone preview demo
-      if (err.message.includes('fetch') || err.message.includes('Network') || err.message.includes('Failed')) {
-        const mockUser: User = {
-          id: 'user-demo-1',
-          email,
-          displayName: email.split('@')[0] || 'Habit Builder',
-          role: 'USER',
-          status: 'ACTIVE',
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        const mockToken = 'mock-jwt-token-demo';
-        await AsyncStorage.setItem(TOKEN_KEY, mockToken);
-        await AsyncStorage.setItem(USER_KEY, JSON.stringify(mockUser));
-        return { user: mockUser, token: mockToken };
-      }
-      throw err;
-    }
+    const data = await request<{ user: User; token: string }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    await AsyncStorage.setItem(TOKEN_KEY, data.token);
+    await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
+    return data;
   },
 
   async register(
@@ -293,38 +272,18 @@ export const api = {
     displayName: string,
     timezone?: string
   ): Promise<{ user: User; token: string }> {
-    try {
-      const data = await request<{ user: User; token: string }>('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify({
-          email,
-          password,
-          displayName,
-          timezone: timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-        }),
-      });
-      await AsyncStorage.setItem(TOKEN_KEY, data.token);
-      await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
-      return data;
-    } catch (err: any) {
-      if (err.message.includes('fetch') || err.message.includes('Network') || err.message.includes('Failed')) {
-        const mockUser: User = {
-          id: 'user-demo-' + Date.now(),
-          email,
-          displayName: displayName || 'Alex Habit Tracker',
-          role: 'USER',
-          status: 'ACTIVE',
-          timezone: timezone || 'UTC',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        const mockToken = 'mock-jwt-token-' + Date.now();
-        await AsyncStorage.setItem(TOKEN_KEY, mockToken);
-        await AsyncStorage.setItem(USER_KEY, JSON.stringify(mockUser));
-        return { user: mockUser, token: mockToken };
-      }
-      throw err;
-    }
+    const data = await request<{ user: User; token: string }>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        email,
+        password,
+        displayName,
+        timezone: timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+      }),
+    });
+    await AsyncStorage.setItem(TOKEN_KEY, data.token);
+    await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
+    return data;
   },
 
   async getMe(): Promise<User | null> {
@@ -365,84 +324,13 @@ export const api = {
       }
       return data;
     } catch {
-      // Fallback to cached habits or seed initial demo habits
+      // Fallback to cached habits
       const cached = await AsyncStorage.getItem(CACHE_HABITS_KEY);
       if (cached) {
         const parsed: Habit[] = JSON.parse(cached);
         return parsed.filter(h => h.isArchived === isArchived);
       }
-      // Return default initial demo habits
-      return [
-        {
-          id: 'habit-1',
-          userId: 'user-demo-1',
-          categoryId: 'cat-mind',
-          title: 'Morning Meditation',
-          description: '10 minutes of mindfulness to begin the day centered.',
-          frequencyType: 'DAILY',
-          targetType: 'BOOLEAN',
-          color: '#10b981',
-          icon: 'Sun',
-          reminderTime: '07:30',
-          isArchived: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          category: DEFAULT_CATEGORIES[3],
-          streak: {
-            currentStreak: 5,
-            longestStreak: 12,
-            lastCompletedDate: getLocalDateString(),
-            freezeCountRemaining: 1,
-          },
-        },
-        {
-          id: 'habit-2',
-          userId: 'user-demo-1',
-          categoryId: 'cat-health',
-          title: 'Drink 2.5L Water',
-          description: 'Stay hydrated for focus and bodily wellness.',
-          frequencyType: 'DAILY',
-          targetType: 'NUMERIC',
-          targetValue: 2500,
-          unit: 'ml',
-          color: '#06b6d4',
-          icon: 'Droplet',
-          reminderTime: '09:00',
-          isArchived: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          category: DEFAULT_CATEGORIES[0],
-          streak: {
-            currentStreak: 4,
-            longestStreak: 8,
-            lastCompletedDate: null,
-            freezeCountRemaining: 1,
-          },
-        },
-        {
-          id: 'habit-3',
-          userId: 'user-demo-1',
-          categoryId: 'cat-fitness',
-          title: 'Strength Training',
-          description: 'Weightlifting and core routine (Mon, Wed, Fri).',
-          frequencyType: 'WEEKLY_DAYS',
-          frequencyPayload: [1, 3, 5],
-          targetType: 'BOOLEAN',
-          color: '#f59e0b',
-          icon: 'Dumbbell',
-          reminderTime: '17:30',
-          isArchived: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          category: DEFAULT_CATEGORIES[1],
-          streak: {
-            currentStreak: 7,
-            longestStreak: 14,
-            lastCompletedDate: null,
-            freezeCountRemaining: 0,
-          },
-        },
-      ];
+      return [];
     }
   },
 
@@ -460,7 +348,7 @@ export const api = {
       // Offline fallback: create locally and enqueue sync
       const newHabit: Habit = {
         id: 'habit-local-' + Date.now(),
-        userId: 'user-demo-1',
+        userId: 'dhi-user',
         categoryId: habitData.categoryId || 'cat-prod',
         title: habitData.title || 'New Habit',
         description: habitData.description || null,
@@ -578,7 +466,7 @@ export const api = {
       const completion: HabitCompletion = {
         id: 'comp-local-' + Date.now(),
         habitId,
-        userId: 'user-demo-1',
+        userId: 'dhi-user',
         date: payload.date,
         status: payload.status,
         value: payload.value || 0,

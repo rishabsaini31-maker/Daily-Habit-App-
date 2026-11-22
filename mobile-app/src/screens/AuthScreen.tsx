@@ -16,9 +16,9 @@ import { useAuth } from '../context/AuthContext';
 export const AuthScreen: React.FC = () => {
   const { login, register, isLoading, error, clearError } = useAuth();
   const [isRegisterMode, setIsRegisterMode] = useState<boolean>(false);
-  const [email, setEmail] = useState<string>('alex@habit-tracker.internal');
-  const [password, setPassword] = useState<string>('AlexPassword123!');
-  const [displayName, setDisplayName] = useState<string>('Alex Johnson');
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [displayName, setDisplayName] = useState<string>('');
   const [validationError, setValidationError] = useState<string>('');
 
   const handleToggleMode = (mode: boolean) => {
@@ -51,10 +51,6 @@ export const AuthScreen: React.FC = () => {
     } catch {
       // Error handled in AuthContext
     }
-  };
-
-  const handleQuickDemoLogin = async () => {
-    await login('alex@habit-tracker.internal', 'AlexPassword123!');
   };
 
   const displayedError = validationError || error;
@@ -112,7 +108,7 @@ export const AuthScreen: React.FC = () => {
                 <User size={18} color="#94a3b8" />
                 <TextInput
                   style={styles.textInput}
-                  placeholder="e.g. Alex Johnson"
+                  placeholder="Your Full Name"
                   placeholderTextColor="#64748b"
                   value={displayName}
                   onChangeText={setDisplayName}
@@ -167,17 +163,6 @@ export const AuthScreen: React.FC = () => {
                 {isRegisterMode ? 'Create Account' : 'Sign In'}
               </Text>
             )}
-          </TouchableOpacity>
-
-          {/* 1-Tap Demo Sign In for evaluators */}
-          <TouchableOpacity
-            style={styles.demoBtn}
-            onPress={handleQuickDemoLogin}
-            disabled={isLoading}
-            activeOpacity={0.8}
-          >
-            <Sparkles size={16} color="#10b981" />
-            <Text style={styles.demoBtnText}>1-Tap Demo Sign In (Alex Johnson)</Text>
           </TouchableOpacity>
         </View>
 

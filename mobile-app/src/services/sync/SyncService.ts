@@ -153,115 +153,29 @@ class SyncService {
   private initDefaultInMemoryState() {
     if (!this.inMemoryProfile) {
       this.inMemoryProfile = {
-        id: this.currentUserId || 'guest_dev_0',
+        id: this.currentUserId || 'guest_user',
         display_name: 'Focus Pioneer',
-        streak_days: 7,
-        total_gems: 480,
+        streak_days: 0,
+        total_gems: 0,
         tier_rank: 'Bronze',
         daily_baseline_minutes: 270,
         is_pro: false,
-        friend_partner_name: 'Alex',
-        friend_partner_contact: '+1234567890',
-        nfc_tag_uid: '04:5A:21:7B:9C',
       };
     }
     if (this.inMemoryBlockedTargets.length === 0) {
-      const todayStr = new Date().toISOString().split('T')[0];
-      this.inMemoryBlockedTargets = [
-        {
-          id: '1',
-          platform: 'android',
-          package_or_token: 'com.instagram.android',
-          display_name: 'Instagram',
-          is_surgical_feed_only: true,
-          daily_limit_minutes: 20,
-          time_spent_today_minutes: 12,
-          category: 'social',
-          last_reset_date: todayStr,
-        },
-        {
-          id: '2',
-          platform: 'android',
-          package_or_token: 'com.google.android.youtube',
-          display_name: 'YouTube',
-          is_surgical_feed_only: true,
-          daily_limit_minutes: 30,
-          time_spent_today_minutes: 18,
-          category: 'entertainment',
-          last_reset_date: todayStr,
-        },
-        {
-          id: '3',
-          platform: 'android',
-          package_or_token: 'com.zhiliaoapp.musically',
-          display_name: 'TikTok',
-          is_surgical_feed_only: false,
-          daily_limit_minutes: 0,
-          time_spent_today_minutes: 0,
-          category: 'social',
-          last_reset_date: todayStr,
-        },
-        {
-          id: '4',
-          platform: 'android',
-          package_or_token: 'com.twitter.android',
-          display_name: 'X (Twitter)',
-          is_surgical_feed_only: false,
-          daily_limit_minutes: 60,
-          time_spent_today_minutes: 42,
-          category: 'social',
-          last_reset_date: todayStr,
-        },
-      ];
+      this.inMemoryBlockedTargets = [];
     }
     if (this.inMemorySchedules.length === 0) {
-      this.inMemorySchedules = [
-        {
-          id: 'sched-1',
-          title: 'Work Focus Block',
-          trigger_type: 'time',
-          days_of_week: [1, 2, 3, 4, 5],
-          start_time: '09:00:00',
-          end_time: '17:00:00',
-          is_active: true,
-        },
-        {
-          id: 'sched-2',
-          title: 'Sleep Sanctuary',
-          trigger_type: 'time',
-          days_of_week: [1, 2, 3, 4, 5, 6, 7],
-          start_time: '22:30:00',
-          end_time: '07:00:00',
-          is_active: true,
-        },
-        {
-          id: 'sched-3',
-          title: 'Office / Work HQ',
-          trigger_type: 'geofence',
-          days_of_week: [1, 2, 3, 4, 5],
-          geofence_lat: 37.7749,
-          geofence_lng: -122.4194,
-          geofence_radius_m: 200,
-          is_active: true,
-        },
-        {
-          id: 'sched-4',
-          title: 'Physical Activity Gating',
-          trigger_type: 'health_steps',
-          days_of_week: [1, 2, 3, 4, 5, 6, 7],
-          step_goal: 5000,
-          is_active: true,
-        },
-      ];
+      this.inMemorySchedules = [];
     }
     if (!this.inMemoryDailyMetrics) {
       this.inMemoryDailyMetrics = {
         metric_date: new Date().toISOString().split('T')[0],
-        focus_score: 88,
-        total_screen_time_min: 135,
-        blocked_time_min: 108,
-        interceptions_count: 48,
-        gems_earned: 35,
+        focus_score: 100,
+        total_screen_time_min: 0,
+        blocked_time_min: 0,
+        interceptions_count: 0,
+        gems_earned: 0,
       };
     }
   }
@@ -284,14 +198,11 @@ class SyncService {
         const defaultProfile: UserProfile = {
           id: uid,
           display_name: 'Focus Pioneer',
-          streak_days: 7,
-          total_gems: 480,
+          streak_days: 0,
+          total_gems: 0,
           tier_rank: 'Bronze',
           daily_baseline_minutes: 270,
           is_pro: false,
-          friend_partner_name: 'Alex',
-          friend_partner_contact: '+1234567890',
-          nfc_tag_uid: '04:5A:21:7B:9C',
         };
         await supabase.from('profiles').upsert(defaultProfile);
         this.inMemoryProfile = defaultProfile;
@@ -494,11 +405,11 @@ class SyncService {
         const defaultMetric: SyncDailyMetric = {
           user_id: uid,
           metric_date: todayStr,
-          focus_score: 88,
-          total_screen_time_min: 135,
-          blocked_time_min: 108,
-          interceptions_count: 48,
-          gems_earned: 35,
+          focus_score: 100,
+          total_screen_time_min: 0,
+          blocked_time_min: 0,
+          interceptions_count: 0,
+          gems_earned: 0,
         };
         await supabase.from('daily_metrics').upsert(defaultMetric);
         this.inMemoryDailyMetrics = defaultMetric;
@@ -598,10 +509,10 @@ class SyncService {
     }
     return (
       this.inMemoryProfile || {
-        id: this.currentUserId || 'guest_dev_0',
-        display_name: 'Focus Pioneer',
-        streak_days: 7,
-        total_gems: 480,
+        id: this.currentUserId || 'guest_prod_0',
+        display_name: 'DHI Focus Member',
+        streak_days: 0,
+        total_gems: 0,
         tier_rank: 'Bronze',
         daily_baseline_minutes: 270,
         is_pro: false,
@@ -651,11 +562,11 @@ class SyncService {
     return (
       this.inMemoryDailyMetrics || {
         metric_date: new Date().toISOString().split('T')[0],
-        focus_score: 88,
-        total_screen_time_min: 135,
-        blocked_time_min: 108,
-        interceptions_count: 48,
-        gems_earned: 35,
+        focus_score: 100,
+        total_screen_time_min: 0,
+        blocked_time_min: 0,
+        interceptions_count: 0,
+        gems_earned: 0,
       }
     );
   }

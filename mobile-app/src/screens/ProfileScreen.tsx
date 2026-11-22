@@ -101,13 +101,13 @@ export const ProfileScreen: React.FC = () => {
           </View>
           <View style={styles.profileDetails}>
             <View style={styles.nameRow}>
-              <Text style={styles.userName}>{user?.displayName || 'Alex Johnson'}</Text>
+              <Text style={styles.userName}>{user?.displayName || 'DHI Member'}</Text>
               <View style={styles.roleBadge}>
                 <ShieldCheck size={11} color="#10b981" />
                 <Text style={styles.roleBadgeText}>{user?.role || 'USER'}</Text>
               </View>
             </View>
-            <Text style={styles.userEmail}>{user?.email || 'alex@habit-tracker.internal'}</Text>
+            <Text style={styles.userEmail}>{user?.email || 'member@dhi.app'}</Text>
             <Text style={styles.userJoined}>
               Member since {new Date(user?.createdAt || Date.now()).toLocaleDateString()}
             </Text>

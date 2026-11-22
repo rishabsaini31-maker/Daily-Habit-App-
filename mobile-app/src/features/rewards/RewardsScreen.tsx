@@ -59,24 +59,30 @@ export const RewardsScreen: React.FC = () => {
   const handlePartnerSetup = () => {
     Alert.alert(
       'Accountability Partner Lock',
-      `Current Partner: ${profile.friend_partner_name || 'Alex'}.\n\nWhen a locked session is active, your partner receives an OTP via WhatsApp/SMS to authorize emergency breaks.`,
+      profile.friend_partner_name
+        ? `Current Partner: ${profile.friend_partner_name}.\n\nWhen a locked session is active, your partner receives an OTP via WhatsApp/SMS to authorize emergency breaks.`
+        : 'No accountability partner configured yet. Add a trusted friend to enable emergency unlock codes.',
       [
         { text: 'Close', style: 'cancel' },
-        {
-          text: 'Send Test OTP',
-          onPress: async () => {
-            await addonsService.requestFriendEmergencyUnlock(
-              profile.friend_partner_name || 'Alex',
-              profile.friend_partner_contact
-            );
-          },
-        },
+        ...(profile.friend_partner_name
+          ? [
+              {
+                text: 'Send Test OTP',
+                onPress: async () => {
+                  await addonsService.requestFriendEmergencyUnlock(
+                    profile.friend_partner_name!,
+                    profile.friend_partner_contact
+                  );
+                },
+              },
+            ]
+          : []),
       ]
     );
   };
 
-  const currentGems = profile.total_gems || 480;
-  const streakDays = profile.streak_days || 7;
+  const currentGems = profile.total_gems ?? 0;
+  const streakDays = profile.streak_days ?? 0;
   const tierRank = profile.tier_rank || 'Bronze';
 
   return (

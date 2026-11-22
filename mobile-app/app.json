@@ -2,6 +2,7 @@
   "expo": {
     "name": "DHI",
     "slug": "dhi",
+    "owner": "scs-technologys-organization",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -11,19 +12,30 @@
       "resizeMode": "contain",
       "backgroundColor": "#08090D"
     },
+    "updates": {
+      "url": "https://u.expo.dev/8be7806b-001d-49ba-8ef9-0dd3fdb23ae4"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.habittracker.app"
+      "bundleIdentifier": "com.scstechnology.dhi"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#08090D"
       },
-      "package": "com.habittracker.app"
+      "package": "com.scstechnology.dhi"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "8be7806b-001d-49ba-8ef9-0dd3fdb23ae4"
+      }
     }
   }
 }

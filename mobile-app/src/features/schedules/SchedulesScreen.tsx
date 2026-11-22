@@ -29,7 +29,7 @@ export const SchedulesScreen: React.FC = () => {
   const { openModal } = useAppNavigation();
   const { topInset, bottomInset, responsiveContainerStyle } = useResponsiveLayout();
   const { schedules, toggleSchedule, profile, blockedTargets } = useFocusEngine();
-  const [todaySteps, setTodaySteps] = useState<number>(6420);
+  const [todaySteps, setTodaySteps] = useState<number>(0);
 
   useEffect(() => {
     addonsService.getTodaySteps().then(setTodaySteps);

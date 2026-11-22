@@ -102,7 +102,7 @@ export const HomeScreen: React.FC = () => {
 
           <View style={styles.streakBadge}>
             <Flame size={16} color="#F97316" />
-            <Text style={styles.streakText}>{profile.streak_days || 7}-Day Streak</Text>
+            <Text style={styles.streakText}>{profile.streak_days ?? 0}-Day Streak</Text>
           </View>
 
           <TouchableOpacity
@@ -188,7 +188,7 @@ export const HomeScreen: React.FC = () => {
               <ShieldAlert size={18} color={colors.dangerAccent} />
             </View>
             <Text style={[styles.metricNumber, { color: colors.dangerAccent }]}>
-              {todayMetrics.interceptions_count || 48}
+              {todayMetrics.interceptions_count ?? 0}
             </Text>
             <Text style={styles.metricLabel}>Opens Intercepted</Text>
           </GlassCard>

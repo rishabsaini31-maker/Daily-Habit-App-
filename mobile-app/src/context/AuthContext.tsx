@@ -36,31 +36,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const loadSession = async () => {
     try {
       setIsLoading(true);
-      // Initialize friendly in-memory default user session
-      const defaultUser: User = {
-        id: 'user-demo-1',
-        email: 'alex@habit-tracker.internal',
-        displayName: 'Alex Johnson',
-        role: 'USER',
-        status: 'ACTIVE',
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      const defaultToken = 'mock-demo-token';
-      setToken(defaultToken);
-      setUser(defaultUser);
-
-      // Verify with backend if connected
-      api.getMe()
-        .then((me) => {
-          if (me) setUser(me);
-        })
-        .catch(() => {
-          setIsOffline(true);
-        });
+      // Pure in-memory session: check backend session if token exists
+      const me = await api.getMe();
+      if (me) {
+        setUser(me);
+      } else {
+        setUser(null);
+        setToken(null);
+      }
     } catch (err: any) {
-      console.warn('Error loading session:', err);
+      setUser(null);
+      setToken(null);
+      setIsOffline(true);
     } finally {
       setIsLoading(false);
     }

@@ -242,7 +242,7 @@ export const SettingsScreen: React.FC = () => {
               <View style={styles.statBox}>
                 <View style={styles.statIconRow}>
                   <Flame size={14} color="#F97316" />
-                  <Text style={styles.statNumber}>{profile.streak_days || 7}</Text>
+                  <Text style={styles.statNumber}>{profile.streak_days ?? 0}</Text>
                 </View>
                 <Text style={styles.statLabel}>Day Streak</Text>
               </View>
@@ -253,7 +253,7 @@ export const SettingsScreen: React.FC = () => {
                 <View style={styles.statIconRow}>
                   <Award size={14} color="#38BDF8" />
                   <Text style={[styles.statNumber, { color: '#38BDF8' }]}>
-                    {profile.total_gems || 480}
+                    {profile.total_gems ?? 0}
                   </Text>
                 </View>
                 <Text style={styles.statLabel}>Focus Gems</Text>

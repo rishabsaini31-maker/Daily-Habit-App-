@@ -8,7 +8,7 @@ import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
 import { api } from '../../services/api';
 
 export const InsightsScreen: React.FC = () => {
-  const { todayMetrics, profile } = useFocusEngine();
+  const { todayMetrics, profile, blockedTargets } = useFocusEngine();
   const { topInset, bottomInset, responsiveContainerStyle } = useResponsiveLayout();
   const [aiInsight, setAiInsight] = useState<{
     headline: string;
@@ -30,28 +30,42 @@ export const InsightsScreen: React.FC = () => {
       .catch(() => {});
   }, []);
 
-  const totalSavedToday = todayMetrics.blocked_time_min || 108;
-  const totalWeeklySavedHours = aiInsight?.reclaimedHours || Number((16.5 + totalSavedToday / 60).toFixed(1));
+  const totalSavedToday = todayMetrics.blocked_time_min ?? 0;
+  const totalWeeklySavedHours = aiInsight?.reclaimedHours ?? Number((totalSavedToday / 60).toFixed(1));
 
-  const weeklyData = [
-    { day: 'Mon', hours: 2.1, heightPercent: 55 },
-    { day: 'Tue', hours: 3.4, heightPercent: 85 },
-    { day: 'Wed', hours: 2.8, heightPercent: 70 },
-    { day: 'Thu', hours: 4.1, heightPercent: 100 },
-    { day: 'Fri', hours: 3.2, heightPercent: 80 },
-    { day: 'Sat', hours: 1.5, heightPercent: 40 },
-    { day: 'Sun', hours: Number((totalSavedToday / 60).toFixed(1)), heightPercent: Math.min(100, (totalSavedToday / 240) * 100) },
-  ];
+  const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const todayDayIndex = (new Date().getDay() + 6) % 7;
+  const weeklyData = daysOfWeek.map((day, idx) => {
+    if (idx === todayDayIndex) {
+      const hours = Number((totalSavedToday / 60).toFixed(1));
+      return {
+        day,
+        hours,
+        heightPercent: totalSavedToday > 0 ? Math.min(100, Math.max(15, (totalSavedToday / 240) * 100)) : 10,
+      };
+    }
+    return { day, hours: 0, heightPercent: 10 };
+  });
 
-  const topBlockedApps = [
-    { name: 'Instagram Reels', attempts: todayMetrics.interceptions_count || 48, savedMinutes: Math.round(totalSavedToday * 0.45), emoji: '📸' },
-    { name: 'TikTok FYP', attempts: 36, savedMinutes: Math.round(totalSavedToday * 0.3), emoji: '🎵' },
-    { name: 'YouTube Shorts', attempts: 22, savedMinutes: Math.round(totalSavedToday * 0.15), emoji: '▶️' },
-    { name: 'X / Twitter', attempts: 14, savedMinutes: Math.round(totalSavedToday * 0.1), emoji: '🐦' },
-  ];
+  const topBlockedApps = (blockedTargets || []).map((target) => {
+    const spent = target.time_spent_today_minutes ?? 0;
+    const limit = target.daily_limit_minutes ?? 0;
+    const attempts = spent > 0 ? Math.round(spent / 3) + 1 : 0;
+    const savedMinutes = limit > 0 ? Math.max(0, limit - spent) : spent;
+    const pkg = target.package_or_token.toLowerCase();
+    return {
+      name: target.display_name || target.package_or_token,
+      attempts,
+      savedMinutes,
+      emoji: pkg.includes('instagram') ? '📸' :
+             pkg.includes('youtube') ? '▶️' :
+             pkg.includes('twitter') || pkg.includes('x') ? '🐦' :
+             pkg.includes('tiktok') ? '🎵' : '📱',
+    };
+  });
 
-  const booksReadCount = Math.max(2, Math.floor(totalWeeklySavedHours / 6));
-  const workoutsCount = Math.max(4, Math.floor(totalWeeklySavedHours / 3));
+  const booksReadCount = totalWeeklySavedHours > 0 ? Math.max(1, Math.floor(totalWeeklySavedHours / 6)) : 0;
+  const workoutsCount = totalWeeklySavedHours > 0 ? Math.max(1, Math.floor(totalWeeklySavedHours / 3)) : 0;
 
   return (
     <View style={styles.container}>
@@ -151,22 +165,30 @@ export const InsightsScreen: React.FC = () => {
         {/* TOP BLOCKED APPS LIST */}
         <Text style={styles.sectionHeader}>TOP INTERCEPTED TARGETS</Text>
         <View style={styles.blockedList}>
-          {topBlockedApps.map((item, idx) => (
-            <GlassCard key={item.name} style={styles.appStatCard}>
-              <Text style={styles.rankNum}>#{idx + 1}</Text>
-              <Text style={styles.appEmoji}>{item.emoji}</Text>
-              <View style={styles.appStatInfoCol}>
-                <Text style={styles.appStatName}>{item.name}</Text>
-                <Text style={styles.appStatSub}>
-                  {item.attempts} opens blocked • Saved ~{item.savedMinutes}m
-                </Text>
-              </View>
-              <View style={styles.shieldCountBadge}>
-                <ShieldAlert size={14} color={colors.dangerAccent} />
-                <Text style={styles.shieldCountText}>{item.attempts}</Text>
-              </View>
+          {topBlockedApps.length === 0 ? (
+            <GlassCard style={styles.appStatCard}>
+              <Text style={[styles.appStatSub, { textAlign: 'center', width: '100%', paddingVertical: 12 }]}>
+                No blocked targets intercepted yet. Add apps to your focus shield in Schedules to reclaim attention.
+              </Text>
             </GlassCard>
-          ))}
+          ) : (
+            topBlockedApps.map((item, idx) => (
+              <GlassCard key={item.name} style={styles.appStatCard}>
+                <Text style={styles.rankNum}>#{idx + 1}</Text>
+                <Text style={styles.appEmoji}>{item.emoji}</Text>
+                <View style={styles.appStatInfoCol}>
+                  <Text style={styles.appStatName}>{item.name}</Text>
+                  <Text style={styles.appStatSub}>
+                    {item.attempts} opens blocked • Saved ~{item.savedMinutes}m
+                  </Text>
+                </View>
+                <View style={styles.shieldCountBadge}>
+                  <ShieldAlert size={14} color={colors.dangerAccent} />
+                  <Text style={styles.shieldCountText}>{item.attempts}</Text>
+                </View>
+              </GlassCard>
+            ))
+          )}
         </View>
       </ScrollView>
     </View>
