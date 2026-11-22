@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account and Data Deletion - DHI (Daily Habit Improvement)</title>
+  <style>
+    :root {
+      --bg-color: #08090D;
+      --card-bg: #11141D;
+      --border-color: rgba(255, 255, 255, 0.1);
+      --accent-cyan: #38BDF8;
+      --accent-emerald: #10B981;
+      --accent-red: #EF4444;
+      --text-primary: #F8FAFC;
+      --text-secondary: #94A3B8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      line-height: 1.7;
+      padding: 40px 20px;
+    }
+    .container { max-width: 800px; margin: 0 auto; }
+    header { border-bottom: 1px solid var(--border-color); padding-bottom: 24px; margin-bottom: 32px; }
+    .badge {
+      display: inline-block;
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--accent-red);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+    h1 { font-size: 30px; font-weight: 800; color: #FFFFFF; margin-bottom: 8px; }
+    .meta-info { color: var(--text-secondary); font-size: 14px; }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    h2 { font-size: 20px; font-weight: 700; color: var(--accent-cyan); margin-bottom: 12px; }
+    p { color: var(--text-secondary); font-size: 15px; margin-bottom: 14px; }
+    ol, ul { list-style-position: inside; color: var(--text-secondary); font-size: 15px; margin-bottom: 16px; }
+    li { margin-bottom: 8px; }
+    strong { color: #FFFFFF; }
+    .step-box {
+      background: rgba(56, 189, 248, 0.08);
+      border-left: 4px solid var(--accent-cyan);
+      padding: 16px;
+      border-radius: 0 10px 10px 0;
+      margin: 16px 0;
+    }
+    .step-box p { color: #E2E8F0; margin-bottom: 0; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+    th, td { border: 1px solid var(--border-color); padding: 12px; text-align: left; }
+    th { background: rgba(255, 255, 255, 0.04); color: #FFFFFF; }
+    td { color: var(--text-secondary); }
+    a { color: var(--accent-cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    footer {
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 13px;
+      margin-top: 48px;
+      border-top: 1px solid var(--border-color);
+      padding-top: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="badge">Google Play Data Safety Compliance</div>
+      <h1>Account &amp; Data Deletion Request</h1>
+      <p class="meta-info">
+        <strong>Application:</strong> DHI - Daily Habit Improvement (<code>com.dhi.focus</code>)<br>
+        <strong>Developer:</strong> SCS Technology<br>
+        <strong>Effective Date:</strong> November 22, 2026
+      </p>
+    </header>
+
+    <div class="card">
+      <h2>How to Request Account &amp; Data Deletion</h2>
+      <p>
+        In accordance with the Google Play Store User Data Policy, users of <strong>DHI (Daily Habit Improvement)</strong> can permanently delete their account and all associated cloud data at any time.
+      </p>
+
+      <div class="step-box">
+        <p><strong>Method 1: Direct In-App Instant Deletion (Recommended)</strong></p>
+      </div>
+      <ol>
+        <li>Open the <strong>DHI</strong> app on your Android device.</li>
+        <li>Tap your <strong>Profile Avatar</strong> in the top-left corner of the Home screen to open Settings.</li>
+        <li>Scroll down to the <strong>LEGAL &amp; STORE COMPLIANCE</strong> section.</li>
+        <li>Tap <strong>Permanently Delete Account</strong>.</li>
+        <li>Confirm the action in the prompt. Your account, profile, streaks, and focus schedules will be permanently wiped from our cloud servers immediately (0 days retention).</li>
+      </ol>
+
+      <div class="step-box">
+        <p><strong>Method 2: Web / Email Deletion Request (If App is Uninstalled)</strong></p>
+      </div>
+      <p>If you have uninstalled the app and wish to submit a manual deletion request:</p>
+      <ol>
+        <li>Send an email to our support team at <a href="mailto:support@dhi.app">support@dhi.app</a>.</li>
+        <li>Use the subject line: <code>Account Deletion Request - DHI</code>.</li>
+        <li>Include the email address associated with your DHI account.</li>
+        <li>Our team will process the deletion and permanently erase all your data within <strong>48 hours</strong>, sending you an email confirmation.</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2>Types of Data Deleted vs. Retained</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Data Category</th>
+            <th>What Happens Upon Deletion</th>
+            <th>Retention Period</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>User Account &amp; Profile</strong><br>(Email, Display Name, User ID)</td>
+            <td>Permanently and irreversibly deleted from Supabase cloud database.</td>
+            <td>0 days (Immediate)</td>
+          </tr>
+          <tr>
+            <td><strong>Habits, Streaks &amp; Focus Sessions</strong><br>(Session logs, gems, focus scores)</td>
+            <td>Permanently wiped from all active database tables and server caches.</td>
+            <td>0 days (Immediate)</td>
+          </tr>
+          <tr>
+            <td><strong>Smart Schedules &amp; App Block Lists</strong><br>(Configured hours, geofences, routines)</td>
+            <td>Permanently wiped from the server.</td>
+            <td>0 days (Immediate)</td>
+          </tr>
+          <tr>
+            <td><strong>Financial / Subscription Data</strong></td>
+            <td>Subscription records are handled directly by Google Play. You may cancel your subscription anytime via Google Play Subscriptions.</td>
+            <td>Governed by Google Play Billing Policy</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Contact Us</h2>
+      <p>
+        If you have any questions or require assistance with data deletion, contact us at:<br>
+        <strong>Email:</strong> <a href="mailto:support@dhi.app">support@dhi.app</a><br>
+        <strong>Organization:</strong> SCS Technology<br>
+        <strong>Privacy Policy:</strong> <a href="index.html">View Privacy Policy</a>
+      </p>
+    </div>
+
+    <footer>
+      <p>&copy; 2026 SCS Technology &bull; DHI (Daily Habit Improvement). All rights reserved.</p>
+    </footer>
+  </div>
+</body>
+</html>
