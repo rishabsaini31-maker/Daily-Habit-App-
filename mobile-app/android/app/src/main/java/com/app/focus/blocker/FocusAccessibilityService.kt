@@ -113,8 +113,8 @@ class FocusAccessibilityService : AccessibilityService() {
         if (antiUninstallGuard && packageName == "com.android.settings") {
             val rootNode = rootInActiveWindow
             if (inspectNodeContainsText(rootNode, "Daily Habit") ||
-                inspectNodeContainsText(rootNode, "Opal") ||
-                inspectNodeContainsText(rootNode, "com.app.focus") ||
+                inspectNodeContainsText(rootNode, "DHI") ||
+                inspectNodeContainsText(rootNode, "com.scstechnology.dhi") ||
                 inspectNodeContainsText(rootNode, "Uninstall") ||
                 inspectNodeContainsText(rootNode, "Force stop")
             ) {
@@ -177,7 +177,7 @@ class FocusAccessibilityService : AccessibilityService() {
 
     private fun triggerInterceptionOverlay(displayName: String, packageName: String) {
         val intent = Intent().apply {
-            setClassName(this@FocusAccessibilityService, "com.app.focus.MainActivity")
+            setClassName(applicationContext.packageName, "${applicationContext.packageName}.MainActivity")
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra("SHIELD_TRIGGER", true)
             putExtra("BLOCKED_APP_NAME", displayName)
