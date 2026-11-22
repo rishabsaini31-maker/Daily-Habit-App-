@@ -15,9 +15,7 @@
     "updates": {
       "url": "https://u.expo.dev/8be7806b-001d-49ba-8ef9-0dd3fdb23ae4"
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.0.0",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.scstechnology.dhi"
