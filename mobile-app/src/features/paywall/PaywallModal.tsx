@@ -45,10 +45,10 @@ export const PaywallModal: React.FC = () => {
       if (result.success) {
         await updateProfile({ is_pro: true });
         Alert.alert(
-          'Opal Pro Activated ✓',
+          'DHI Pro Activated ✓',
           billingPlan === 'annual'
             ? 'Your 7-day free trial has started. All pro features (Surgical Reels, Deep Focus, Unlimited Schedules) are unlocked!'
-            : 'Opal Pro monthly subscription active. Enjoy full cognitive protection!',
+            : 'DHI Pro monthly subscription active. Enjoy full cognitive protection!',
           [{ text: 'Start Focusing', onPress: closeModal }]
         );
       } else {
@@ -85,7 +85,7 @@ export const PaywallModal: React.FC = () => {
       const result = await revenueCat.restorePurchases();
       if (result.isPro) {
         await updateProfile({ is_pro: true });
-        Alert.alert('Purchases Restored', 'Your Opal Pro entitlement was restored successfully.', [
+        Alert.alert('Purchases Restored', 'Your DHI Pro entitlement was restored successfully.', [
           { text: 'OK', onPress: closeModal },
         ]);
       } else {
@@ -110,7 +110,7 @@ export const PaywallModal: React.FC = () => {
         </TouchableOpacity>
         <View style={styles.proCrownHeader}>
           <Crown size={18} color="#FBBF24" />
-          <Text style={styles.proBadgeText}>OPAL PRO PASS</Text>
+          <Text style={styles.proBadgeText}>DHI PRO PASS</Text>
         </View>
         <TouchableOpacity
           activeOpacity={0.7}
@@ -239,7 +239,7 @@ export const PaywallModal: React.FC = () => {
             title={
               billingPlan === 'annual'
                 ? 'Start 7-Day Free Trial ($49.99/yr)'
-                : 'Unlock Opal Pro ($8.99/mo)'
+                : 'Unlock DHI Pro ($8.99/mo)'
             }
             onPress={handleStartTrial}
             loading={isProcessing}

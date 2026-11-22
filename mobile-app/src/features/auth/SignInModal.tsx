@@ -77,7 +77,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
     }
     Alert.alert(
       'Welcome Back ✓',
-      'Your Opal Pro subscription, smart schedules, and Focus Gems have been restored.'
+      'Your DHI Pro subscription, smart schedules, and Focus Gems have been restored.'
     );
   };
 
@@ -231,7 +231,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
             </View>
             <Text style={styles.headline}>Welcome Back</Text>
             <Text style={styles.subheadline}>
-              Sign in to restore your Opal Pro subscription, streaks, and custom block schedules.
+              Sign in to restore your DHI Pro subscription, streaks, and custom block schedules.
             </Text>
           </View>
 

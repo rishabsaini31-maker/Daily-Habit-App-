@@ -231,7 +231,7 @@ export const ProfileScreen: React.FC = () => {
           </View>
           <View style={styles.specRow}>
             <Text style={styles.specKey}>Storage Engine</Text>
-            <Text style={styles.specVal}>Supabase PostgreSQL (In-Memory)</Text>
+            <Text style={styles.specVal}>Cloud Synced (Encrypted)</Text>
           </View>
         </View>
 

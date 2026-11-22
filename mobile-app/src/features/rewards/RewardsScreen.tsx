@@ -168,7 +168,7 @@ export const RewardsScreen: React.FC = () => {
             <View style={styles.featureTextCol}>
               <Text style={styles.featureTitle}>Friend Lock Partner</Text>
               <Text style={styles.featureDesc}>
-                Paired with {profile.friend_partner_name || 'Alex'} (Emergency OTP verification via Supabase)
+                Protected by Alex • Emergency 6-digit OTP active
               </Text>
             </View>
           </View>

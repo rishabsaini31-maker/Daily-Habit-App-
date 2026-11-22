@@ -31,6 +31,7 @@ import {
   Radio,
   ExternalLink,
   ChevronRight,
+  Copy,
 } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
 import GlassCard from '../../core/theme/components/GlassCard';
@@ -116,7 +117,7 @@ export const SettingsScreen: React.FC = () => {
     if (value && !profile.is_pro) {
       Alert.alert(
         'Pro Feature',
-        'Anti-Uninstall Guard requires Opal Pro to prevent settings bypass during focus sessions.',
+        'Anti-Uninstall Guard requires DHI Pro to prevent settings bypass during focus sessions.',
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Unlock Pro', onPress: () => openModal('paywall') },
@@ -203,7 +204,7 @@ export const SettingsScreen: React.FC = () => {
           style={styles.scroll}
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingBottom: bottomInset + 36 },
+            { paddingBottom: Math.max(bottomInset + 48, 64) },
           ]}
           showsVerticalScrollIndicator={false}
         >
@@ -231,9 +232,25 @@ export const SettingsScreen: React.FC = () => {
                     </Text>
                   </View>
                 </View>
-                <Text style={styles.userIdText} numberOfLines={1}>
-                  ID: {profile.id || 'guest_dev_session'}
-                </Text>
+                <View style={styles.guestIdRow}>
+                  <Text style={styles.userIdText}>
+                    {profile.is_pro ? 'DHI Pro Member' : 'Guest Account'}
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.copyIdBtn}
+                    onPress={() => {
+                      Alert.alert(
+                        'Account Identifier',
+                        `ID: ${profile.id || 'guest_dev_session'}\n\nThis identifier is linked to your device's focus session.`
+                      );
+                    }}
+                    activeOpacity={0.7}
+                    accessibilityLabel="Copy Account ID"
+                  >
+                    <Copy size={11} color={colors.secondaryMutedText} />
+                    <Text style={styles.copyIdText}>Copy ID</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
 
@@ -295,7 +312,7 @@ export const SettingsScreen: React.FC = () => {
               <View style={styles.proTextCol}>
                 <View style={styles.proTitleRow}>
                   <Text style={styles.proCardTitle}>
-                    {profile.is_pro ? 'Opal Pro Pass Active' : 'Upgrade to Opal Pro'}
+                    {profile.is_pro ? 'DHI Pro Pass Active' : 'Upgrade to DHI Pro'}
                   </Text>
                   <View
                     style={[
@@ -614,7 +631,7 @@ export const SettingsScreen: React.FC = () => {
             <Text style={styles.appInfoTitle}>Focus Well-Being & App Blocker</Text>
             <Text style={styles.appInfoVersion}>
               Version 2.4.0 • Zero-Local-Database Architecture{'\n'}
-              Cross-Platform Native Shielding • Supabase PostgreSQL Cloud
+              Cross-Platform Native Shielding • Cloud Synced
             </Text>
           </View>
         </ScrollView>
@@ -767,8 +784,29 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: colors.secondaryMutedText,
     fontSize: 11,
-    marginTop: 2,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  guestIdRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  copyIdBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  copyIdText: {
+    ...typography.caption,
+    fontSize: 10,
+    color: colors.secondaryMutedText,
+    fontWeight: '600',
   },
   statsGrid: {
     flexDirection: 'row',

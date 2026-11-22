@@ -9,7 +9,6 @@ import {
   Image,
 } from 'react-native';
 import {
-  User,
   Flame,
   Crown,
   Play,
@@ -19,12 +18,14 @@ import {
   Clock,
   Sparkles,
   Zap,
+  Lock,
 } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
 import { useResponsiveLayout } from '../../core/theme/useResponsiveLayout';
 import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import FocusRing from '../../core/theme/components/FocusRing';
+import ChronographClock from '../../core/theme/components/ChronographClock';
 import { useAppNavigation } from '../../core/navigation/NavigationContext';
 import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
 
@@ -36,6 +37,7 @@ export const HomeScreen: React.FC = () => {
   const {
     profile,
     activeSession,
+    remainingSeconds,
     formattedRemainingTime,
     focusScore,
     todayMetrics,
@@ -49,7 +51,7 @@ export const HomeScreen: React.FC = () => {
     if (activeSession.strictness_mode === 'deep_focus') {
       Alert.alert(
         'Deep Focus Locked',
-        'Deep Focus Mode is unbreakable. Sessions cannot be stopped until the timer expires.',
+        'Deep Focus Mode is unbreakable. Sessions cannot be stopped until the countdown timer expires.',
         [{ text: 'Understood' }]
       );
       return;
@@ -63,15 +65,31 @@ export const HomeScreen: React.FC = () => {
       return;
     }
 
-    const res = await stopSessionEarly();
-    if (!res.success && res.reason) {
-      Alert.alert('Session Lock', res.reason);
-    }
+    Alert.alert(
+      'End Focus Session?',
+      'You are currently in a flow state. Are you sure you want to lift the focus shield early?',
+      [
+        { text: 'Keep Focusing', style: 'cancel' },
+        {
+          text: 'End Session',
+          style: 'destructive',
+          onPress: async () => {
+            const res = await stopSessionEarly();
+            if (!res.success && res.reason) {
+              Alert.alert('Session Lock', res.reason);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const reclaimedHours = Math.floor((todayMetrics.blocked_time_min || 0) / 60);
   const reclaimedMins = (todayMetrics.blocked_time_min || 0) % 60;
   const reclaimedStr = `${reclaimedHours}h ${reclaimedMins}m`;
+  const estimatedGems = activeSession
+    ? Math.max(10, Math.floor(activeSession.duration_minutes / 2))
+    : 15;
 
   return (
     <View style={styles.container}>
@@ -117,75 +135,88 @@ export const HomeScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Circular Focus Ring */}
-        <View style={styles.focusRingContainer}>
-          <FocusRing
-            score={focusScore}
-            size={220}
-            strokeWidth={14}
-            subtitle={activeSession ? 'Session Active' : 'Daily Focus Score'}
-            label={
-              activeSession
-                ? `${formattedRemainingTime} Remaining`
-                : focusScore >= 80
-                ? 'High Focus Zone'
-                : 'Attention Vulnerable'
-            }
-          />
-        </View>
-
-        {/* Active Session Status Card or Quick Session CTA */}
+        {/* 1. FOCUS CLOCK & SESSION SECTION */}
         {activeSession ? (
-          <GlassCard variant="accent" style={styles.activeSessionCard}>
-            <View style={styles.sessionHeaderRow}>
-              <View style={styles.sessionIndicatorDot} />
-              <Text style={styles.sessionTitle}>Focus Lock Active</Text>
-              <View style={styles.strictnessTag}>
-                <Text style={styles.strictnessTagText}>
-                  {activeSession.strictness_mode.replace('_', ' ').toUpperCase()}
-                </Text>
-              </View>
+          <View style={styles.activeSessionChamber}>
+            {/* Precision Mechanical Chronograph */}
+            <ChronographClock
+              totalSeconds={activeSession.duration_minutes * 60}
+              remainingSeconds={remainingSeconds}
+              size={240}
+              strokeWidth={8}
+              strictness={activeSession.strictness_mode}
+              isLockedSession={true}
+              blockedAppsCount={blockedTargets.length}
+              gemsEarning={estimatedGems}
+            />
+
+            {/* Hold-to-end / Emergency Action */}
+            <View style={styles.sessionControlBox}>
+              {activeSession.strictness_mode === 'deep_focus' ? (
+                <GlassCard style={styles.deepFocusNoticeCard}>
+                  <View style={styles.deepFocusNoticeRow}>
+                    <Lock size={16} color="#FBBF24" />
+                    <Text style={styles.deepFocusNoticeText}>
+                      Deep Focus Mode Active • OS Shield Unbreakable
+                    </Text>
+                  </View>
+                </GlassCard>
+              ) : activeSession.strictness_mode === 'friend_or_nfc' ? (
+                <PrimaryPillButton
+                  title="Emergency Unlock (Friend OTP / NFC)"
+                  variant="outline"
+                  onPress={handleStopSession}
+                  style={styles.stopBtn}
+                  leftIcon={<Lock size={16} color={colors.warningAccent} />}
+                />
+              ) : (
+                <PrimaryPillButton
+                  title="End Session Early"
+                  variant="danger"
+                  onPress={handleStopSession}
+                  style={styles.stopBtn}
+                  leftIcon={<StopCircle size={16} color="#FFFFFF" />}
+                />
+              )}
             </View>
-            <Text style={styles.sessionTimeText}>
-              {formattedRemainingTime} remaining of {activeSession.duration_minutes}m target
-            </Text>
-            <View style={styles.sessionBtnRow}>
-              <PrimaryPillButton
-                title={
-                  activeSession.strictness_mode === 'deep_focus'
-                    ? 'Locked (Unbreakable)'
-                    : 'Stop Focus Session'
-                }
-                variant="danger"
-                onPress={handleStopSession}
-                style={styles.stopBtn}
-                leftIcon={<StopCircle size={18} color="#FFFFFF" />}
+          </View>
+        ) : (
+          <>
+            {/* Refined 100 Daily Focus Score Ring */}
+            <View style={styles.focusRingContainer}>
+              <FocusRing
+                score={focusScore}
+                size={220}
+                strokeWidth={14}
+                subtitle="Daily Focus Score"
+                label={focusScore >= 80 ? 'High Focus Zone' : 'Attention Vulnerable'}
               />
             </View>
-          </GlassCard>
-        ) : (
-          <View style={styles.ctaCardWrapper}>
-            <PrimaryPillButton
-              title="Start Instant Focus Session"
-              onPress={() => openModal('new_focus_session')}
-              leftIcon={<Play size={18} color={colors.primaryButtonText} fill={colors.primaryButtonText} />}
-            />
-          </View>
+
+            {/* Elevated Instant Focus Session Pill CTA */}
+            <View style={styles.ctaCardWrapper}>
+              <PrimaryPillButton
+                title="Start Instant Focus Session"
+                onPress={() => openModal('new_focus_session')}
+                leftIcon={<Play size={18} color={colors.primaryButtonText} fill={colors.primaryButtonText} />}
+              />
+            </View>
+          </>
         )}
 
-        {/* Real-time Status / Reclaimed Today Metrics */}
+        {/* 2. RECLAIMED TODAY & OPENS INTERCEPTED METRICS ROW */}
         <View style={styles.metricsRow}>
           <GlassCard style={styles.metricCard}>
             <View style={styles.metricIconCircle}>
-              <Clock size={18} color={colors.positiveAccent} />
+              <Clock size={19} color={colors.positiveAccent} />
             </View>
             <Text style={styles.metricNumber}>{reclaimedStr}</Text>
             <Text style={styles.metricLabel}>Reclaimed Today</Text>
           </GlassCard>
 
           <GlassCard style={styles.metricCard}>
-            <View style={[styles.metricIconCircle, { backgroundColor: 'rgba(239, 68, 68, 0.12)' }]}>
-              <ShieldAlert size={18} color={colors.dangerAccent} />
+            <View style={[styles.metricIconCircle, { backgroundColor: 'rgba(239, 68, 68, 0.12)', borderColor: 'rgba(239, 68, 68, 0.25)' }]}>
+              <ShieldAlert size={19} color={colors.dangerAccent} />
             </View>
             <Text style={[styles.metricNumber, { color: colors.dangerAccent }]}>
               {todayMetrics.interceptions_count ?? 0}
@@ -194,7 +225,7 @@ export const HomeScreen: React.FC = () => {
           </GlassCard>
         </View>
 
-        {/* Block List & Surgical Picker Shortcut Card */}
+        {/* 3. BLOCK LIST & SURGICAL PICKER SHORTCUT */}
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => openModal('block_list_picker')}
@@ -217,7 +248,7 @@ export const HomeScreen: React.FC = () => {
           </GlassCard>
         </TouchableOpacity>
 
-        {/* AI Focus Opportunity Card */}
+        {/* 4. AI FOCUS OPPORTUNITY CARD */}
         <GlassCard style={styles.opportunityCard}>
           <View style={styles.opportunityHeader}>
             <Sparkles size={18} color={colors.primaryAccent} />
@@ -228,23 +259,6 @@ export const HomeScreen: React.FC = () => {
             hours today will boost your Focus Score to 95 and earn +50 Gems!
           </Text>
         </GlassCard>
-
-        {/* TEMPORARY DEBUG BUTTON PER SPEC */}
-        <View style={styles.debugSection}>
-          <Text style={styles.debugLabel}>DEVELOPER / REVIEWER PREVIEW</Text>
-          <PrimaryPillButton
-            title="🚨 Test App Interception Shield (Preview Block Screen)"
-            variant="outline"
-            onPress={() =>
-              presentShield({
-                appName: 'Instagram Reels',
-                reason: 'Active Deep Focus Lock',
-              })
-            }
-            textStyle={styles.debugBtnText}
-            style={styles.debugBtn}
-          />
-        </View>
       </ScrollView>
     </View>
   );
@@ -258,21 +272,20 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: spacing.screenPadding,
     paddingTop: 16,
-    paddingBottom: 32,
   },
   headerRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    alignItems: 'center',
+    marginBottom: 12,
   },
   avatarButton: {
     position: 'relative',
   },
   avatarCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#12141D',
     borderWidth: 1.5,
     borderColor: 'rgba(56, 189, 248, 0.4)',
@@ -283,7 +296,7 @@ const styles = StyleSheet.create({
   avatarLogo: {
     width: '100%',
     height: '100%',
-    borderRadius: 20,
+    borderRadius: 22,
   },
   protectionActiveBadge: {
     position: 'absolute',
@@ -333,51 +346,38 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   focusRingContainer: {
-    marginVertical: 10,
+    marginVertical: 6,
     alignItems: 'center',
   },
   ctaCardWrapper: {
     marginVertical: 12,
   },
-  activeSessionCard: {
-    padding: 18,
-    marginVertical: 12,
+  activeSessionChamber: {
+    alignItems: 'center',
+    marginVertical: 8,
   },
-  sessionHeaderRow: {
+  sessionControlBox: {
+    width: '100%',
+    marginTop: 14,
+  },
+  deepFocusNoticeCard: {
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: 'rgba(251, 191, 36, 0.08)',
+    borderColor: 'rgba(251, 191, 36, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deepFocusNoticeRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
-  sessionIndicatorDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.primaryAccent,
-    marginRight: 8,
-  },
-  sessionTitle: {
-    ...typography.titleLarge,
-    fontSize: 18,
-    flex: 1,
-  },
-  strictnessTag: {
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  strictnessTagText: {
+  deepFocusNoticeText: {
     ...typography.caption,
-    fontSize: 10,
-    color: colors.primaryAccent,
-  },
-  sessionTimeText: {
-    ...typography.bodyMedium,
-    color: colors.secondaryMutedText,
-    marginTop: 4,
-    marginBottom: 14,
-  },
-  sessionBtnRow: {
-    width: '100%',
+    color: '#FBBF24',
+    fontWeight: '700',
+    fontSize: 12,
   },
   stopBtn: {
     height: 48,
@@ -385,46 +385,64 @@ const styles = StyleSheet.create({
   metricsRow: {
     flexDirection: 'row',
     gap: 12,
-    marginVertical: 8,
+    marginVertical: 10,
   },
   metricCard: {
     flex: 1,
-    padding: 16,
+    paddingVertical: 18,
+    paddingHorizontal: 16,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderTopColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(17, 20, 29, 0.85)',
   },
   metricIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
   },
   metricNumber: {
     ...typography.titleLarge,
-    fontSize: 20,
+    fontSize: 22,
     color: colors.positiveAccent,
     fontWeight: '800',
+    fontVariant: ['tabular-nums'],
   },
   metricLabel: {
     ...typography.bodySmall,
     color: colors.secondaryMutedText,
+    fontSize: 12,
     marginTop: 2,
+    fontWeight: '500',
   },
   blockListShortcutCard: {
     padding: 16,
     marginVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderTopColor: 'rgba(255, 255, 255, 0.16)',
   },
   shortcutRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   shortcutIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 42,
+    height: 42,
+    borderRadius: 14,
     backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -435,27 +453,37 @@ const styles = StyleSheet.create({
   shortcutTitle: {
     ...typography.titleMedium,
     fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   shortcutSub: {
     ...typography.bodySmall,
     color: colors.secondaryMutedText,
     marginTop: 2,
+    fontSize: 12,
   },
   editTag: {
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: 12,
-    backgroundColor: colors.hairlineBorder,
+    backgroundColor: 'rgba(56, 189, 248, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.25)',
   },
   editTagText: {
     ...typography.caption,
     fontSize: 11,
+    fontWeight: '700',
     color: colors.primaryAccent,
   },
   opportunityCard: {
     padding: 16,
     marginVertical: 8,
-    borderColor: 'rgba(56, 189, 248, 0.25)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.22)',
+    borderTopColor: 'rgba(56, 189, 248, 0.4)',
+    backgroundColor: 'rgba(18, 22, 34, 0.9)',
   },
   opportunityHeader: {
     flexDirection: 'row',
@@ -466,35 +494,14 @@ const styles = StyleSheet.create({
   opportunityTitle: {
     ...typography.titleMedium,
     fontSize: 14,
+    fontWeight: '700',
     color: colors.primaryAccent,
   },
   opportunityBody: {
     ...typography.bodySmall,
     color: colors.secondaryMutedText,
     lineHeight: 18,
-  },
-  debugSection: {
-    marginTop: 24,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.hairlineBorder,
-  },
-  debugLabel: {
-    ...typography.caption,
-    fontSize: 10,
-    color: colors.secondaryMutedText,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  debugBtn: {
-    height: 48,
-    borderColor: 'rgba(239, 68, 68, 0.4)',
-    backgroundColor: 'rgba(239, 68, 68, 0.06)',
-  },
-  debugBtnText: {
-    color: colors.dangerAccent,
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 12,
   },
 });
 

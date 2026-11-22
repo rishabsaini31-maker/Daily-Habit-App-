@@ -36,15 +36,17 @@ export const InsightsScreen: React.FC = () => {
   const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const todayDayIndex = (new Date().getDay() + 6) % 7;
   const weeklyData = daysOfWeek.map((day, idx) => {
-    if (idx === todayDayIndex) {
+    const isToday = idx === todayDayIndex;
+    if (isToday) {
       const hours = Number((totalSavedToday / 60).toFixed(1));
       return {
         day,
         hours,
         heightPercent: totalSavedToday > 0 ? Math.min(100, Math.max(15, (totalSavedToday / 240) * 100)) : 10,
+        isToday: true,
       };
     }
-    return { day, hours: 0, heightPercent: 10 };
+    return { day, hours: 0, heightPercent: 10, isToday: false };
   });
 
   const topBlockedApps = (blockedTargets || []).map((target) => {
@@ -82,7 +84,7 @@ export const InsightsScreen: React.FC = () => {
       >
         <Text style={styles.screenTitle}>Focus Insights</Text>
         <Text style={styles.screenSubtitle}>
-          Evidence of your reclaimed time and cognitive clarity (PostgreSQL synced)
+          Your reclaimed time and daily cognitive clarity
         </Text>
 
         {/* Big Reclaimed Metric Card */}
@@ -99,30 +101,54 @@ export const InsightsScreen: React.FC = () => {
 
         {/* Reclaimed Time Weekly Chart */}
         <GlassCard style={styles.chartCard}>
-          <Text style={styles.chartTitle}>HOURS SAVED PER DAY</Text>
-          <View style={styles.barsContainer}>
-            {weeklyData.map((d) => (
-              <View key={d.day} style={styles.barCol}>
-                <Text style={styles.barHours}>{d.hours}h</Text>
-                <View style={styles.barTrack}>
-                  <View
-                    style={[
-                      styles.barFill,
-                      { height: `${Math.max(10, d.heightPercent)}%` },
-                      d.hours >= 3.0 && styles.barFillTop,
-                    ]}
-                  />
+          <View style={styles.chartHeaderRow}>
+            <Text style={styles.chartTitle}>HOURS SAVED PER DAY</Text>
+            <View style={styles.todayLegend}>
+              <View style={styles.legendDot} />
+              <Text style={styles.legendText}>Today</Text>
+            </View>
+          </View>
+          <View style={styles.chartWrapper}>
+            {/* Horizontal Gridlines */}
+            <View style={styles.gridLinesContainer}>
+              <View style={styles.gridLine} />
+              <View style={styles.gridLine} />
+              <View style={styles.gridLine} />
+            </View>
+            <View style={styles.barsContainer}>
+              {weeklyData.map((d) => (
+                <View key={d.day} style={styles.barCol}>
+                  <Text style={[styles.barHours, d.isToday && styles.barHoursActive]}>
+                    {d.hours}h
+                  </Text>
+                  <View style={[styles.barTrack, d.isToday && styles.barTrackActive]}>
+                    <View
+                      style={[
+                        styles.barFill,
+                        { height: `${Math.max(10, d.heightPercent)}%` },
+                        d.hours >= 3.0 && styles.barFillTop,
+                        d.isToday && styles.barFillActive,
+                      ]}
+                    />
+                  </View>
+                  <View style={styles.dayCol}>
+                    <Text style={[styles.barDay, d.isToday && styles.barDayActive]}>
+                      {d.day}
+                    </Text>
+                    {d.isToday && <View style={styles.todayDot} />}
+                  </View>
                 </View>
-                <Text style={styles.barDay}>{d.day}</Text>
-              </View>
-            ))}
+              ))}
+            </View>
           </View>
         </GlassCard>
 
         {/* AI OPPORTUNITY COST CARD */}
         <GlassCard style={styles.aiCostCard}>
           <View style={styles.aiCostHeader}>
-            <Sparkles size={20} color={colors.primaryAccent} />
+            <View style={styles.aiGlowIconBox}>
+              <Sparkles size={18} color={colors.primaryAccent} />
+            </View>
             <Text style={styles.aiCostTitle}>
               {aiInsight?.headline || 'AI Opportunity Cost Analysis'}
             </Text>
@@ -134,7 +160,7 @@ export const InsightsScreen: React.FC = () => {
 
           <View style={styles.gainsList}>
             <View style={styles.gainItem}>
-              <View style={[styles.gainIconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.15)' }]}>
+              <View style={[styles.gainIconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.15)', borderColor: 'rgba(56, 189, 248, 0.3)' }]}>
                 <BookOpen size={16} color={colors.primaryAccent} />
               </View>
               <Text style={styles.gainText}>
@@ -143,7 +169,7 @@ export const InsightsScreen: React.FC = () => {
             </View>
 
             <View style={styles.gainItem}>
-              <View style={[styles.gainIconCircle, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+              <View style={[styles.gainIconCircle, { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.3)' }]}>
                 <Dumbbell size={16} color={colors.positiveAccent} />
               </View>
               <Text style={styles.gainText}>
@@ -152,7 +178,7 @@ export const InsightsScreen: React.FC = () => {
             </View>
 
             <View style={styles.gainItem}>
-              <View style={[styles.gainIconCircle, { backgroundColor: 'rgba(168, 85, 247, 0.15)' }]}>
+              <View style={[styles.gainIconCircle, { backgroundColor: 'rgba(168, 85, 247, 0.15)', borderColor: 'rgba(168, 85, 247, 0.3)' }]}>
                 <Moon size={16} color="#C084FC" />
               </View>
               <Text style={styles.gainText}>
@@ -246,18 +272,59 @@ const styles = StyleSheet.create({
     padding: 18,
     marginBottom: 16,
   },
+  chartHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   chartTitle: {
     ...typography.caption,
     color: colors.secondaryMutedText,
     letterSpacing: 1.2,
-    marginBottom: 16,
+  },
+  todayLegend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  legendDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.positiveAccent,
+  },
+  legendText: {
+    ...typography.caption,
+    fontSize: 10,
+    color: colors.positiveAccent,
+    fontWeight: '700',
+  },
+  chartWrapper: {
+    position: 'relative',
+    height: 140,
+    justifyContent: 'flex-end',
+  },
+  gridLinesContainer: {
+    position: 'absolute',
+    top: 20,
+    left: 0,
+    right: 0,
+    bottom: 30,
+    justifyContent: 'space-between',
+  },
+  gridLine: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    width: '100%',
   },
   barsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     height: 140,
-    paddingBottom: 8,
+    paddingBottom: 4,
+    zIndex: 1,
   },
   barCol: {
     flex: 1,
@@ -270,14 +337,25 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: colors.secondaryMutedText,
     marginBottom: 4,
+    fontVariant: ['tabular-nums'],
+  },
+  barHoursActive: {
+    color: colors.positiveAccent,
+    fontWeight: '700',
   },
   barTrack: {
     width: 14,
-    height: 90,
-    backgroundColor: colors.hairlineBorder,
+    height: 88,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderRadius: 7,
     justifyContent: 'flex-end',
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.04)',
+  },
+  barTrackActive: {
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
   },
   barFill: {
     width: '100%',
@@ -287,33 +365,64 @@ const styles = StyleSheet.create({
   barFillTop: {
     backgroundColor: colors.positiveAccent,
   },
+  barFillActive: {
+    backgroundColor: colors.positiveAccent,
+  },
+  dayCol: {
+    alignItems: 'center',
+    marginTop: 6,
+    height: 20,
+  },
   barDay: {
     ...typography.bodySmall,
     fontSize: 11,
     color: colors.secondaryMutedText,
-    marginTop: 6,
+  },
+  barDayActive: {
+    color: colors.primaryText,
+    fontWeight: '700',
+  },
+  todayDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.positiveAccent,
+    marginTop: 2,
   },
   aiCostCard: {
     padding: 18,
     marginBottom: 20,
-    borderColor: 'rgba(56, 189, 248, 0.3)',
-    backgroundColor: 'rgba(56, 189, 248, 0.05)',
+    borderColor: 'rgba(56, 189, 248, 0.35)',
+    backgroundColor: 'rgba(56, 189, 248, 0.04)',
+    borderWidth: 1,
   },
   aiCostHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
+    gap: 10,
+    marginBottom: 8,
+  },
+  aiGlowIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.3)',
   },
   aiCostTitle: {
     ...typography.titleMedium,
     fontSize: 15,
     color: colors.primaryAccent,
+    fontWeight: '700',
   },
   aiCostDesc: {
     ...typography.bodySmall,
     color: colors.secondaryMutedText,
     marginBottom: 14,
+    lineHeight: 18,
   },
   gainsList: {
     gap: 10,
@@ -323,12 +432,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   gainIconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    borderWidth: 1,
   },
   gainText: {
     ...typography.bodySmall,

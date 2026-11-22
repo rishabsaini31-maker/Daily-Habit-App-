@@ -40,10 +40,14 @@ export class PgConnection {
 
   public static async testConnection(): Promise<boolean> {
     try {
-      const res = await PgConnection.query('SELECT 1 as connected, NOW() as server_time');
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Connection check timeout (2.5s)')), 2500)
+      );
+      const queryPromise = PgConnection.query('SELECT 1 as connected, NOW() as server_time');
+      const res = await Promise.race([queryPromise, timeoutPromise]);
       return res.rows.length > 0 && res.rows[0].connected === 1;
     } catch (err) {
-      console.error('PostgreSQL connection check failed:', err);
+      console.warn('PostgreSQL connection check failed (using fallback mocks):', (err as Error)?.message || err);
       return false;
     }
   }

@@ -234,7 +234,7 @@ export const BlockListPickerModal: React.FC = () => {
     if (!profile.is_pro) {
       Alert.alert(
         'Pro Feature Required',
-        'Surgical Reels & Shorts blocking is an Opal Pro exclusive feature.',
+        'Surgical Reels & Shorts blocking is a DHI Pro exclusive feature.',
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Unlock Pro', onPress: () => openModal('paywall') },
