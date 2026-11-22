@@ -126,8 +126,8 @@ export const StartupSplashScreen: React.FC<StartupSplashScreenProps> = ({
 
           {/* Brand Titles */}
           <Animated.View style={[styles.textBlock, { opacity: contentOpacity }]}>
-            <Text style={styles.brandTitle}>DHI</Text>
-            <Text style={styles.brandSubtitle}>DIGITAL WELL-BEING OS</Text>
+            <Text style={styles.brandTitle}>Daily Habit Improvement</Text>
+            <Text style={styles.brandSubtitle}>DHI • DIGITAL WELL-BEING OS</Text>
           </Animated.View>
         </View>
 
@@ -207,18 +207,19 @@ const styles = StyleSheet.create({
   brandTitle: {
     ...typography.displayMedium,
     color: '#FFFFFF',
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '900',
-    letterSpacing: 4,
+    letterSpacing: 1.2,
     textAlign: 'center',
+    paddingHorizontal: 20,
   },
   brandSubtitle: {
     ...typography.caption,
     color: colors.primaryAccent,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
     letterSpacing: 2.5,
-    marginTop: 6,
+    marginTop: 8,
     textAlign: 'center',
   },
   tapPromptBox: {

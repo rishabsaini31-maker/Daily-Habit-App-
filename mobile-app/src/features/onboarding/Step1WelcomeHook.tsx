@@ -21,7 +21,7 @@ export const Step1WelcomeHook: React.FC = () => {
       <View style={[styles.topHeader, responsiveContainerStyle]}>
         <View style={styles.brandBadge}>
           <Image source={APP_LOGO} style={styles.logoTiny} resizeMode="cover" />
-          <Text style={styles.brandTitle}>DHI</Text>
+          <Text style={styles.brandTitle}>Daily Habit Improvement</Text>
         </View>
         <TouchableOpacity
           style={styles.topSignInBtn}
