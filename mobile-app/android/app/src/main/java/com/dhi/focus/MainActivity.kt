@@ -1,4 +1,4 @@
-package com.scstechnology.dhi
+package com.dhi.focus
 
 import android.os.Build
 import android.os.Bundle

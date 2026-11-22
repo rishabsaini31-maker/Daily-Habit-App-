@@ -27,7 +27,7 @@
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
-          <string>com.scstechnology.dhi</string>
+          <string>com.dhi.focus</string>
         </array>
       </dict>
     </array>

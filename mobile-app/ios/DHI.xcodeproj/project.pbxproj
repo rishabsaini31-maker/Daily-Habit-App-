@@ -264,7 +264,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.scstechnology.dhi";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.dhi.focus";
 				PRODUCT_NAME = "DHI";
 				SWIFT_OBJC_BRIDGING_HEADER = "DHI/DHI-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -294,7 +294,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.scstechnology.dhi";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.dhi.focus";
 				PRODUCT_NAME = "DHI";
 				SWIFT_OBJC_BRIDGING_HEADER = "DHI/DHI-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Daily Habit Improvement",
+    "name": "DHI",
     "slug": "dhi",
     "owner": "scs-technologys-organization",
     "version": "1.0.0",
@@ -18,14 +18,14 @@
     "runtimeVersion": "1.0.0",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.scstechnology.dhi"
+      "bundleIdentifier": "com.dhi.focus"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#08090D"
       },
-      "package": "com.scstechnology.dhi"
+      "package": "com.dhi.focus"
     },
     "web": {
       "favicon": "./assets/favicon.png"

@@ -119,7 +119,7 @@ class FocusAccessibilityService : AccessibilityService() {
                 val rootNode = rootInActiveWindow
                 if (inspectNodeContainsText(rootNode, "Daily Habit") ||
                     inspectNodeContainsText(rootNode, "DHI") ||
-                    inspectNodeContainsText(rootNode, "com.scstechnology.dhi") ||
+                    inspectNodeContainsText(rootNode, "com.dhi.focus") ||
                     inspectNodeContainsText(rootNode, "Uninstall") ||
                     inspectNodeContainsText(rootNode, "Force stop")
                 ) {

@@ -26,6 +26,15 @@
     "production": {
       "autoIncrement": true,
       "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://daily-habit-app.onrender.com/api/v1"
+      }
+    },
+    "production-apk": {
+      "autoIncrement": true,
+      "android": {
         "buildType": "apk"
       },
       "env": {

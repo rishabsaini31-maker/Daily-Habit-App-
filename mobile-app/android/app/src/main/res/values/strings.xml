@@ -1,5 +1,5 @@
 <resources>
-  <string name="app_name">Daily Habit Improvement</string>
+  <string name="app_name">DHI</string>
   <string name="expo_runtime_version">1.0.0</string>
   <string name="accessibility_service_description">DHI Screen-Time, Reels and App Blocker Shield</string>
 </resources>
