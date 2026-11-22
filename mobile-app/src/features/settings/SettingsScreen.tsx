@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Platform,
   Image,
+  Linking,
 } from 'react-native';
 import {
   ArrowLeft,
@@ -571,8 +572,39 @@ export const SettingsScreen: React.FC = () => {
 
           {/* 7. DANGER ZONE & STORE COMPLIANCE */}
           <Text style={[styles.sectionHeader, { color: colors.dangerAccent }]}>
-            DANGER ZONE & COMPLIANCE
+            LEGAL & STORE COMPLIANCE
           </Text>
+
+          {/* Privacy Policy */}
+          <GlassCard style={styles.card}>
+            <View style={styles.cardRow}>
+              <View style={[styles.iconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.12)' }]}>
+                <Shield size={20} color={colors.primaryAccent} />
+              </View>
+              <View style={styles.cardTextCol}>
+                <Text style={styles.cardTitle}>Privacy Policy & Legal</Text>
+                <Text style={styles.cardSub}>
+                  Learn how your on-device focus data, habits, and permissions are protected.
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.editBtn}
+                onPress={() => {
+                  const url =
+                    process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL ||
+                    'https://rishabsaini31-maker.github.io/Daily-Habit-App-/privacypolicy/';
+                  Linking.openURL(url).catch(() => {
+                    Alert.alert(
+                      'Privacy Policy',
+                      'DHI operates with an on-device first architecture. Your focus data and app blocking decisions are evaluated locally with 0ms latency and are never sold or shared with advertisers.'
+                    );
+                  });
+                }}
+              >
+                <Text style={styles.editBtnText}>View</Text>
+              </TouchableOpacity>
+            </View>
+          </GlassCard>
 
           {/* Reset Onboarding */}
           <GlassCard style={styles.card}>
