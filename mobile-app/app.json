@@ -25,7 +25,8 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#08090D"
       },
-      "package": "com.dhi.focus"
+      "package": "com.dhi.focus",
+      "versionCode": 3
     },
     "web": {
       "favicon": "./assets/favicon.png"
