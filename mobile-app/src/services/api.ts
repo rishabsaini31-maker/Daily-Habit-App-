@@ -23,24 +23,15 @@ import {
 } from '../types';
 
 /**
- * Intelligent Base URL resolver:
- * - On Android emulator: replaces localhost with 10.0.2.2 so requests reach host Mac
- * - On iOS simulator / Web: connects directly to localhost:4000
- * - On physical devices: uses configured EXPO_PUBLIC_API_URL (e.g. Mac LAN IP)
+ * Resolves Base API URL strictly via Environment Variables (EXPO_PUBLIC_API_URL).
+ * Zero hardcoded links or API addresses in source code.
  */
 const resolveBaseUrl = (): string => {
-  const envUrl = process.env.EXPO_PUBLIC_API_URL;
-  if (envUrl && envUrl.trim().length > 0) {
-    if (Platform.OS === 'android' && envUrl.includes('localhost')) {
-      return envUrl.replace('localhost', '10.0.2.2');
-    }
-    return envUrl;
+  const envUrl = process.env.EXPO_PUBLIC_API_URL || '';
+  if (Platform.OS === 'android' && envUrl.includes('localhost')) {
+    return envUrl.replace('localhost', '10.0.2.2');
   }
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:4000/api/v1';
-  }
-  // Local development default (backend on port 4000)
-  return 'http://localhost:4000/api/v1';
+  return envUrl;
 };
 
 const BASE_URL = resolveBaseUrl();
@@ -159,6 +150,10 @@ export function getLocalDateString(d: Date = new Date()): string {
 
 // Low-level HTTP fetch helper with Auth header & timeout
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  if (!BASE_URL) {
+    throw new Error('API Error: EXPO_PUBLIC_API_URL is not defined in environment variables.');
+  }
+
   let token = await AsyncStorage.getItem(TOKEN_KEY);
 
   // Auto-acquire anonymous session token if missing

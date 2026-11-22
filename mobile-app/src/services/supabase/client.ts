@@ -2,12 +2,9 @@ import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
 import oAuthService from '../oauth/OAuthService';
 
-// Configuration from environment variables or production fallback endpoints
-const SUPABASE_URL =
-  process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://extmmwjtdmrwmminyekq.supabase.co';
-const SUPABASE_ANON_KEY =
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
-  'sb_publishable_6W-PYLuF4q4tveYpTRtrLg_hqH8PLxP';
+// Pure environment variable resolution (Zero hardcoded credentials in app source code)
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://supabase.internal';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'public-anon-key';
 
 /**
  * Production Supabase Client configured with Direct OAuth:
