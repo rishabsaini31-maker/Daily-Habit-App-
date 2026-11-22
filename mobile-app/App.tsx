@@ -11,29 +11,19 @@ import revenueCat from './src/services/revenuecat/RevenueCatService';
 import { StartupSplashScreen } from './src/core/startup/StartupSplashScreen';
 
 export default function App() {
-  const [isAppReady, setIsAppReady] = useState<boolean>(false);
   const [splashFinished, setSplashFinished] = useState<boolean>(false);
 
-  // Initialize Supabase Auth on app start & RevenueCat customer listener with startup animation timer
+  // Initialize Supabase Auth on app start & RevenueCat customer listener
   useEffect(() => {
-    const initBoot = async () => {
-      try {
-        await Promise.all([
-          authService.initializeOrGetSession().then((session) => {
-            const uid = session?.user?.id || 'anonymous_user';
-            return revenueCat.initialize(uid).catch(() => {});
-          }),
-          // Minimum 1.8s duration to display brand startup sequence
-          new Promise((resolve) => setTimeout(resolve, 1800)),
-        ]);
-      } catch (err) {
+    authService
+      .initializeOrGetSession()
+      .then((session) => {
+        const uid = session?.user?.id || 'anonymous_user';
+        revenueCat.initialize(uid).catch(() => {});
+      })
+      .catch((err) => {
         console.warn('App initialization warning:', err);
-      } finally {
-        setIsAppReady(true);
-      }
-    };
-
-    initBoot();
+      });
   }, []);
 
   return (
@@ -46,7 +36,7 @@ export default function App() {
               <RootNavigator />
               {!splashFinished && (
                 <StartupSplashScreen
-                  isAppReady={isAppReady}
+                  onContinue={() => setSplashFinished(true)}
                   onAnimationComplete={() => setSplashFinished(true)}
                 />
               )}
