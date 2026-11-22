@@ -6,10 +6,14 @@ import { DatabaseConnection } from './infrastructure/database/connection.js';
 import { createApiRouter } from './controllers/routes.js';
 import { errorHandler } from './middleware/error.middleware.js';
 import { apiRateLimiter } from './middleware/rate-limit.middleware.js';
+import { requestLogger } from './middleware/request-logger.middleware.js';
 
 export function createApp(dbInstance?: DatabaseType): Express {
   const app = express();
   const db = dbInstance || DatabaseConnection.getInstance();
+
+  // Real-time Request & Response Terminal Logger
+  app.use(requestLogger);
 
   // Security Headers & CORS
   app.use(helmet());

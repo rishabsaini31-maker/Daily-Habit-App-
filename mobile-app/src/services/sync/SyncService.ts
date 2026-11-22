@@ -2,6 +2,7 @@ import { supabase } from '../supabase/client';
 import { UserProfile } from '../supabase/auth';
 import oAuthService from '../oauth/OAuthService';
 import { RealtimeChannel } from '@supabase/supabase-js';
+import { api } from '../api';
 
 export interface SyncBlockedTarget {
   id: string;
@@ -238,60 +239,7 @@ class SyncService {
           };
         });
       } else {
-        // Seed default blocked targets into Supabase directly
-        const todayStr = new Date().toISOString().split('T')[0];
-        const defaults: SyncBlockedTarget[] = [
-          {
-            id: '1',
-            user_id: uid,
-            platform: 'android',
-            package_or_token: 'com.instagram.android',
-            display_name: 'Instagram',
-            is_surgical_feed_only: true,
-            daily_limit_minutes: 20,
-            time_spent_today_minutes: 12,
-            category: 'social',
-            last_reset_date: todayStr,
-          },
-          {
-            id: '2',
-            user_id: uid,
-            platform: 'android',
-            package_or_token: 'com.google.android.youtube',
-            display_name: 'YouTube',
-            is_surgical_feed_only: true,
-            daily_limit_minutes: 30,
-            time_spent_today_minutes: 18,
-            category: 'entertainment',
-            last_reset_date: todayStr,
-          },
-          {
-            id: '3',
-            user_id: uid,
-            platform: 'android',
-            package_or_token: 'com.zhiliaoapp.musically',
-            display_name: 'TikTok',
-            is_surgical_feed_only: false,
-            daily_limit_minutes: 0,
-            time_spent_today_minutes: 0,
-            category: 'social',
-            last_reset_date: todayStr,
-          },
-          {
-            id: '4',
-            user_id: uid,
-            platform: 'android',
-            package_or_token: 'com.twitter.android',
-            display_name: 'X (Twitter)',
-            is_surgical_feed_only: false,
-            daily_limit_minutes: 60,
-            time_spent_today_minutes: 42,
-            category: 'social',
-            last_reset_date: todayStr,
-          },
-        ];
-        await supabase.from('blocked_targets').upsert(defaults);
-        this.inMemoryBlockedTargets = defaults;
+        this.inMemoryBlockedTargets = [];
       }
     } catch {
       this.initDefaultInMemoryState();
@@ -308,50 +256,7 @@ class SyncService {
       if (data && data.length > 0 && !error) {
         this.inMemorySchedules = data as SyncSchedule[];
       } else {
-        const defaultSchedules: SyncSchedule[] = [
-          {
-            id: 'sched-1',
-            user_id: uid,
-            title: 'Work Focus Block',
-            trigger_type: 'time',
-            days_of_week: [1, 2, 3, 4, 5],
-            start_time: '09:00:00',
-            end_time: '17:00:00',
-            is_active: true,
-          },
-          {
-            id: 'sched-2',
-            user_id: uid,
-            title: 'Sleep Sanctuary',
-            trigger_type: 'time',
-            days_of_week: [1, 2, 3, 4, 5, 6, 7],
-            start_time: '22:30:00',
-            end_time: '07:00:00',
-            is_active: true,
-          },
-          {
-            id: 'sched-3',
-            user_id: uid,
-            title: 'Office / Work HQ',
-            trigger_type: 'geofence',
-            days_of_week: [1, 2, 3, 4, 5],
-            geofence_lat: 37.7749,
-            geofence_lng: -122.4194,
-            geofence_radius_m: 200,
-            is_active: true,
-          },
-          {
-            id: 'sched-4',
-            user_id: uid,
-            title: 'Physical Activity Gating',
-            trigger_type: 'health_steps',
-            days_of_week: [1, 2, 3, 4, 5, 6, 7],
-            step_goal: 5000,
-            is_active: true,
-          },
-        ];
-        await supabase.from('schedules').upsert(defaultSchedules);
-        this.inMemorySchedules = defaultSchedules;
+        this.inMemorySchedules = [];
       }
     } catch {
       this.initDefaultInMemoryState();
@@ -619,6 +524,14 @@ class SyncService {
       category: targetWithDefaults.category,
       last_reset_date: targetWithDefaults.last_reset_date,
     });
+
+    // Notify backend REST API for instant real-time logging
+    api.addBlockedTarget({
+      platform: target.platform,
+      packageOrToken: target.package_or_token,
+      displayName: target.display_name,
+      isSurgicalFeedOnly: target.is_surgical_feed_only,
+    }).catch(() => {});
   }
 
   /**
@@ -723,6 +636,9 @@ class SyncService {
       .delete()
       .eq('user_id', this.currentUserId)
       .eq('package_or_token', packageOrToken);
+
+    // Notify backend REST API for instant real-time logging
+    api.removeBlockedTarget(packageOrToken).catch(() => {});
   }
 
   async toggleSchedule(id: string, isActive: boolean): Promise<void> {
@@ -733,6 +649,9 @@ class SyncService {
 
     // Direct update to Supabase schedules table
     await supabase.from('schedules').update({ is_active: isActive }).eq('id', id);
+
+    // Notify backend REST API for instant real-time logging
+    api.toggleSchedule(id, isActive).catch(() => {});
   }
 
   async startSession(session: SyncFocusSession): Promise<void> {
@@ -750,6 +669,9 @@ class SyncService {
       status: 'active',
       time_saved_minutes: 0,
     });
+
+    // Notify backend REST API for instant real-time logging
+    api.startFocusSession(session.duration_minutes, session.strictness_mode, session.id).catch(() => {});
   }
 
   /**
@@ -784,6 +706,9 @@ class SyncService {
         this.fetchMetricsFromSupabase(this.currentUserId),
       ]);
       this.notifyListeners();
+
+      // Notify backend REST API for instant real-time logging
+      api.completeFocusSession(sessionId, duration).catch(() => {});
     } catch (err) {
       console.warn('RPC complete_focus_session error:', err);
     }
@@ -804,6 +729,9 @@ class SyncService {
       .from('focus_sessions')
       .update({ status: 'broken' })
       .eq('id', sessionId);
+
+    // Notify backend REST API for instant real-time logging
+    api.stopFocusSessionEarly(sessionId).catch(() => {});
   }
 
   /**
@@ -820,6 +748,9 @@ class SyncService {
       this.inMemoryProfile.total_gems += 5;
     }
     this.notifyListeners();
+
+    // Notify backend REST API for instant real-time logging
+    api.recordInterception(targetName).catch(() => {});
 
     try {
       await supabase.rpc('record_interception', {

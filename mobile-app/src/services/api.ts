@@ -9,6 +9,7 @@ const AsyncStorage = {
     inMemoryStorageMap.delete(key);
   },
 };
+import { Platform } from 'react-native';
 import {
   User,
   Habit,
@@ -21,7 +22,27 @@ import {
   OfflineAction,
 } from '../types';
 
-const BASE_URL = 'http://localhost:4000/api/v1';
+/**
+ * Intelligent Base URL resolver:
+ * - On Android emulator: replaces localhost with 10.0.2.2 so requests reach host Mac
+ * - On iOS simulator / Web: connects directly to localhost:4000
+ * - On physical devices: uses configured EXPO_PUBLIC_API_URL (e.g. Mac LAN IP)
+ */
+const resolveBaseUrl = (): string => {
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (envUrl && envUrl.trim().length > 0) {
+    if (Platform.OS === 'android' && envUrl.includes('localhost')) {
+      return envUrl.replace('localhost', '10.0.2.2');
+    }
+    return envUrl;
+  }
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:4000/api/v1';
+  }
+  return 'http://localhost:4000/api/v1';
+};
+
+const BASE_URL = resolveBaseUrl();
 
 const TOKEN_KEY = '@habit_tracker_token';
 const USER_KEY = '@habit_tracker_user';
@@ -137,7 +158,28 @@ export function getLocalDateString(d: Date = new Date()): string {
 
 // Low-level HTTP fetch helper with Auth header & timeout
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const token = await AsyncStorage.getItem(TOKEN_KEY);
+  let token = await AsyncStorage.getItem(TOKEN_KEY);
+
+  // Auto-acquire anonymous session token if missing
+  if (!token && !endpoint.startsWith('/auth/')) {
+    try {
+      const anonRes = await fetch(`${BASE_URL}/auth/anonymous`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ displayName: 'DHI Mobile Member' }),
+      });
+      if (anonRes.ok) {
+        const anonData = await anonRes.json();
+        if (anonData.token) {
+          token = anonData.token;
+          await AsyncStorage.setItem(TOKEN_KEY, anonData.token);
+        }
+      }
+    } catch {
+      // offline / backend unreachable
+    }
+  }
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
@@ -151,7 +193,9 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout
 
   try {
-    const res = await fetch(`${BASE_URL}${endpoint}`, {
+    const url = `${BASE_URL}${endpoint}`;
+    console.log(`[API Client 📡] ${options.method || 'GET'} ${url}`);
+    const res = await fetch(url, {
       ...options,
       headers,
       signal: controller.signal,
