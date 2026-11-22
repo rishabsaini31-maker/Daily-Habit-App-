@@ -16,6 +16,9 @@
       "android": {
         "buildType": "apk"
       },
+      "ios": {
+        "simulator": true
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://daily-habit-app.onrender.com/api/v1"
       }
