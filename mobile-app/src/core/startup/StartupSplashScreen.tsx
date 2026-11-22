@@ -126,7 +126,7 @@ export const StartupSplashScreen: React.FC<StartupSplashScreenProps> = ({
 
           {/* Brand Titles */}
           <Animated.View style={[styles.textBlock, { opacity: contentOpacity }]}>
-            <Text style={styles.brandTitle}>DAILY HABIT</Text>
+            <Text style={styles.brandTitle}>DHI</Text>
             <Text style={styles.brandSubtitle}>DIGITAL WELL-BEING OS</Text>
           </Animated.View>
         </View>
