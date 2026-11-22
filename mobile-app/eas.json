@@ -8,25 +8,19 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://daily-habit-app.onrender.com/api/v1",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://extmmwjtdmrwmminyekq.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_6W-PYLuF4q4tveYpTRtrLg_hqH8PLxP"
+        "EXPO_PUBLIC_API_URL": "https://daily-habit-app.onrender.com/api/v1"
       }
     },
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://daily-habit-app.onrender.com/api/v1",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://extmmwjtdmrwmminyekq.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_6W-PYLuF4q4tveYpTRtrLg_hqH8PLxP"
+        "EXPO_PUBLIC_API_URL": "https://daily-habit-app.onrender.com/api/v1"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://daily-habit-app.onrender.com/api/v1",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://extmmwjtdmrwmminyekq.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_6W-PYLuF4q4tveYpTRtrLg_hqH8PLxP"
+        "EXPO_PUBLIC_API_URL": "https://daily-habit-app.onrender.com/api/v1"
       }
     }
   },

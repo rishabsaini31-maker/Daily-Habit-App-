@@ -36,8 +36,11 @@ const resolveBaseUrl = (): string => {
     }
     return envUrl;
   }
-  // Production live Render backend default
-  return 'https://daily-habit-app.onrender.com/api/v1';
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:4000/api/v1';
+  }
+  // Local development default (backend on port 4000)
+  return 'http://localhost:4000/api/v1';
 };
 
 const BASE_URL = resolveBaseUrl();
