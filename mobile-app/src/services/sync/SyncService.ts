@@ -121,14 +121,19 @@ class SyncService {
       const uid = explicitUserId || (await this.resolveUserId());
       this.currentUserId = uid;
 
-      // Load all datasets directly from Supabase in parallel
-      await Promise.all([
+      // Populate default state immediately so in-memory access is never blocked
+      this.initDefaultInMemoryState();
+
+      // Load all datasets directly from Supabase in parallel with a 1500ms safety timeout
+      const fetchPromise = Promise.all([
         this.fetchProfileFromSupabase(uid),
         this.fetchTargetsFromSupabase(uid),
         this.fetchSchedulesFromSupabase(uid),
         this.fetchSessionsFromSupabase(uid),
         this.fetchMetricsFromSupabase(uid),
       ]);
+      const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1500));
+      await Promise.race([fetchPromise, timeoutPromise]);
 
       // Subscribe to Supabase Realtime channels
       this.setupRealtimeSubscriptions(uid);

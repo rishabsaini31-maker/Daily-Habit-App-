@@ -33,24 +33,23 @@ export const StartupSplashScreen: React.FC<StartupSplashScreenProps> = ({
   const screenFade = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // 1. Entrance animation: Logo spring and title fade-in
+    // 1. Entrance animation: Snappy logo spring and title fade-in
     Animated.parallel([
       Animated.timing(logoOpacity, {
         toValue: 1,
-        duration: 600,
+        duration: 350,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
       Animated.spring(logoScale, {
         toValue: 1,
-        friction: 7,
-        tension: 40,
+        friction: 8,
+        tension: 60,
         useNativeDriver: true,
       }),
       Animated.timing(contentOpacity, {
         toValue: 1,
-        duration: 750,
-        delay: 250,
+        duration: 350,
         useNativeDriver: true,
       }),
     ]).start();
@@ -60,54 +59,42 @@ export const StartupSplashScreen: React.FC<StartupSplashScreenProps> = ({
       Animated.sequence([
         Animated.timing(pulseAnim, {
           toValue: 1,
-          duration: 1100,
+          duration: 900,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
         Animated.timing(pulseAnim, {
           toValue: 0.55,
-          duration: 1100,
+          duration: 900,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
       ])
     ).start();
-
-    // 3. Fast auto-transition (opens immediately after 900ms brand intro)
-    const autoTimer = setTimeout(() => {
-      handleTapToContinue();
-    }, 900);
-
-    return () => clearTimeout(autoTimer);
   }, []);
 
-  // When user taps anywhere on the screen
+  // When user taps anywhere on the screen - instantly dismiss with ZERO delay
   const handleTapToContinue = () => {
     if (isDismissing.current) return;
     isDismissing.current = true;
 
-    // Snappy 120ms fade out for instant responsiveness
-    Animated.timing(screenFade, {
-      toValue: 0,
-      duration: 120,
-      easing: Easing.out(Easing.ease),
-      useNativeDriver: true,
-    }).start(() => {
-      if (onContinue) {
-        onContinue();
-      }
-      if (onAnimationComplete) {
-        onAnimationComplete();
-      }
-    });
+    // Immediately hand over to main app without waiting for animation callbacks
+    if (onContinue) {
+      onContinue();
+    }
+    if (onAnimationComplete) {
+      onAnimationComplete();
+    }
   };
 
   return (
     <Animated.View style={[styles.container, { opacity: screenFade }]}>
       <TouchableOpacity
-        activeOpacity={1}
+        activeOpacity={0.8}
         style={styles.touchableArea}
+        onPressIn={handleTapToContinue}
         onPress={handleTapToContinue}
+        delayPressIn={0}
         accessibilityLabel="Tap to continue"
         accessibilityRole="button"
       >

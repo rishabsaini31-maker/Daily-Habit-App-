@@ -41,10 +41,13 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const lifetimeYearsLost = Number(((dailyScreenHours / 16) * 60).toFixed(1));
 
   useEffect(() => {
-    // Check if user profile already has baseline configured in Supabase
+    // Check if user profile already has baseline configured in Supabase (with fast safety timeout)
     const initCheck = async () => {
       try {
-        const profile = await syncService.getProfile();
+        const timeoutPromise = new Promise<null>((resolve) =>
+          setTimeout(() => resolve(null), 600)
+        );
+        const profile = await Promise.race([syncService.getProfile(), timeoutPromise]);
         if (profile && profile.daily_baseline_minutes && profile.daily_baseline_minutes > 0) {
           setHasCompletedOnboarding(true);
         }
