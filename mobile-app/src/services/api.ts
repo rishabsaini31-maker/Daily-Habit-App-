@@ -36,11 +36,8 @@ const resolveBaseUrl = (): string => {
     }
     return envUrl;
   }
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:4000/api/v1';
-  }
-  // Host Mac Wi-Fi LAN IP (reachable by physical devices on local network)
-  return 'http://10.143.162.197:4000/api/v1';
+  // Production live Render backend default
+  return 'https://daily-habit-app.onrender.com/api/v1';
 };
 
 const BASE_URL = resolveBaseUrl();

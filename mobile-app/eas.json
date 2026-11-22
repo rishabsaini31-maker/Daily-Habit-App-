@@ -6,13 +6,28 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://daily-habit-app.onrender.com/api/v1",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://extmmwjtdmrwmminyekq.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_6W-PYLuF4q4tveYpTRtrLg_hqH8PLxP"
+      }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://daily-habit-app.onrender.com/api/v1",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://extmmwjtdmrwmminyekq.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_6W-PYLuF4q4tveYpTRtrLg_hqH8PLxP"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://daily-habit-app.onrender.com/api/v1",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://extmmwjtdmrwmminyekq.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_6W-PYLuF4q4tveYpTRtrLg_hqH8PLxP"
+      }
     }
   },
   "submit": {

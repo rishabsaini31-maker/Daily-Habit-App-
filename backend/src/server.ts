@@ -5,6 +5,7 @@ import { createApp } from './app.js';
 import { MigrationRunner } from './infrastructure/database/migration-runner.js';
 import { seedDatabase } from './infrastructure/database/seed.js';
 import { PgConnection } from './infrastructure/database/pg-connection.js';
+import { RenderKeepAliveService } from './infrastructure/keep-alive/render-keep-alive.service.js';
 
 const PORT = parseInt(process.env.PORT || '4000', 10);
 
@@ -39,6 +40,9 @@ async function bootstrap() {
       console.log(`🚀 HabitPulse Backend API listening on http://0.0.0.0:${PORT}`);
       console.log(`📡 Health Check: http://0.0.0.0:${PORT}/health`);
       console.log(`📚 REST Endpoints: http://0.0.0.0:${PORT}/api/v1`);
+
+      // Keep Render Free Tier alive (pings /health every 10 mins to prevent sleep)
+      RenderKeepAliveService.start(10);
     });
   } catch (err) {
     console.error('Fatal bootstrap error:', err);
