@@ -57,8 +57,8 @@ export const Sidebar: React.FC = () => {
       <div>
         <div className="h-16 flex items-center justify-between px-4 border-b border-[#1E2230]">
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#38BDF8] to-[#10B981] flex items-center justify-center flex-shrink-0 shadow-lg shadow-cyan-500/20 text-black">
-              <Shield className="w-5 h-5 font-bold" />
+            <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0 shadow-lg shadow-cyan-500/20 border border-[#1E2230] bg-[#08090D]">
+              <img src="/app-logo.png" alt="Daily Habit Logo" className="w-full h-full object-cover rounded-lg" />
             </div>
             {!collapsed && (
               <div className="truncate">

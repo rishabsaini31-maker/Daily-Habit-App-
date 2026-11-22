@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  Image,
 } from 'react-native';
 import {
   ArrowLeft,
@@ -41,6 +42,8 @@ import authService from '../../services/supabase/auth';
 import oAuthService from '../../services/oauth/OAuthService';
 import { useResponsiveLayout } from '../../core/theme/useResponsiveLayout';
 import { AppleIcon, GoogleIcon } from '../../core/theme/components/SocialIcons';
+
+const APP_LOGO = require('../../../assets/images/app-logo.png');
 
 const COMMON_TIMEZONES = [
   'America/New_York',
@@ -208,7 +211,7 @@ export const SettingsScreen: React.FC = () => {
           <GlassCard style={styles.heroProfileCard}>
             <View style={styles.avatarRow}>
               <View style={styles.avatarBigCircle}>
-                <UserIcon size={34} color={colors.primaryAccent} />
+                <Image source={APP_LOGO} style={styles.avatarLogoBig} resizeMode="cover" />
                 <View style={styles.protectionActiveBadge} />
               </View>
               <View style={styles.userMainCol}>
@@ -708,12 +711,18 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: colors.elevatedCardSurface,
+    backgroundColor: '#12141D',
     borderWidth: 2,
-    borderColor: colors.primaryAccent,
+    borderColor: 'rgba(56, 189, 248, 0.45)',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    overflow: 'hidden',
+  },
+  avatarLogoBig: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 28,
   },
   protectionActiveBadge: {
     position: 'absolute',

@@ -86,8 +86,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md bg-[#12141D] border border-[#1E2230] rounded-2xl p-8 relative z-10 shadow-2xl">
         {/* Header Badge & Brand */}
         <div className="flex flex-col items-center text-center mb-6">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#38BDF8] to-[#10B981] flex items-center justify-center shadow-lg shadow-cyan-500/20 text-black mb-4">
-            <Shield className="w-7 h-7" />
+          <div className="w-16 h-16 rounded-2xl overflow-hidden border border-[#1E2230] shadow-2xl shadow-cyan-500/20 mb-4 p-0.5 bg-[#08090D]">
+            <img src="/app-logo.png" alt="Daily Habit Logo" className="w-full h-full object-cover rounded-xl" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-white">Focus Admin Control</h1>
           <p className="text-xs text-[#8A94A6] mt-1">

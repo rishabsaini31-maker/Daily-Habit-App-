@@ -1,7 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { colors } from './src/core/theme/tokens';
 import { OnboardingProvider } from './src/features/onboarding/OnboardingContext';
 import { NavigationProvider } from './src/core/navigation/NavigationContext';
 import { NativeBlockerProvider } from './src/services/native_blocker/NativeBlockerContext';
@@ -9,17 +8,32 @@ import { FocusEngineProvider } from './src/services/focus_engine/FocusEngineCont
 import RootNavigator from './src/core/navigation/RootNavigator';
 import authService from './src/services/supabase/auth';
 import revenueCat from './src/services/revenuecat/RevenueCatService';
+import { StartupSplashScreen } from './src/core/startup/StartupSplashScreen';
 
 export default function App() {
-  // Initialize Supabase Auth on app start & RevenueCat customer listener
+  const [isAppReady, setIsAppReady] = useState<boolean>(false);
+  const [splashFinished, setSplashFinished] = useState<boolean>(false);
+
+  // Initialize Supabase Auth on app start & RevenueCat customer listener with startup animation timer
   useEffect(() => {
-    authService
-      .initializeOrGetSession()
-      .then((session) => {
-        const uid = session?.user?.id || 'anonymous_user';
-        revenueCat.initialize(uid).catch(() => {});
-      })
-      .catch(() => {});
+    const initBoot = async () => {
+      try {
+        await Promise.all([
+          authService.initializeOrGetSession().then((session) => {
+            const uid = session?.user?.id || 'anonymous_user';
+            return revenueCat.initialize(uid).catch(() => {});
+          }),
+          // Minimum 1.8s duration to display brand startup sequence
+          new Promise((resolve) => setTimeout(resolve, 1800)),
+        ]);
+      } catch (err) {
+        console.warn('App initialization warning:', err);
+      } finally {
+        setIsAppReady(true);
+      }
+    };
+
+    initBoot();
   }, []);
 
   return (
@@ -30,6 +44,12 @@ export default function App() {
             <NavigationProvider>
               <StatusBar barStyle="light-content" />
               <RootNavigator />
+              {!splashFinished && (
+                <StartupSplashScreen
+                  isAppReady={isAppReady}
+                  onAnimationComplete={() => setSplashFinished(true)}
+                />
+              )}
             </NavigationProvider>
           </OnboardingProvider>
         </FocusEngineProvider>

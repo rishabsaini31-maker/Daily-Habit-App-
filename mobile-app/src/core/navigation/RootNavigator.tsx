@@ -16,6 +16,7 @@ import AppBlockShieldScreen from '../../features/focus_session/AppBlockShieldScr
 import PaywallModal from '../../features/paywall/PaywallModal';
 import SettingsScreen from '../../features/settings/SettingsScreen';
 import { useNativeBlocker } from '../../services/native_blocker/NativeBlockerContext';
+import { StartupSplashScreen } from '../startup/StartupSplashScreen';
 
 export const RootNavigator: React.FC = () => {
   const { hasCompletedOnboarding, isLoading: onboardingLoading } = useOnboarding();
@@ -34,11 +35,7 @@ export const RootNavigator: React.FC = () => {
   }, [lastShieldEvent, activeModal, openModal]);
 
   if (onboardingLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primaryAccent} />
-      </View>
-    );
+    return <StartupSplashScreen isAppReady={false} />;
   }
 
   // 1. FIRST LAUNCH (NOT ONBOARDED): 5-step Onboarding Stack

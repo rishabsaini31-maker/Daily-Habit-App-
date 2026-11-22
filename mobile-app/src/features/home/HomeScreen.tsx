@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Image,
 } from 'react-native';
 import {
   User,
@@ -26,6 +27,8 @@ import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import FocusRing from '../../core/theme/components/FocusRing';
 import { useAppNavigation } from '../../core/navigation/NavigationContext';
 import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
+
+const APP_LOGO = require('../../../assets/images/app-logo.png');
 
 export const HomeScreen: React.FC = () => {
   const { openModal, presentShield } = useAppNavigation();
@@ -92,7 +95,7 @@ export const HomeScreen: React.FC = () => {
             accessibilityLabel="Open Full Screen Profile"
           >
             <View style={styles.avatarCircle}>
-              <User size={18} color={colors.primaryText} />
+              <Image source={APP_LOGO} style={styles.avatarLogo} resizeMode="cover" />
             </View>
             <View style={styles.protectionActiveBadge} />
           </TouchableOpacity>
@@ -270,11 +273,17 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: colors.elevatedCardSurface,
-    borderWidth: 1,
-    borderColor: colors.hairlineBorder,
+    backgroundColor: '#12141D',
+    borderWidth: 1.5,
+    borderColor: 'rgba(56, 189, 248, 0.4)',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarLogo: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 20,
   },
   protectionActiveBadge: {
     position: 'absolute',

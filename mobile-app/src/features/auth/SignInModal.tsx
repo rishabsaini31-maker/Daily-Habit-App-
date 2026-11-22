@@ -10,6 +10,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import {
   X,
@@ -27,6 +28,8 @@ import authService from '../../services/supabase/auth';
 import oAuthService from '../../services/oauth/OAuthService';
 import { useOnboarding } from '../onboarding/OnboardingContext';
 import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
+
+const APP_LOGO = require('../../../assets/images/app-logo.png');
 
 interface SignInModalProps {
   visible: boolean;
@@ -223,6 +226,9 @@ export const SignInModal: React.FC<SignInModalProps> = ({
 
           {/* Headline */}
           <View style={styles.headerSection}>
+            <View style={styles.modalLogoWrapper}>
+              <Image source={APP_LOGO} style={styles.modalLogo} resizeMode="cover" />
+            </View>
             <Text style={styles.headline}>Welcome Back</Text>
             <Text style={styles.subheadline}>
               Sign in to restore your Opal Pro subscription, streaks, and custom block schedules.
@@ -460,6 +466,27 @@ const styles = StyleSheet.create({
   },
   headerSection: {
     marginBottom: 16,
+  },
+  modalLogoWrapper: {
+    width: 60,
+    height: 60,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(56, 189, 248, 0.4)',
+    overflow: 'hidden',
+    backgroundColor: '#12141D',
+    marginBottom: 12,
+    alignSelf: 'center',
+    shadowColor: '#38BDF8',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  modalLogo: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 15,
   },
   headline: {
     ...typography.displayMedium,
