@@ -155,7 +155,7 @@ cd mobile-app && npx react-native run-ios --device
 - [x] **In-App Account Deletion (Guideline 5.1.1):** Self-serve account and data wipe available in Settings → Delete Account.
 - [x] **Google Play Accessibility Declaration:** Prominent in-app disclosure screen shown prior to opening Android Accessibility settings, strictly scoped to digital well-being blocking.
 
----
+-----
 
 ## License
 
