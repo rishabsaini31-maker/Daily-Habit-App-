@@ -16,6 +16,13 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
+import android.util.Base64
+import java.io.ByteArrayOutputStream
+import java.util.concurrent.ConcurrentHashMap
 import com.facebook.react.bridge.*
 import java.util.Calendar
 
@@ -30,6 +37,33 @@ class FocusBlockerModule(private val reactContext: ReactApplicationContext) :
         const val KEY_ANTI_UNINSTALL = "anti_uninstall_guard"
         const val KEY_STRICTNESS_MODE = "strictness_mode"
         const val KEY_INTERCEPTIONS_COUNT = "interceptions_count"
+
+        private val iconCache = ConcurrentHashMap<String, String>()
+    }
+
+    private fun getAppIconBase64(packageName: String, size: Int = 64): String? {
+        iconCache[packageName]?.let { return it }
+        return try {
+            val pm = reactContext.packageManager
+            val drawable: Drawable = pm.getApplicationIcon(packageName)
+            val bitmap = if (drawable is BitmapDrawable && drawable.bitmap != null) {
+                Bitmap.createScaledBitmap(drawable.bitmap, size, size, true)
+            } else {
+                val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+                val canvas = Canvas(bmp)
+                drawable.setBounds(0, 0, canvas.width, canvas.height)
+                drawable.draw(canvas)
+                bmp
+            }
+            val stream = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.PNG, 85, stream)
+            val bytes = stream.toByteArray()
+            val base64 = "data:image/png;base64," + Base64.encodeToString(bytes, Base64.NO_WRAP)
+            iconCache[packageName] = base64
+            base64
+        } catch (_: Exception) {
+            null
+        }
     }
 
     // =========================================================================
@@ -236,6 +270,10 @@ class FocusBlockerModule(private val reactContext: ReactApplicationContext) :
                         putString("appName", appName)
                         putInt("minutes", minutes)
                         putInt("seconds", (totalMs / 1000).toInt())
+                        val icon = getAppIconBase64(pkg)
+                        if (icon != null) {
+                            putString("iconBase64", icon)
+                        }
                     }
                     resultArray.pushMap(map)
                 }
@@ -243,6 +281,40 @@ class FocusBlockerModule(private val reactContext: ReactApplicationContext) :
             promise.resolve(resultArray)
         } catch (e: Exception) {
             promise.reject("USAGE_STATS_ERROR", e.localizedMessage, e)
+        }
+    }
+
+    @ReactMethod
+    fun getInstalledApps(promise: Promise) {
+        try {
+            val pm = reactContext.packageManager
+            val intent = Intent(Intent.ACTION_MAIN, null).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+            }
+            val resolveInfos = pm.queryIntentActivities(intent, 0)
+            val resultArray = Arguments.createArray()
+            val seen = HashSet<String>()
+
+            for (info in resolveInfos) {
+                val pkg = info.activityInfo.packageName
+                if (pkg == reactContext.packageName || seen.contains(pkg)) continue
+                seen.add(pkg)
+
+                val label = info.loadLabel(pm).toString()
+                val icon = getAppIconBase64(pkg)
+
+                val map = Arguments.createMap().apply {
+                    putString("packageName", pkg)
+                    putString("appName", label)
+                    if (icon != null) {
+                        putString("iconBase64", icon)
+                    }
+                }
+                resultArray.pushMap(map)
+            }
+            promise.resolve(resultArray)
+        } catch (e: Exception) {
+            promise.reject("INSTALLED_APPS_ERROR", e.localizedMessage, e)
         }
     }
 

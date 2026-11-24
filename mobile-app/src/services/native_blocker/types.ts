@@ -28,6 +28,7 @@ export interface BlockableApp {
   name: string;
   category: AppCategory;
   iconName: string;
+  iconBase64?: string; // Real native app icon base64 data URL
   isEntireAppBlocked: boolean;
   supportsSurgicalBlocking: boolean;
   surgicalFeatures: SurgicalFeature[];

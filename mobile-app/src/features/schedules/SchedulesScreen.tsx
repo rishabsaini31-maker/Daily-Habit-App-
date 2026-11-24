@@ -265,13 +265,9 @@ export const SchedulesScreen: React.FC = () => {
         ]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Figma 10 Header: Schedules | + New */}
         <View style={styles.titleRow}>
-          <View>
-            <Text style={styles.screenTitle}>Schedules</Text>
-            <Text style={styles.screenSubtitle}>
-              Create a routine or start with a preset.
-            </Text>
-          </View>
+          <Text style={styles.screenTitle}>Schedules</Text>
           <TouchableOpacity
             style={styles.addBtn}
             activeOpacity={0.7}
@@ -287,285 +283,179 @@ export const SchedulesScreen: React.FC = () => {
               setIsAddModalOpen(true);
             }}
           >
-            <Plus size={14} color={colors.primaryAccent} />
+            <Plus size={15} color={colors.primaryAccent} />
             <Text style={styles.addBtnText}>New</Text>
           </TouchableOpacity>
         </View>
 
-        {/* 1. TIME-BASED RECURRING RULES */}
-        <View style={styles.sectionHeaderRow}>
-          <View style={styles.sectionHeaderLeft}>
-            <Clock size={18} color={colors.primaryAccent} />
-            <Text style={styles.sectionTitle}>Time-based schedules</Text>
-          </View>
+        {/* Figma 10 Main: Plan your focus */}
+        <View style={styles.mainTitleBlock}>
+          <Text style={styles.mainHeadline}>Plan your focus</Text>
+          <Text style={styles.mainSubhead}>
+            Create a routine or start with a preset.
+          </Text>
         </View>
 
-        {timeSchedules.length === 0 ? (
-          <View style={styles.dashedRoutineCard}>
-            <View style={styles.dashedCardHeader}>
-              <View style={styles.dashedIconWrap}>
-                <Sparkles size={16} color={colors.primaryAccent} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.dashedCardTitle}>Create your first daily focus routine</Text>
-                <Text style={styles.dashedCardSub}>
-                  Quick 1-tap presets to eliminate decision fatigue
-                </Text>
-              </View>
-            </View>
+        {/* Daily Routine Presets (Figma 10) */}
+        <Text style={styles.routineSectionLabel}>START WITH A DAILY ROUTINE</Text>
 
-            <View style={styles.presetButtonsRow}>
+        <View style={styles.presetsList}>
+          {/* Preset 1: Morning deep work */}
+          <GlassCard style={styles.presetCard}>
+            <View style={styles.presetTopRow}>
+              <View style={styles.routineIconBackplate}>
+                <Clock size={16} color={colors.primaryAccent} />
+              </View>
+              <Text style={styles.presetRoutineTitle}>Morning deep work</Text>
+            </View>
+            <View style={styles.presetBottomRow}>
+              <View style={styles.presetTimeCol}>
+                <Text style={styles.presetTimeLarge}>9:00 – 11:30 AM</Text>
+                <Text style={styles.presetDaysPill}>Mon–Fri</Text>
+              </View>
               <TouchableOpacity
-                style={styles.presetChip}
-                activeOpacity={0.7}
+                style={styles.addPresetActionBtn}
+                activeOpacity={0.8}
                 onPress={() =>
                   handleApplyPresetAndCreate(
-                    'Morning Deep Work',
+                    'Morning deep work',
                     '09:00',
                     '11:30',
                     [1, 2, 3, 4, 5]
                   )
                 }
               >
-                <View style={styles.presetChipTop}>
-                  <Text style={styles.presetChipTitle}>Morning Deep Work</Text>
-                  <Text style={styles.presetChipBadge}>9:00 – 11:30 AM</Text>
-                </View>
-                <Text style={styles.presetChipDesc}>Shields distractions during peak morning energy (Mon–Fri)</Text>
+                <Text style={styles.addPresetActionText}>Add</Text>
               </TouchableOpacity>
+            </View>
+          </GlassCard>
 
+          {/* Preset 2: Sleep wind-down */}
+          <GlassCard style={styles.presetCard}>
+            <View style={styles.presetTopRow}>
+              <View style={styles.routineIconBackplate}>
+                <Clock size={16} color={colors.primaryAccent} />
+              </View>
+              <Text style={styles.presetRoutineTitle}>Sleep wind-down</Text>
+            </View>
+            <View style={styles.presetBottomRow}>
+              <View style={styles.presetTimeCol}>
+                <Text style={styles.presetTimeLarge}>10:30 PM – 7:00 AM</Text>
+                <Text style={styles.presetDaysPill}>Every day</Text>
+              </View>
               <TouchableOpacity
-                style={styles.presetChip}
-                activeOpacity={0.7}
+                style={styles.addPresetActionBtn}
+                activeOpacity={0.8}
                 onPress={() =>
                   handleApplyPresetAndCreate(
-                    'Sleep Wind-Down',
+                    'Sleep wind-down',
                     '22:30',
                     '07:00',
                     [1, 2, 3, 4, 5, 6, 7]
                   )
                 }
               >
-                <View style={styles.presetChipTop}>
-                  <Text style={styles.presetChipTitle}>Sleep Wind-Down</Text>
-                  <Text style={styles.presetChipBadge}>10:30 PM – 7:00 AM</Text>
-                </View>
-                <Text style={styles.presetChipDesc}>Locks doomscroll apps for deep restorative sleep (Daily)</Text>
+                <Text style={styles.addPresetActionText}>Add</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        ) : (
-          <View style={styles.cardsList}>
-            {timeSchedules.map((schedule) => (
-              <GlassCard key={schedule.id} style={styles.scheduleCard}>
-                <View style={styles.cardTopRow}>
-                  <View style={styles.scheduleInfoCol}>
-                    <Text style={styles.scheduleName}>{schedule.title}</Text>
-                    <Text style={styles.scheduleTime}>
-                      {schedule.start_time?.slice(0, 5)} – {schedule.end_time?.slice(0, 5)}
-                    </Text>
-                    <Text style={styles.scheduleDays}>
-                      {formatDaysDisplay(schedule.days_of_week)}
-                    </Text>
-                  </View>
-                  <View style={styles.cardTopActions}>
-                    <TouchableOpacity
-                      onPress={() => handleDeleteSchedule(schedule.id, schedule.title)}
-                      style={styles.deleteIconBtn}
-                      activeOpacity={0.7}
-                    >
-                      <Trash2 size={16} color={colors.secondaryMutedText} />
-                    </TouchableOpacity>
-                    <Switch
-                      value={schedule.is_active}
-                      onValueChange={() =>
-                        handleToggle(schedule.id, schedule.is_active, schedule.trigger_type)
-                      }
-                      trackColor={{
-                        false: colors.hairlineBorder,
-                        true: colors.primaryAccent,
-                      }}
-                      thumbColor="#FFFFFF"
-                    />
-                  </View>
-                </View>
-                <View style={styles.cardFooterRow}>
-                  <Shield size={14} color={colors.secondaryMutedText} />
-                  <Text style={styles.cardFooterText}>
-                    {blockedTargets.length} apps locked automatically during this window
-                  </Text>
-                </View>
-              </GlassCard>
-            ))}
-          </View>
-        )}
-
-        <Text style={styles.moreWaysHeading}>More ways to focus</Text>
-        <View style={[styles.sectionHeaderRow, { marginTop: 24 }]}>
-          <View style={styles.sectionHeaderLeft}>
-            <MapPin size={18} color={colors.positiveAccent} />
-            <Text style={styles.sectionTitle}>Location-based focus</Text>
-            {!profile.is_pro && (
-              <View style={styles.proTag}>
-                <Crown size={10} color="#FBBF24" />
-                <Text style={styles.proTagText}>PRO</Text>
-              </View>
-            )}
-          </View>
-        </View>
-
-        {geofenceSchedules.length === 0 ? (
-          <GlassCard style={styles.interactiveEmptyCard}>
-            <View style={styles.emptyCardHeader}>
-              <View style={[styles.emptyIconCircle, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
-                <MapPin size={20} color={colors.positiveAccent} />
-              </View>
-              <View style={styles.emptyCardTextCol}>
-                <Text style={styles.emptyCardTitle}>Workplace & Study Auto-Lock</Text>
-                <Text style={styles.emptyCardDesc}>
-                  Enter stealth focus automatically when stepping into your office, campus, or study space.
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              style={styles.emptyPresetBtn}
-              activeOpacity={0.8}
-              onPress={() => {
-                if (!profile.is_pro) openModal('paywall');
-                else Alert.alert('Add Location', 'Define a 200m focus perimeter around your workplace or school.');
-              }}
-            >
-              <Plus size={14} color={colors.positiveAccent} />
-              <Text style={[styles.emptyPresetBtnText, { color: colors.positiveAccent }]}>
-                {profile.is_pro ? 'Set Up Location Fence' : 'Unlock GPS Auto-Lock (DHI Pro)'}
-              </Text>
-            </TouchableOpacity>
           </GlassCard>
-        ) : (
-          <View style={styles.cardsList}>
-            {geofenceSchedules.map((rule) => (
-              <GlassCard key={rule.id} style={styles.scheduleCard}>
-                <View style={styles.cardTopRow}>
-                  <View style={styles.scheduleInfoCol}>
-                    <Text style={styles.scheduleName}>{rule.title}</Text>
-                    <Text style={styles.scheduleTime}>
-                      {rule.geofence_lat}, {rule.geofence_lng}
-                    </Text>
-                    <Text style={styles.scheduleDays}>
-                      Auto-locks within {rule.geofence_radius_m || 200}m geofence
+        </View>
+
+        {/* Existing Active Time Schedules if any */}
+        {timeSchedules.length > 0 && (
+          <View style={styles.activeSchedulesBlock}>
+            <Text style={styles.routineSectionLabel}>ACTIVE SCHEDULES</Text>
+            <View style={styles.cardsList}>
+              {timeSchedules.map((schedule) => (
+                <GlassCard key={schedule.id} style={styles.scheduleCard}>
+                  <View style={styles.cardTopRow}>
+                    <View style={styles.scheduleInfoCol}>
+                      <Text style={styles.scheduleName}>{schedule.title}</Text>
+                      <Text style={styles.scheduleTime}>
+                        {schedule.start_time?.slice(0, 5)} – {schedule.end_time?.slice(0, 5)}
+                      </Text>
+                      <Text style={styles.scheduleDays}>
+                        {formatDaysDisplay(schedule.days_of_week)}
+                      </Text>
+                    </View>
+                    <View style={styles.cardTopActions}>
+                      <TouchableOpacity
+                        onPress={() => handleDeleteSchedule(schedule.id, schedule.title)}
+                        style={styles.deleteIconBtn}
+                        activeOpacity={0.7}
+                      >
+                        <Trash2 size={16} color={colors.secondaryMutedText} />
+                      </TouchableOpacity>
+                      <Switch
+                        value={schedule.is_active}
+                        onValueChange={() =>
+                          handleToggle(schedule.id, schedule.is_active, schedule.trigger_type)
+                        }
+                        trackColor={{
+                          false: colors.hairlineBorder,
+                          true: colors.primaryAccent,
+                        }}
+                        thumbColor="#FFFFFF"
+                      />
+                    </View>
+                  </View>
+                  <View style={styles.cardFooterRow}>
+                    <Shield size={14} color={colors.secondaryMutedText} />
+                    <Text style={styles.cardFooterText}>
+                      {blockedTargets.length} apps locked automatically during this window
                     </Text>
                   </View>
-                  <Switch
-                    value={rule.is_active}
-                    onValueChange={() =>
-                      handleToggle(rule.id, rule.is_active, rule.trigger_type)
-                    }
-                    trackColor={{
-                      false: colors.hairlineBorder,
-                      true: colors.positiveAccent,
-                    }}
-                    thumbColor="#FFFFFF"
-                  />
-                </View>
-              </GlassCard>
-            ))}
+                </GlassCard>
+              ))}
+            </View>
           </View>
         )}
 
-        <View style={[styles.sectionHeaderRow, { marginTop: 24 }]}>
-          <View style={styles.sectionHeaderLeft}>
-            <Footprints size={18} color={colors.warningAccent} />
-            <Text style={styles.sectionTitle}>Step goals</Text>
-            {!profile.is_pro && (
-              <View style={styles.proTag}>
-                <Crown size={10} color="#FBBF24" />
-                <Text style={styles.proTagText}>PRO</Text>
-              </View>
-            )}
-          </View>
-        </View>
+        {/* Figma 10: MORE WAYS TO FOCUS */}
+        <Text style={[styles.routineSectionLabel, { marginTop: 28 }]}>MORE WAYS TO FOCUS</Text>
 
-        <GlassCard style={styles.stepGatedCard}>
-          <View style={styles.cardTopRow}>
-            <View style={styles.scheduleInfoCol}>
-              <Text style={styles.scheduleName}>
-                {activeStepRule?.title || 'Daily 5,000 Step Screen Time Gate'}
-              </Text>
-              <Text style={styles.scheduleTime}>
-                Walk {stepGoal.toLocaleString()} steps = Unlock Distracting Apps
-              </Text>
+        <GlassCard style={styles.moreWaysCard}>
+          {/* Location-based focus */}
+          <TouchableOpacity
+            style={styles.moreWaysRow}
+            activeOpacity={0.75}
+            onPress={() => {
+              if (!profile.is_pro) openModal('paywall');
+              else Alert.alert('Add Location', 'Define a 200m focus perimeter around your workplace or school.');
+            }}
+          >
+            <View style={styles.moreWaysIconBox}>
+              <MapPin size={18} color={colors.positiveAccent} />
+            </View>
+            <View style={styles.moreWaysTextCol}>
+              <Text style={styles.moreWaysTitle}>Location-based focus</Text>
+              <Text style={styles.moreWaysSubtitle}>Activate at work or your study space.</Text>
+            </View>
+            <X size={16} color={colors.secondaryMutedText} style={{ transform: [{ rotate: '45deg' }] }} />
+          </TouchableOpacity>
+
+          <View style={styles.moreWaysDivider} />
+
+          {/* Earn your screen time */}
+          <TouchableOpacity
+            style={styles.moreWaysRow}
+            activeOpacity={0.75}
+            onPress={() => handleToggleStepGatingMaster(activeStepRule?.id, activeStepRule?.is_active)}
+          >
+            <View style={styles.moreWaysIconBox}>
+              <Footprints size={18} color={colors.positiveAccent} />
+            </View>
+            <View style={styles.moreWaysTextCol}>
+              <Text style={styles.moreWaysTitle}>Earn your screen time</Text>
+              <Text style={styles.moreWaysSubtitle}>Unlock time by reaching a step goal ({todaySteps.toLocaleString()} steps today).</Text>
             </View>
             <Switch
               value={!!activeStepRule?.is_active}
-              onValueChange={() =>
-                handleToggleStepGatingMaster(activeStepRule?.id, activeStepRule?.is_active)
-              }
-              trackColor={{
-                false: colors.hairlineBorder,
-                true: colors.warningAccent,
-              }}
+              onValueChange={() => handleToggleStepGatingMaster(activeStepRule?.id, activeStepRule?.is_active)}
+              trackColor={{ false: colors.hairlineBorder, true: colors.positiveAccent }}
               thumbColor="#FFFFFF"
             />
-          </View>
-
-          {/* Live Step Progress Display */}
-          <View style={styles.stepProgressContainer}>
-            <View style={styles.stepProgressHeader}>
-              <Text style={styles.stepCounterText}>
-                {todaySteps.toLocaleString()} / {stepGoal.toLocaleString()} steps today
-              </Text>
-              <View
-                style={[
-                  styles.earnedBadge,
-                  isStepGoalMet && { backgroundColor: 'rgba(16, 185, 129, 0.15)' },
-                ]}
-              >
-                <CheckCircle2
-                  size={12}
-                  color={isStepGoalMet ? colors.positiveAccent : colors.secondaryMutedText}
-                />
-                <Text
-                  style={[
-                    styles.earnedBadgeText,
-                    isStepGoalMet && { color: colors.positiveAccent },
-                  ]}
-                >
-                  {isStepGoalMet ? 'Goal Met • Unlocked' : 'Apps Shielded'}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.stepProgressBarBg}>
-              <View
-                style={[
-                  styles.stepProgressBarFill,
-                  { width: `${Math.min(100, (todaySteps / stepGoal) * 100)}%` },
-                  isStepGoalMet && { backgroundColor: colors.positiveAccent },
-                ]}
-              />
-            </View>
-            <Text style={styles.healthSyncNote}>
-              Active hardware sensor sync • Locks distracting apps until you walk {stepGoal.toLocaleString()} steps
-            </Text>
-
-            {/* Interactive Step Actions Row */}
-            <View style={styles.stepActionButtonsRow}>
-              <TouchableOpacity
-                style={styles.stepActionBtn}
-                activeOpacity={0.7}
-                onPress={handleManualStepSync}
-              >
-                <RefreshCw
-                  size={13}
-                  color={colors.primaryAccent}
-                  style={isSyncingSteps ? { transform: [{ rotate: '45deg' }] } : undefined}
-                />
-                <Text style={styles.stepActionBtnText}>
-                  {isSyncingSteps ? 'Reading...' : 'Sync Sensor'}
-                </Text>
-              </TouchableOpacity>
-
-            </View>
-          </View>
+          </TouchableOpacity>
         </GlassCard>
       </ScrollView>
 
@@ -745,6 +635,127 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 16,
+  },
+  mainTitleBlock: {
+    marginBottom: 20,
+    gap: 4,
+  },
+  mainHeadline: {
+    fontSize: 34,
+    fontWeight: '600',
+    color: colors.primaryText,
+    letterSpacing: -0.5,
+  },
+  mainSubhead: {
+    fontSize: 16,
+    color: colors.secondaryMutedText,
+  },
+  routineSectionLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 1.2,
+    color: colors.secondaryMutedText,
+    textTransform: 'uppercase',
+    marginBottom: 10,
+  },
+  presetsList: {
+    gap: 12,
+    marginBottom: 20,
+  },
+  presetCard: {
+    padding: 18,
+    borderRadius: 19,
+    backgroundColor: colors.elevatedCardSurface,
+    borderColor: colors.hairlineBorder,
+  },
+  presetTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  routineIconBackplate: {
+    width: 32,
+    height: 32,
+    borderRadius: 11,
+    backgroundColor: '#293D61',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  presetRoutineTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primaryText,
+  },
+  presetBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    marginTop: 12,
+  },
+  presetTimeCol: {
+    gap: 4,
+  },
+  presetTimeLarge: {
+    fontSize: 24,
+    fontWeight: '500',
+    color: colors.primaryText,
+  },
+  presetDaysPill: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primaryAccent,
+  },
+  addPresetActionBtn: {
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderRadius: 14,
+    backgroundColor: '#293F65',
+  },
+  addPresetActionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primaryText,
+  },
+  activeSchedulesBlock: {
+    marginBottom: 20,
+  },
+  moreWaysCard: {
+    padding: 16,
+    borderRadius: 19,
+    backgroundColor: colors.elevatedCardSurface,
+    borderColor: colors.hairlineBorder,
+  },
+  moreWaysRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 4,
+  },
+  moreWaysIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 11,
+    backgroundColor: 'rgba(165, 217, 200, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  moreWaysTextCol: {
+    flex: 1,
+    gap: 2,
+  },
+  moreWaysTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primaryText,
+  },
+  moreWaysSubtitle: {
+    fontSize: 13,
+    color: colors.secondaryMutedText,
+  },
+  moreWaysDivider: {
+    height: 1,
+    backgroundColor: '#2A2D36',
+    marginVertical: 12,
   },
   screenTitle: {
     ...typography.displayMedium,

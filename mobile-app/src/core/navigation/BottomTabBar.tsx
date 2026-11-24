@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Shield, Calendar, BarChart2, Award, LucideIcon } from 'lucide-react-native';
-import { colors, layout } from '../theme/tokens';
+import { colors } from '../theme/tokens';
 import { useResponsiveLayout } from '../theme/useResponsiveLayout';
 import { AppTab } from './types';
 
@@ -21,14 +21,12 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({ activeTab, onTabPres
   ];
 
   return (
-    <View style={styles.outerWrapper}>
+    <View style={[styles.outerWrapper, { paddingBottom: Math.max(bottomInset, 12) }]}>
       <View
         style={[
-          styles.container,
+          styles.floatingBar,
           {
-            paddingBottom: Math.max(bottomInset, 16),
-            height: 56 + Math.max(bottomInset, 16),
-            maxWidth: isWide ? 680 : '100%',
+            maxWidth: isWide ? 440 : 360,
           },
         ]}
       >
@@ -41,18 +39,15 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({ activeTab, onTabPres
               key={tab.key}
               activeOpacity={0.7}
               onPress={() => onTabPress(tab.key)}
-              style={styles.tabButton}
+              style={[styles.tabButton, isActive && styles.activeTabButton]}
             >
-              <View style={[styles.iconWrapper, isActive && styles.activeIconWrapper]}>
-                <IconComponent
-                  size={22}
-                  color={isActive ? colors.primaryAccent : colors.secondaryMutedText}
-                />
-              </View>
+              <IconComponent
+                size={20}
+                color={isActive ? colors.primaryAccent : colors.secondaryMutedText}
+              />
               <Text style={[styles.tabLabel, isActive && styles.activeTabLabel]}>
                 {tab.label}
               </Text>
-              {isActive && <View style={styles.activePillIndicator} />}
             </TouchableOpacity>
           );
         })}
@@ -63,49 +58,50 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({ activeTab, onTabPres
 
 const styles = StyleSheet.create({
   outerWrapper: {
-    width: '100%',
-    backgroundColor: colors.obsidian,
-    borderTopWidth: layout.hairlineBorderWidth,
-    borderTopColor: colors.hairlineBorder,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     alignItems: 'center',
+    backgroundColor: 'transparent',
+    pointerEvents: 'box-none',
   },
-  container: {
-    width: '100%',
+  floatingBar: {
+    width: '92%',
+    height: 64,
     flexDirection: 'row',
-    paddingTop: 8,
-    backgroundColor: colors.obsidian, // Obsidian #08090D per spec
-    justifyContent: 'space-around',
+    backgroundColor: 'rgba(18, 29, 43, 0.94)',
+    borderRadius: 24, // 24px radius per Figma floating navigation
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingHorizontal: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    elevation: 12,
   },
   tabButton: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    paddingVertical: 4,
-  },
-  iconWrapper: {
-    width: 36,
-    height: 30,
+    height: 50,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 16,
+    gap: 3,
   },
-  activeIconWrapper: {
-    backgroundColor: 'rgba(169, 185, 255, 0.14)',
+  activeTabButton: {
+    backgroundColor: '#273A5A', // Figma selected tab background
   },
   tabLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
     color: colors.secondaryMutedText,
-    marginTop: 3,
   },
   activeTabLabel: {
-    color: colors.primaryAccent, // Cyan
-    fontWeight: '700',
-  },
-  activePillIndicator: {
-    display: 'none',
+    color: colors.primaryText,
+    fontWeight: '600',
   },
 });
 

@@ -161,18 +161,11 @@ export const SettingsScreen: React.FC = () => {
   };
 
   const getTierBadgeStyle = (tier: string) => {
-    switch (tier?.toLowerCase()) {
-      case 'diamond':
-        return { text: '#38BDF8', bg: 'rgba(56, 189, 248, 0.15)', border: 'rgba(56, 189, 248, 0.35)' };
-      case 'obsidian':
-        return { text: '#C084FC', bg: 'rgba(192, 132, 252, 0.15)', border: 'rgba(192, 132, 252, 0.35)' };
-      case 'gold':
-        return { text: '#FBBF24', bg: 'rgba(251, 191, 36, 0.15)', border: 'rgba(251, 191, 36, 0.35)' };
-      case 'silver':
-        return { text: '#E2E8F0', bg: 'rgba(226, 232, 240, 0.15)', border: 'rgba(226, 232, 240, 0.35)' };
-      default:
-        return { text: '#D97706', bg: 'rgba(217, 119, 6, 0.15)', border: 'rgba(217, 119, 6, 0.35)' };
-    }
+    return {
+      text: colors.primaryText,
+      bg: 'rgba(255, 255, 255, 0.06)',
+      border: 'rgba(255, 255, 255, 0.12)',
+    };
   };
 
   const tierStyle = getTierBadgeStyle(profile.tier_rank || 'Bronze');
@@ -259,7 +252,7 @@ export const SettingsScreen: React.FC = () => {
             <View style={styles.statsGrid}>
               <View style={styles.statBox}>
                 <View style={styles.statIconRow}>
-                  <Flame size={14} color="#F97316" />
+                  <Flame size={14} color={colors.monochromeLight} />
                   <Text style={styles.statNumber}>{profile.streak_days ?? 0}</Text>
                 </View>
                 <Text style={styles.statLabel}>Day Streak</Text>
@@ -269,8 +262,8 @@ export const SettingsScreen: React.FC = () => {
 
               <View style={styles.statBox}>
                 <View style={styles.statIconRow}>
-                  <Award size={14} color="#38BDF8" />
-                  <Text style={[styles.statNumber, { color: '#38BDF8' }]}>
+                  <Award size={14} color={colors.monochromeLight} />
+                  <Text style={[styles.statNumber, { color: colors.primaryText }]}>
                     {profile.total_gems ?? 0}
                   </Text>
                 </View>
@@ -281,7 +274,7 @@ export const SettingsScreen: React.FC = () => {
 
               <View style={styles.statBox}>
                 <View style={styles.statIconRow}>
-                  <Clock size={14} color="#E2E8F0" />
+                  <Clock size={14} color={colors.monochromeLight} />
                   <Text style={styles.statNumber}>{baselineHours}h</Text>
                 </View>
                 <Text style={styles.statLabel}>Daily Baseline</Text>
@@ -291,8 +284,8 @@ export const SettingsScreen: React.FC = () => {
 
               <View style={styles.statBox}>
                 <View style={styles.statIconRow}>
-                  <CheckCircle2 size={14} color="#10B981" />
-                  <Text style={[styles.statNumber, { color: '#10B981' }]}>
+                  <CheckCircle2 size={14} color={colors.positiveAccent} />
+                  <Text style={[styles.statNumber, { color: colors.positiveAccent }]}>
                     {reclaimedHours}h
                   </Text>
                 </View>
@@ -308,7 +301,7 @@ export const SettingsScreen: React.FC = () => {
           >
             <View style={styles.proHeaderRow}>
               <View style={styles.proIconBox}>
-                <Crown size={22} color={profile.is_pro ? '#10B981' : '#FBBF24'} />
+                <Crown size={20} color={colors.primaryAccent} />
               </View>
               <View style={styles.proTextCol}>
                 <View style={styles.proTitleRow}>
@@ -324,7 +317,7 @@ export const SettingsScreen: React.FC = () => {
                     <Text
                       style={[
                         styles.proPillBadgeText,
-                        profile.is_pro && { color: '#10B981' },
+                        profile.is_pro && { color: colors.positiveAccent },
                       ]}
                     >
                       {profile.is_pro ? 'UNLOCKED' : 'PRO ACCESS'}
@@ -345,12 +338,12 @@ export const SettingsScreen: React.FC = () => {
                 onPress={() => openModal('paywall')}
                 style={styles.proUpgradeBtn}
               >
-                <Sparkles size={16} color="#08090D" />
+                <Sparkles size={16} color="#10182D" />
                 <Text style={styles.proUpgradeBtnText}>Unlock Pro (7 Days Free)</Text>
               </TouchableOpacity>
             ) : (
               <View style={styles.proActiveFooter}>
-                <CheckCircle2 size={14} color="#10B981" />
+                <CheckCircle2 size={14} color={colors.positiveAccent} />
                 <Text style={styles.proActiveFooterText}>
                   All Differentiator Features Active on iOS & Android
                 </Text>
@@ -425,8 +418,8 @@ export const SettingsScreen: React.FC = () => {
               onPress={() => setShowTzPicker(!showTzPicker)}
               style={styles.cardRow}
             >
-              <View style={[styles.iconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.12)' }]}>
-                <Globe size={20} color={colors.primaryAccent} />
+              <View style={styles.iconCircle}>
+                <Globe size={18} color={colors.monochromeLight} />
               </View>
               <View style={styles.cardTextCol}>
                 <Text style={styles.cardTitle}>Daily Midnight Reset Timezone</Text>
@@ -470,15 +463,15 @@ export const SettingsScreen: React.FC = () => {
           {/* Anti-Uninstall Guard */}
           <GlassCard style={styles.card}>
             <View style={styles.cardRow}>
-              <View style={[styles.iconCircle, { backgroundColor: 'rgba(239, 68, 68, 0.12)' }]}>
-                <Shield size={20} color={colors.dangerAccent} />
+              <View style={styles.iconCircle}>
+                <Shield size={18} color={colors.monochromeLight} />
               </View>
               <View style={styles.cardTextCol}>
                 <View style={styles.rowWithBadge}>
                   <Text style={styles.cardTitle}>Anti-Uninstall Shield</Text>
                   {!profile.is_pro && (
                     <View style={styles.proTag}>
-                      <Crown size={10} color="#FBBF24" />
+                      <Crown size={10} color={colors.monochromeLight} />
                       <Text style={styles.proTagText}>PRO</Text>
                     </View>
                   )}
@@ -490,7 +483,7 @@ export const SettingsScreen: React.FC = () => {
               <Switch
                 value={antiUninstallEnabled}
                 onValueChange={handleToggleAntiUninstall}
-                trackColor={{ false: '#1E2230', true: colors.primaryAccent }}
+                trackColor={{ false: colors.hairlineBorder, true: colors.positiveAccent }}
                 thumbColor="#FFFFFF"
               />
             </View>
@@ -499,8 +492,8 @@ export const SettingsScreen: React.FC = () => {
           {/* HealthKit / Step Tracking Sync */}
           <GlassCard style={styles.card}>
             <View style={styles.cardRow}>
-              <View style={[styles.iconCircle, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
-                <Activity size={20} color={colors.positiveAccent} />
+              <View style={styles.iconCircle}>
+                <Activity size={18} color={colors.monochromeLight} />
               </View>
               <View style={styles.cardTextCol}>
                 <Text style={styles.cardTitle}>HealthKit / Steps Sync</Text>
@@ -511,7 +504,7 @@ export const SettingsScreen: React.FC = () => {
               <Switch
                 value={healthSyncEnabled}
                 onValueChange={setHealthSyncEnabled}
-                trackColor={{ false: '#1E2230', true: colors.positiveAccent }}
+                trackColor={{ false: colors.hairlineBorder, true: colors.positiveAccent }}
                 thumbColor="#FFFFFF"
               />
             </View>
@@ -523,8 +516,8 @@ export const SettingsScreen: React.FC = () => {
           {/* Friend Lock */}
           <GlassCard style={styles.card}>
             <View style={styles.cardRow}>
-              <View style={[styles.iconCircle, { backgroundColor: 'rgba(245, 158, 11, 0.12)' }]}>
-                <KeyRound size={20} color={colors.warningAccent} />
+              <View style={styles.iconCircle}>
+                <KeyRound size={18} color={colors.monochromeLight} />
               </View>
               <View style={styles.cardTextCol}>
                 <Text style={styles.cardTitle}>Friend Lock (Emergency OTP)</Text>
@@ -550,8 +543,8 @@ export const SettingsScreen: React.FC = () => {
           {/* NFC Tag Lock */}
           <GlassCard style={styles.card}>
             <View style={styles.cardRow}>
-              <View style={[styles.iconCircle, { backgroundColor: 'rgba(168, 85, 247, 0.12)' }]}>
-                <Radio size={20} color="#A855F7" />
+              <View style={styles.iconCircle}>
+                <Radio size={18} color={colors.monochromeLight} />
               </View>
               <View style={styles.cardTextCol}>
                 <Text style={styles.cardTitle}>Physical NFC Tag Lock</Text>
@@ -571,15 +564,15 @@ export const SettingsScreen: React.FC = () => {
           </GlassCard>
 
           {/* 7. DANGER ZONE & STORE COMPLIANCE */}
-          <Text style={[styles.sectionHeader, { color: colors.dangerAccent }]}>
+          <Text style={[styles.sectionHeader, { color: colors.secondaryMutedText }]}>
             LEGAL & STORE COMPLIANCE
           </Text>
 
           {/* Privacy Policy */}
           <GlassCard style={styles.card}>
             <View style={styles.cardRow}>
-              <View style={[styles.iconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.12)' }]}>
-                <Shield size={20} color={colors.primaryAccent} />
+              <View style={styles.iconCircle}>
+                <Shield size={18} color={colors.monochromeLight} />
               </View>
               <View style={styles.cardTextCol}>
                 <Text style={styles.cardTitle}>Privacy Policy & Legal</Text>
@@ -609,8 +602,8 @@ export const SettingsScreen: React.FC = () => {
           {/* Reset Onboarding */}
           <GlassCard style={styles.card}>
             <View style={styles.cardRow}>
-              <View style={[styles.iconCircle, { backgroundColor: 'rgba(245, 158, 11, 0.12)' }]}>
-                <RotateCcw size={20} color={colors.warningAccent} />
+              <View style={styles.iconCircle}>
+                <RotateCcw size={18} color={colors.monochromeLight} />
               </View>
               <View style={styles.cardTextCol}>
                 <Text style={styles.cardTitle}>Reset Onboarding Flow</Text>
@@ -633,8 +626,8 @@ export const SettingsScreen: React.FC = () => {
           {/* Account Deletion (Apple 5.1.1 & Play Store Mandatory) */}
           <GlassCard style={[styles.card, styles.dangerCard]}>
             <View style={styles.cardRow}>
-              <View style={[styles.iconCircle, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
-                <Trash2 size={20} color={colors.dangerAccent} />
+              <View style={styles.iconCircle}>
+                <Trash2 size={18} color={colors.dangerAccent} />
               </View>
               <View style={styles.cardTextCol}>
                 <Text style={[styles.cardTitle, { color: colors.dangerAccent }]}>
@@ -760,9 +753,9 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#12141D',
-    borderWidth: 2,
-    borderColor: 'rgba(56, 189, 248, 0.45)',
+    backgroundColor: '#161920',
+    borderWidth: 1,
+    borderColor: colors.hairlineBorder,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -890,7 +883,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: 'rgba(251, 191, 36, 0.12)',
+    backgroundColor: '#161920',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -911,18 +906,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
-    backgroundColor: 'rgba(251, 191, 36, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(251, 191, 36, 0.35)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
   },
   proPillBadgeActive: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    borderColor: 'rgba(16, 185, 129, 0.35)',
+    backgroundColor: 'rgba(165, 217, 200, 0.12)',
+    borderColor: 'rgba(165, 217, 200, 0.3)',
   },
   proPillBadgeText: {
     fontSize: 9,
     fontWeight: '800',
-    color: '#FBBF24',
+    color: colors.primaryText,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   proCardSub: {
@@ -939,12 +934,12 @@ const styles = StyleSheet.create({
     marginTop: 14,
     paddingVertical: 12,
     borderRadius: 14,
-    backgroundColor: '#38BDF8',
+    backgroundColor: colors.primaryAccent,
   },
   proUpgradeBtnText: {
     fontSize: 13,
-    fontWeight: '800',
-    color: '#08090D',
+    fontWeight: '700',
+    color: '#10182D',
   },
   proActiveFooter: {
     flexDirection: 'row',
@@ -1020,9 +1015,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#161920',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -1039,7 +1037,7 @@ const styles = StyleSheet.create({
   proTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(251, 191, 36, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
@@ -1048,7 +1046,7 @@ const styles = StyleSheet.create({
   proTagText: {
     fontSize: 9,
     fontWeight: '800',
-    color: '#FBBF24',
+    color: colors.monochromeLight,
   },
   cardTitle: {
     ...typography.titleMedium,
@@ -1074,7 +1072,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   tzItemActive: {
-    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    backgroundColor: 'rgba(181, 197, 255, 0.12)',
   },
   tzItemText: {
     fontSize: 12,
@@ -1094,7 +1092,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
-    backgroundColor: colors.hairlineBorder,
+    backgroundColor: '#161920',
+    borderWidth: 1,
+    borderColor: colors.hairlineBorder,
   },
   editBtnText: {
     ...typography.caption,
@@ -1104,24 +1104,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    backgroundColor: '#161920',
+    borderWidth: 1,
+    borderColor: colors.hairlineBorder,
   },
   resetBtnText: {
     ...typography.caption,
-    color: colors.warningAccent,
+    color: colors.secondaryMutedText,
     fontWeight: '700',
   },
   dangerCard: {
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.25)',
+    borderColor: 'rgba(200, 170, 182, 0.25)',
   },
   deleteBtn: {
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 12,
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    backgroundColor: 'rgba(200, 170, 182, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.4)',
+    borderColor: 'rgba(200, 170, 182, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
   },

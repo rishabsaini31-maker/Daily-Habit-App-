@@ -213,17 +213,72 @@ class NativeBlockerBridge implements INativeBlockerService {
   // 3. APPS & LIVE USAGE STATS
   // =========================================================================
   async getInstalledApps(): Promise<BlockableApp[]> {
-    if (Platform.OS === 'android' && FocusBlockerModule?.getDailyAppUsageMinutes) {
+    if (Platform.OS === 'android' && FocusBlockerModule) {
       try {
-        const stats: { packageName: string; appName: string; minutes: number }[] =
-          await FocusBlockerModule.getDailyAppUsageMinutes();
+        // Query real installed apps first if available
+        let appList: { packageName: string; appName: string; iconBase64?: string }[] = [];
+        if (FocusBlockerModule.getInstalledApps) {
+          appList = await FocusBlockerModule.getInstalledApps();
+        }
 
-        if (stats && stats.length > 0) {
-          const mapped: BlockableApp[] = stats.map((s) => ({
+        const usageStats: { packageName: string; appName: string; minutes: number; iconBase64?: string }[] =
+          FocusBlockerModule.getDailyAppUsageMinutes
+            ? await FocusBlockerModule.getDailyAppUsageMinutes()
+            : [];
+
+        const usageMap = new Map<string, { minutes: number; iconBase64?: string }>();
+        usageStats.forEach((u) => usageMap.set(u.packageName, { minutes: u.minutes, iconBase64: u.iconBase64 }));
+
+        if (appList && appList.length > 0) {
+          const mapped: BlockableApp[] = appList.map((app) => {
+            const usage = usageMap.get(app.packageName);
+            const isSocial = /instagram|facebook|twitter|tiktok|snapchat|reddit|whatsapp/i.test(app.packageName);
+            const isEnt = /youtube|netflix|spotify|twitch|primevideo/i.test(app.packageName);
+            const isGame = /game|play/i.test(app.packageName);
+
+            return {
+              id: app.packageName,
+              name: app.appName || app.packageName,
+              category: isSocial ? 'social' : isEnt ? 'entertainment' : isGame ? 'gaming' : 'productivity',
+              iconName: 'smartphone',
+              iconBase64: app.iconBase64 || usage?.iconBase64,
+              isEntireAppBlocked: false,
+              supportsSurgicalBlocking:
+                app.packageName.includes('instagram') || app.packageName.includes('youtube'),
+              dailyUsageMinutes: usage ? usage.minutes : 0,
+              blockedAttemptsToday: usage ? Math.round(usage.minutes / 5) : 0,
+              surgicalFeatures: app.packageName.includes('instagram')
+                ? [
+                    {
+                      id: 'reels',
+                      name: 'Instagram Reels',
+                      description: 'Block algorithmic vertical video feed',
+                      isBlocked: true,
+                    },
+                  ]
+                : app.packageName.includes('youtube')
+                ? [
+                    {
+                      id: 'shorts',
+                      name: 'YouTube Shorts',
+                      description: 'Block vertical swipe feed while allowing regular videos',
+                      isBlocked: true,
+                    },
+                  ]
+                : [],
+            };
+          });
+          this.inMemoryApps = mapped;
+          return mapped;
+        }
+
+        if (usageStats && usageStats.length > 0) {
+          const mapped: BlockableApp[] = usageStats.map((s) => ({
             id: s.packageName,
             name: s.appName || s.packageName,
             category: 'social',
             iconName: 'smartphone',
+            iconBase64: s.iconBase64,
             isEntireAppBlocked: true,
             supportsSurgicalBlocking:
               s.packageName.includes('instagram') || s.packageName.includes('youtube'),
@@ -263,7 +318,7 @@ class NativeBlockerBridge implements INativeBlockerService {
   /**
    * Real-time query of Android UsageStatsManager returning exact minutes and seconds
    */
-  async getLiveAppUsage(): Promise<{ packageName: string; appName: string; minutes: number; seconds?: number }[]> {
+  async getLiveAppUsage(): Promise<{ packageName: string; appName: string; minutes: number; seconds?: number; iconBase64?: string }[]> {
     if (Platform.OS === 'android' && FocusBlockerModule?.getDailyAppUsageMinutes) {
       try {
         const stats = await FocusBlockerModule.getDailyAppUsageMinutes();

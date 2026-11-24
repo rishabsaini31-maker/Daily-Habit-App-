@@ -9,15 +9,17 @@ import {
   Alert,
   TextInput,
   Modal,
+  Image,
 } from 'react-native';
 import {
   X,
-  Check,
   Plus,
   Clock,
   Sliders,
   Sparkles,
-  Lock,
+  ChevronRight,
+  ArrowRight,
+  Info,
 } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
 import { useResponsiveLayout } from '../../core/theme/useResponsiveLayout';
@@ -25,6 +27,7 @@ import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import { useAppNavigation } from '../../core/navigation/NavigationContext';
 import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
+import { useNativeBlocker } from '../../services/native_blocker/NativeBlockerContext';
 import { SyncBlockedTarget } from '../../services/sync/SyncService';
 
 export interface AppItem {
@@ -171,6 +174,7 @@ export const BlockListPickerModal: React.FC = () => {
     setAppDailyLimit,
     profile,
   } = useFocusEngine();
+  const { apps: nativeApps } = useNativeBlocker();
   const { bottomInset, isWide } = useResponsiveLayout();
 
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'social' | 'entertainment' | 'gaming' | 'custom'>('all');
@@ -448,140 +452,121 @@ export const BlockListPickerModal: React.FC = () => {
               const isTargetActive = matchedTarget !== undefined;
 
               const dailyLimit = matchedTarget?.daily_limit_minutes ?? 20;
-              const timeSpent = matchedTarget?.time_spent_today_minutes ?? 0;
-              const isLimitReached = dailyLimit > 0 && timeSpent >= dailyLimit;
               const isEditingThisLimit = editingLimitPkg === app.packageName;
+
+              // Find native app icon
+              const nativeApp = nativeApps.find((na) => na.id === app.packageName);
+              const iconUri = nativeApp?.iconBase64;
+
+              const ruleSubtitle = isSurgicalBlocked
+                ? app.name === 'Instagram'
+                  ? 'Reels only'
+                  : app.name === 'YouTube'
+                  ? 'Shorts only'
+                  : 'Surgical feed only'
+                : isEntirelyBlocked
+                ? 'Entire app'
+                : 'Not restricted';
 
               return (
                 <GlassCard key={app.packageName} style={styles.appCard}>
-                  {/* Main App Row */}
+                  {/* Figma 09: Top Row with Real Icon, Name, Subtitle, and Switch */}
                   <View style={styles.appRow}>
-                    <View style={styles.appIconPlaceholder}>
-                      <Text style={styles.appEmoji}>{app.emoji}</Text>
+                    <View style={styles.appIconBackplate}>
+                      {iconUri ? (
+                        <Image source={{ uri: iconUri }} style={styles.realAppIcon} resizeMode="contain" />
+                      ) : (
+                        <Text style={styles.appIconInitial}>{app.name.charAt(0)}</Text>
+                      )}
                     </View>
                     <View style={styles.appInfoCol}>
                       <View style={styles.appNameRow}>
                         <Text style={styles.appName}>{app.name}</Text>
                         {app.isCustom && (
                           <View style={styles.customBadge}>
-                            <Text style={styles.customBadgeText}>Custom App</Text>
+                            <Text style={styles.customBadgeText}>Custom</Text>
                           </View>
                         )}
                       </View>
-                      <Text style={styles.appUsage}>
-                        {app.isCustom ? app.packageName : app.category}
-                      </Text>
+                      <Text style={styles.appRuleSubtitle}>{ruleSubtitle}</Text>
                     </View>
                     <Switch
-                      value={isEntirelyBlocked}
+                      value={isTargetActive}
                       onValueChange={(val) => handleToggleEntireApp(app, val)}
-                      trackColor={{ false: colors.hairlineBorder, true: colors.primaryAccent }}
+                      trackColor={{ false: '#26364E', true: colors.primaryAccent }}
                       thumbColor="#FFFFFF"
                     />
                   </View>
 
-                  {/* Daily Allowance & Limit Configuration (Shown when app is enabled) */}
-                  {isTargetActive && (
-                    <View style={styles.allowanceSection}>
-                      <View style={styles.allowanceHeaderRow}>
-                        <View style={styles.allowanceTitleRow}>
-                          <Clock size={14} color={isLimitReached ? colors.dangerAccent : colors.primaryAccent} />
-                          <Text style={styles.allowanceLabel}>DAILY LIMIT</Text>
-                        </View>
-                        <TouchableOpacity
-                          activeOpacity={0.7}
-                          onPress={() =>
-                            setEditingLimitPkg(isEditingThisLimit ? null : app.packageName)
-                          }
-                          style={[
-                            styles.limitPill,
-                            dailyLimit === 0 ? styles.limitPillHard : styles.limitPillActive,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.limitPillText,
-                              dailyLimit === 0 ? styles.limitPillHardText : styles.limitPillActiveText,
-                            ]}
-                          >
-                            {dailyLimit === 0 ? 'Always Blocked' : `${dailyLimit}m / day`}
-                          </Text>
-                          <Sliders size={12} color={dailyLimit === 0 ? colors.secondaryMutedText : colors.primaryAccent} />
-                        </TouchableOpacity>
-                      </View>
-
-                      {/* Dropdown / Inline Allowance Preset Selector */}
-                      {isEditingThisLimit && (
-                        <View style={styles.presetDropdown}>
-                          <Text style={styles.dropdownSubtitle}>
-                            Select daily time allowance before app locks until 12:00 AM midnight:
-                          </Text>
-                          <View style={styles.presetOptionsGrid}>
-                            {ALLOWANCE_PRESETS.map((p) => {
-                              const isSelected = dailyLimit === p.minutes;
-                              return (
-                                <TouchableOpacity
-                                  key={p.minutes}
-                                  onPress={async () => {
-                                    await setAppDailyLimit(app.packageName, p.minutes);
-                                    setEditingLimitPkg(null);
-                                  }}
-                                  style={[
-                                    styles.presetChoice,
-                                    isSelected && styles.presetChoiceActive,
-                                  ]}
-                                >
-                                  <Text
-                                    style={[
-                                      styles.presetChoiceText,
-                                      isSelected && styles.presetChoiceTextActive,
-                                    ]}
-                                  >
-                                    {p.label}
-                                  </Text>
-                                  <Text style={styles.presetChoiceSub}>{p.sub}</Text>
-                                </TouchableOpacity>
-                              );
-                            })}
-                          </View>
-                        </View>
-                      )}
-
-                      {isLimitReached && (
-                        <View style={styles.limitReachedBanner}>
-                          <Lock size={12} color={colors.dangerAccent} />
-                          <Text style={styles.limitReachedText}>
-                            Daily limit reached. Resets at midnight.
-                          </Text>
-                        </View>
-                      )}
+                  {/* Surgical Sub-option if supported */}
+                  {app.supportsSurgical && isTargetActive && (
+                    <View style={styles.surgicalSubOptionRow}>
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={() => handleToggleSurgical(app, !isSurgicalBlocked)}
+                        style={[
+                          styles.surgicalToggleBtn,
+                          isSurgicalBlocked && styles.surgicalToggleBtnActive,
+                        ]}
+                      >
+                        <Text style={[styles.surgicalToggleText, isSurgicalBlocked && styles.surgicalToggleTextActive]}>
+                          {app.name === 'Instagram' ? 'Block Reels Only (Keep DMs)' : 'Block Shorts Only'}
+                        </Text>
+                      </TouchableOpacity>
                     </View>
                   )}
 
-                  {/* Surgical Features Sub-Toggles */}
-                  {app.supportsSurgical && (
-                    <View style={styles.surgicalSubList}>
-                      <View style={styles.surgicalItemRow}>
-                        <View style={styles.surgicalDot} />
-                        <View style={styles.surgicalTextCol}>
-                          <Text style={styles.surgicalName}>
-                            {app.name === 'Instagram'
-                              ? 'Reels only'
-                              : app.name === 'YouTube'
-                                ? 'Shorts only'
-                                : app.surgicalFeatureName}
-                          </Text>
-                          <Text style={styles.surgicalDesc}>{app.surgicalDescription}</Text>
-                        </View>
-                        <Switch
-                          value={isSurgicalBlocked}
-                          onValueChange={(val) => handleToggleSurgical(app, val)}
-                          trackColor={{
-                            false: colors.hairlineBorder,
-                            true: colors.positiveAccent,
-                          }}
-                          thumbColor="#FFFFFF"
-                        />
+                  {/* Divider line per Figma */}
+                  <View style={styles.appCardDivider} />
+
+                  {/* Daily Allowance & Limit Configuration */}
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => setEditingLimitPkg(isEditingThisLimit ? null : app.packageName)}
+                    style={styles.dailyAllowanceRow}
+                  >
+                    <Text style={styles.dailyAllowanceLabel}>Daily allowance</Text>
+                    <View style={styles.dailyAllowanceValueRow}>
+                      <Text style={styles.dailyAllowanceValue}>
+                        {!isTargetActive ? 'Unrestricted' : dailyLimit === 0 ? 'Always blocked' : `${dailyLimit} min / day`}
+                      </Text>
+                      <ChevronRight size={14} color={colors.secondaryMutedText} />
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Dropdown / Inline Allowance Preset Selector */}
+                  {isEditingThisLimit && (
+                    <View style={styles.presetDropdown}>
+                      <Text style={styles.dropdownSubtitle}>
+                        Select daily time allowance before app locks until 12:00 AM midnight:
+                      </Text>
+                      <View style={styles.presetOptionsGrid}>
+                        {ALLOWANCE_PRESETS.map((p) => {
+                          const isSelected = dailyLimit === p.minutes;
+                          return (
+                            <TouchableOpacity
+                              key={p.minutes}
+                              onPress={async () => {
+                                await setAppDailyLimit(app.packageName, p.minutes);
+                                setEditingLimitPkg(null);
+                              }}
+                              style={[
+                                styles.presetChoice,
+                                isSelected && styles.presetChoiceActive,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.presetChoiceText,
+                                  isSelected && styles.presetChoiceTextActive,
+                                ]}
+                              >
+                                {p.label}
+                              </Text>
+                              <Text style={styles.presetChoiceSub}>{p.sub}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
                       </View>
                     </View>
                   )}
@@ -589,16 +574,35 @@ export const BlockListPickerModal: React.FC = () => {
               );
             })}
           </View>
+
+          {/* Figma 09: Explanatory section */}
+          <View style={styles.bottomExplainerCard}>
+            <Text style={styles.bottomExplainerTitle}>Set your daily limits</Text>
+            <Text style={styles.bottomExplainerSubtitle}>
+              Limit entire apps or just Reels and Shorts.
+            </Text>
+
+            <View style={styles.midnightResetBox}>
+              <Info size={16} color={colors.primaryAccent} />
+              <View style={styles.midnightResetTextCol}>
+                <Text style={styles.midnightResetHeading}>Daily limits reset at midnight.</Text>
+                <Text style={styles.midnightResetDesc}>Each day runs from 12:00 AM to 12:00 AM.</Text>
+              </View>
+            </View>
+          </View>
         </ScrollView>
 
-        {/* Footer */}
+        {/* Footer (Figma 09) */}
         <View style={[styles.footer, { paddingBottom: Math.max(bottomInset, 16) }]}>
-          <Text style={styles.resetNote}>Daily limits reset at midnight.</Text>
           <PrimaryPillButton
             title="Save app limits"
             onPress={() => setShowSaveConfirmation(true)}
-            rightIcon={<Check size={18} color={colors.primaryButtonText} />}
+            rightIcon={<ArrowRight size={16} color={colors.primaryButtonText} />}
+            style={styles.saveLimitsPill}
           />
+          <Text style={styles.footerCaption}>
+            Reels & Shorts rules keep messages available.
+          </Text>
         </View>
       </View>
 
@@ -943,9 +947,141 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   appCard: {
-    padding: 14,
-    borderRadius: 18,
+    padding: 16,
+    borderRadius: 19,
+    backgroundColor: colors.elevatedCardSurface,
     borderColor: colors.hairlineBorder,
+    marginBottom: 4,
+  },
+  appTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  appIconBackplate: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    backgroundColor: '#293D61',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    overflow: 'hidden',
+  },
+  realAppIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+  },
+  appIconInitial: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.primaryText,
+  },
+  appTextCol: {
+    flex: 1,
+  },
+  appRuleSubtitle: {
+    fontSize: 14,
+    color: colors.secondaryMutedText,
+    marginTop: 1,
+  },
+  appCardDivider: {
+    height: 1,
+    backgroundColor: '#2A2D36',
+    marginVertical: 12,
+  },
+  dailyAllowanceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 2,
+  },
+  dailyAllowanceLabel: {
+    fontSize: 14,
+    color: colors.subtleSlate,
+  },
+  dailyAllowanceValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dailyAllowanceValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.primaryText,
+  },
+  surgicalSubOptionRow: {
+    marginTop: 8,
+  },
+  surgicalToggleBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: '#152131',
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  surgicalToggleBtnActive: {
+    backgroundColor: 'rgba(165, 217, 200, 0.15)',
+    borderColor: colors.positiveAccent,
+  },
+  surgicalToggleText: {
+    fontSize: 12,
+    color: colors.secondaryMutedText,
+  },
+  surgicalToggleTextActive: {
+    color: colors.positiveAccent,
+    fontWeight: '600',
+  },
+  bottomExplainerCard: {
+    paddingVertical: 18,
+    gap: 6,
+  },
+  bottomExplainerTitle: {
+    fontSize: 32,
+    fontWeight: '600',
+    color: colors.primaryText,
+    letterSpacing: -0.5,
+  },
+  bottomExplainerSubtitle: {
+    fontSize: 16,
+    color: colors.subtleSlate,
+  },
+  midnightResetBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    backgroundColor: '#152131',
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  midnightResetTextCol: {
+    flex: 1,
+    gap: 2,
+  },
+  midnightResetHeading: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primaryText,
+  },
+  midnightResetDesc: {
+    fontSize: 13,
+    color: colors.subtleSlate,
+  },
+  saveLimitsPill: {
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: colors.primaryAccent,
+  },
+  footerCaption: {
+    fontSize: 13,
+    color: colors.secondaryMutedText,
+    textAlign: 'center',
+    marginTop: 8,
   },
   appRow: {
     flexDirection: 'row',

@@ -5,7 +5,7 @@ import { colors, borderRadius, layout } from '../tokens';
 interface GlassCardProps {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
-  variant?: 'elevated' | 'glass' | 'accent' | 'danger';
+  variant?: 'elevated' | 'subtle' | 'glass' | 'accent' | 'danger';
 }
 
 export const GlassCard: React.FC<GlassCardProps> = ({
@@ -18,6 +18,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({
       style={[
         styles.base,
         variant === 'elevated' && styles.elevated,
+        variant === 'subtle' && styles.subtle,
         variant === 'glass' && styles.glass,
         variant === 'accent' && styles.accentBorder,
         variant === 'danger' && styles.dangerBorder,
@@ -31,13 +32,16 @@ export const GlassCard: React.FC<GlassCardProps> = ({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: borderRadius.card, // 24px per spec
-    padding: layout.cardPadding, // 20px per spec
-    borderWidth: layout.hairlineBorderWidth, // 1px hairline border per spec
-    borderColor: colors.hairlineBorder, // #1E2230
+    borderRadius: borderRadius.card, // 20px per Figma
+    padding: layout.cardPadding, // 18px per Figma
+    borderWidth: layout.hairlineBorderWidth, // 1px hairline border
+    borderColor: colors.hairlineBorder, // #29364B
   },
   elevated: {
-    backgroundColor: colors.elevatedCardSurface, // #12141D
+    backgroundColor: colors.elevatedCardSurface, // #121D2B
+  },
+  subtle: {
+    backgroundColor: colors.elevatedCardSubtle, // #152131
   },
   glass: {
     backgroundColor: colors.glassSurface,

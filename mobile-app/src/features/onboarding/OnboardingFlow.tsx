@@ -12,7 +12,6 @@ import Step5PermissionsGrant from './Step5PermissionsGrant';
 export const OnboardingFlow: React.FC = () => {
   const { currentStep } = useOnboarding();
   const { topInset, bottomInset, responsiveContainerStyle } = useResponsiveLayout();
-  const setupStep = currentStep === 2 ? 1 : currentStep === 3 ? 2 : currentStep === 5 ? 3 : null;
 
   const renderStep = () => {
     switch (currentStep) {
@@ -33,29 +32,13 @@ export const OnboardingFlow: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {setupStep !== null ? (
-        <View
-          style={[
-            styles.stepProgressBar,
-            { paddingTop: topInset + 8 },
-            responsiveContainerStyle,
-          ]}
-        >
-          {[1, 2, 3].map((step) => (
-            <View
-              key={step}
-              style={[
-                styles.progressSegment,
-                step <= setupStep && styles.progressSegmentActive,
-              ]}
-            />
-          ))}
-        </View>
-      ) : null}
       <View
         style={[
           styles.content,
-          { paddingBottom: bottomInset, paddingTop: setupStep === null && currentStep !== 1 ? topInset : 0 },
+          {
+            paddingTop: currentStep === 1 ? 0 : topInset,
+            paddingBottom: bottomInset,
+          },
           responsiveContainerStyle,
         ]}
       >
@@ -69,22 +52,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.obsidian,
-  },
-  stepProgressBar: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 4,
-    gap: 6,
-  },
-  progressSegment: {
-    flex: 1,
-    height: 3,
-    backgroundColor: colors.hairlineBorder,
-    borderRadius: 2,
-  },
-  progressSegmentActive: {
-    backgroundColor: colors.primaryAccent,
   },
   content: {
     flex: 1,

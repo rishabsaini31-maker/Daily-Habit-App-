@@ -1,48 +1,149 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { Check, ChevronLeft } from 'lucide-react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+} from 'react-native';
+import {
+  Check,
+  ChevronLeft,
+  ArrowRight,
+  Gamepad2,
+  ShoppingBag,
+  Newspaper,
+  Compass,
+} from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
 import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import { useOnboarding } from './OnboardingContext';
+import { useNativeBlocker } from '../../services/native_blocker/NativeBlockerContext';
 
 interface DistractionOption {
   id: string;
   name: string;
   category: string;
-  emoji: string;
-  subtext: string;
+  packageKeywords: string[];
+  fallbackIcon: React.ReactNode;
 }
 
 const DISTRACTION_OPTIONS: DistractionOption[] = [
-  { id: 'instagram', name: 'Instagram', category: 'Social', emoji: '📸', subtext: 'Reels doomscrolling' },
-  { id: 'tiktok', name: 'TikTok', category: 'Social', emoji: '🎵', subtext: 'Infinite swipe loop' },
-  { id: 'youtube', name: 'YouTube', category: 'Video', emoji: '▶️', subtext: 'Shorts & autoplay hole' },
-  { id: 'twitter', name: 'X / Twitter', category: 'Social', emoji: '🐦', subtext: 'Rage bait & breaking news' },
-  { id: 'reddit', name: 'Reddit', category: 'Forum', emoji: '🤖', subtext: 'Subreddit rabbit holes' },
-  { id: 'games', name: 'Mobile Games', category: 'Gaming', emoji: '🎮', subtext: 'Gacha & competitive grind' },
-  { id: 'shopping', name: 'Shopping Apps', category: 'Shopping', emoji: '🛍️', subtext: 'Impulse window shopping' },
-  { id: 'news', name: 'News & Media', category: 'Information', emoji: '📰', subtext: 'Anxiety inducing headlines' },
+  {
+    id: 'instagram',
+    name: 'Instagram',
+    category: 'Social',
+    packageKeywords: ['instagram'],
+    fallbackIcon: <Compass size={20} color="#FFFFFF" />,
+  },
+  {
+    id: 'tiktok',
+    name: 'TikTok',
+    category: 'Social',
+    packageKeywords: ['tiktok', 'musically'],
+    fallbackIcon: <Compass size={20} color="#FFFFFF" />,
+  },
+  {
+    id: 'youtube',
+    name: 'YouTube',
+    category: 'Video',
+    packageKeywords: ['youtube'],
+    fallbackIcon: <Compass size={20} color="#FFFFFF" />,
+  },
+  {
+    id: 'twitter',
+    name: 'X / Twitter',
+    category: 'Social',
+    packageKeywords: ['twitter'],
+    fallbackIcon: <Compass size={20} color="#FFFFFF" />,
+  },
+  {
+    id: 'reddit',
+    name: 'Reddit',
+    category: 'Forum',
+    packageKeywords: ['reddit'],
+    fallbackIcon: <Compass size={20} color="#FFFFFF" />,
+  },
+  {
+    id: 'games',
+    name: 'Mobile games',
+    category: 'Gaming',
+    packageKeywords: ['game', 'pubg', 'roblox'],
+    fallbackIcon: <Gamepad2 size={20} color={colors.monochromeLight} />,
+  },
+  {
+    id: 'shopping',
+    name: 'Shopping',
+    category: 'Shopping',
+    packageKeywords: ['amazon', 'shein', 'flipkart', 'shopping'],
+    fallbackIcon: <ShoppingBag size={20} color={colors.monochromeLight} />,
+  },
+  {
+    id: 'news',
+    name: 'News',
+    category: 'News',
+    packageKeywords: ['news', 'nytimes', 'bbc'],
+    fallbackIcon: <Newspaper size={20} color={colors.monochromeLight} />,
+  },
 ];
 
 export const Step2DistractionQuiz: React.FC = () => {
   const { selectedApps, toggleAppSelection, nextStep, prevStep } = useOnboarding();
+  const { apps: nativeApps } = useNativeBlocker();
+
+  // Find real installed app icon if available
+  const getAppIcon = (item: DistractionOption) => {
+    if (nativeApps && nativeApps.length > 0) {
+      const match = nativeApps.find((app) =>
+        item.packageKeywords.some((kw) =>
+          app.id.toLowerCase().includes(kw) ||
+          app.name.toLowerCase().includes(kw)
+        )
+      );
+      if (match?.iconBase64) {
+        return (
+          <Image
+            source={{ uri: `data:image/png;base64,${match.iconBase64}` }}
+            style={styles.realAppIcon}
+            resizeMode="contain"
+          />
+        );
+      }
+    }
+    return item.fallbackIcon;
+  };
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      {/* Figma Screen 02 Header */}
+      <View style={styles.header}>
         <View style={styles.headerRow}>
           <TouchableOpacity onPress={prevStep} style={styles.backButton} accessibilityLabel="Back">
-            <ChevronLeft size={18} color={colors.secondaryMutedText} />
+            <ChevronLeft size={20} color={colors.secondaryMutedText} />
           </TouchableOpacity>
           <Text style={styles.stepIndicator}>Focus setup</Text>
           <Text style={styles.stepCount}>1 of 3</Text>
         </View>
+        {/* 3-segment progress indicator */}
+        <View style={styles.progressBar}>
+          <View style={[styles.progressSegment, styles.progressSegmentActive]} />
+          <View style={styles.progressSegment} />
+          <View style={styles.progressSegment} />
+        </View>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.title}>Choose apps to limit</Text>
         <Text style={styles.subtitle}>
           Select one or more. You can change these later.
         </Text>
 
+        {/* 2-Column Grid matching Figma 171x97 px cards */}
         <View style={styles.grid}>
           {DISTRACTION_OPTIONS.map((item) => {
             const isSelected = selectedApps.includes(item.id);
@@ -59,19 +160,22 @@ export const Step2DistractionQuiz: React.FC = () => {
                     isSelected && styles.cardSelected,
                   ]}
                 >
-                  <View style={styles.cardHeader}>
-                    <Text style={styles.emoji}>{item.emoji}</Text>
+                  <View style={styles.cardTopRow}>
+                    <View style={styles.iconBackplate}>
+                      {getAppIcon(item)}
+                    </View>
                     <View
                       style={[
                         styles.checkCircle,
                         isSelected && styles.checkCircleActive,
                       ]}
                     >
-                      {isSelected && <Check size={14} color={colors.primaryButtonText} />}
+                      {isSelected && <Check size={13} color="#10182D" strokeWidth={3} />}
                     </View>
                   </View>
-                  <Text style={styles.appName}>{item.name}</Text>
-                  <Text style={styles.appSubtext}>{item.category}</Text>
+                  <Text style={styles.appName} numberOfLines={1}>
+                    {item.name}
+                  </Text>
                 </GlassCard>
               </TouchableOpacity>
             );
@@ -88,8 +192,11 @@ export const Step2DistractionQuiz: React.FC = () => {
           title="Continue"
           onPress={nextStep}
           disabled={selectedApps.length === 0}
-          rightIcon={<ChevronLeft size={16} color={colors.primaryButtonText} style={styles.nextIcon} />}
+          rightIcon={<ArrowRight size={18} color="#10182D" />}
         />
+        <Text style={styles.footnote}>
+          Only the apps you choose will be limited.
+        </Text>
       </View>
     </View>
   );
@@ -100,44 +207,67 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.obsidian,
   },
-  scrollContent: {
-    paddingHorizontal: spacing.screenPadding,
+  header: {
+    paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 24,
-  },
-  stepIndicator: {
-    ...typography.bodySmall,
-    color: colors.secondaryMutedText,
-    flex: 1,
-    marginLeft: 8,
+    paddingBottom: 12,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 22,
+    marginBottom: 10,
   },
   backButton: {
-    width: 28,
-    height: 28,
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 14,
+    borderRadius: 16,
     backgroundColor: colors.elevatedCardSurface,
   },
+  stepIndicator: {
+    ...typography.bodyMedium,
+    color: colors.primaryText,
+    flex: 1,
+    marginLeft: 12,
+    fontWeight: '600',
+  },
   stepCount: {
-    ...typography.bodySmall,
-    color: colors.primaryAccent,
-    fontSize: 10,
+    ...typography.caption,
+    color: colors.secondaryMutedText,
+    fontSize: 12,
+  },
+  progressBar: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 4,
+  },
+  progressSegment: {
+    flex: 1,
+    height: 3,
+    backgroundColor: colors.hairlineBorder,
+    borderRadius: 2,
+  },
+  progressSegmentActive: {
+    backgroundColor: colors.primaryAccent,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 24,
   },
   title: {
-    ...typography.displayMedium,
-    fontSize: 23,
-    marginBottom: 5,
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: -0.4,
+    marginBottom: 6,
   },
   subtitle: {
-    ...typography.bodyMedium,
+    fontSize: 14,
     color: colors.secondaryMutedText,
-    marginBottom: 14,
+    lineHeight: 20,
+    marginBottom: 20,
   },
   grid: {
     flexDirection: 'row',
@@ -149,30 +279,43 @@ const styles = StyleSheet.create({
     padding: 6,
   },
   card: {
-    minHeight: 82,
-    borderRadius: 12,
-    padding: 11,
+    height: 100,
+    borderRadius: 18,
+    padding: 14,
     justifyContent: 'space-between',
+    backgroundColor: '#121D2B',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   cardSelected: {
-    borderColor: colors.primaryAccent,
-    backgroundColor: colors.primaryAccentGlow,
+    borderColor: 'rgba(181, 197, 255, 0.6)',
+    backgroundColor: '#1C2D47',
   },
-  cardHeader: {
+  cardTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
   },
-  emoji: {
-    fontSize: 19,
+  iconBackplate: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#161920',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  realAppIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
   },
   checkCircle: {
     width: 22,
     height: 22,
     borderRadius: 11,
     borderWidth: 1.5,
-    borderColor: colors.hairlineBorder,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -181,27 +324,28 @@ const styles = StyleSheet.create({
     borderColor: colors.primaryAccent,
   },
   appName: {
-    ...typography.bodySmall,
-    fontSize: 11,
-    color: colors.primaryText,
+    fontSize: 14,
+    color: '#FFFFFF',
     fontWeight: '600',
   },
-  appSubtext: {
-    ...typography.bodySmall,
-    display: 'none',
-  },
   footer: {
-    paddingHorizontal: spacing.screenPadding,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
     backgroundColor: colors.obsidian,
+    borderTopWidth: 1,
+    borderTopColor: colors.hairlineBorder,
   },
   selectionNote: {
-    ...typography.bodyMedium,
-    fontSize: 10,
-    marginBottom: 9,
+    fontSize: 12,
+    color: colors.secondaryMutedText,
+    textAlign: 'center',
+    marginBottom: 10,
   },
-  nextIcon: {
-    transform: [{ rotate: '180deg' }],
+  footnote: {
+    fontSize: 11,
+    color: colors.tertiaryText,
+    textAlign: 'center',
+    marginTop: 8,
   },
 });
 

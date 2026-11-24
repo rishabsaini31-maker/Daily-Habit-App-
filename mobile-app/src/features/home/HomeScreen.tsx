@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,15 +6,15 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  Image,
   Modal,
 } from 'react-native';
 import {
-  Flame,
   Crown,
   Play,
-  StopCircle,
+  Sliders,
+  ChevronRight,
   Lock,
+  StopCircle,
 } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
 import { useResponsiveLayout } from '../../core/theme/useResponsiveLayout';
@@ -24,12 +24,10 @@ import ChronographClock from '../../core/theme/components/ChronographClock';
 import { useAppNavigation } from '../../core/navigation/NavigationContext';
 import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
 
-const APP_LOGO = require('../../../assets/images/app-logo.png');
-
 export const HomeScreen: React.FC = () => {
   const { openModal, presentShield } = useAppNavigation();
   const { topInset, bottomInset, responsiveContainerStyle } = useResponsiveLayout();
-  const [showEndConfirmation, setShowEndConfirmation] = React.useState(false);
+  const [showEndConfirmation, setShowEndConfirmation] = useState(false);
   const {
     profile,
     activeSession,
@@ -71,71 +69,103 @@ export const HomeScreen: React.FC = () => {
     }
   };
 
+  // Calculate session end time formatted as HH:MM AM/PM
+  const getEndTimeFormatted = () => {
+    const end = new Date(Date.now() + remainingSeconds * 1000);
+    return end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: topInset + 8,
-            paddingBottom: 80 + bottomInset,
+            paddingTop: topInset + 12,
+            paddingBottom: 100 + bottomInset,
           },
           responsiveContainerStyle,
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Top Header Bar */}
+        {/* Figma Header: DHI Monogram | 0-day streak | PRO pill */}
         <View style={styles.headerRow}>
           <TouchableOpacity
-            activeOpacity={0.75}
+            activeOpacity={0.7}
             onPress={() => openModal('profile')}
-            style={styles.avatarButton}
+            style={styles.brandRow}
             accessibilityLabel="Open Full Screen Profile"
           >
-            <View style={styles.avatarCircle}>
-              <Image source={APP_LOGO} style={styles.avatarLogo} resizeMode="contain" />
+            <Text style={styles.brandTitle}>DHI</Text>
+          </TouchableOpacity>
+
+          <View style={styles.headerRightGroup}>
+            <View style={styles.streakPill}>
+              <Text style={styles.streakText}>{profile.streak_days ?? 0}-day streak</Text>
             </View>
-            <View style={styles.protectionActiveBadge} />
-          </TouchableOpacity>
 
-          <View style={styles.streakBadge}>
-            <Flame size={16} color="#F97316" />
-            <Text style={styles.streakText}>{profile.streak_days ?? 0}-Day Streak</Text>
+            <TouchableOpacity
+              activeOpacity={0.75}
+              onPress={() => openModal('paywall')}
+              style={[styles.proPill, profile.is_pro && styles.proPillActive]}
+            >
+              <Crown size={12} color={colors.primaryAccent} />
+              <Text style={styles.proPillText}>
+                {profile.is_pro ? 'PRO' : 'PRO'}
+              </Text>
+            </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            activeOpacity={0.75}
-            onPress={() => openModal('paywall')}
-            style={[styles.proPill, profile.is_pro && styles.proPillActive]}
-          >
-            <Crown size={14} color={profile.is_pro ? '#10B981' : '#FBBF24'} />
-            <Text style={[styles.proPillText, profile.is_pro && { color: '#10B981' }]}>
-              {profile.is_pro ? 'PRO ACTIVE' : 'PRO'}
-            </Text>
-          </TouchableOpacity>
         </View>
 
-        {/* 1. FOCUS CLOCK & SESSION SECTION */}
+        {/* 1. FOCUS IN PROGRESS (Screen 08) */}
         {activeSession ? (
           <View style={styles.activeSessionChamber}>
-            <Text style={styles.sessionHeading}>Focus in progress</Text>
+            <Text style={styles.screenMainTitle}>Focus in progress</Text>
+
             {/* Precision Mechanical Chronograph */}
-            <ChronographClock
-              totalSeconds={activeSession.duration_minutes * 60}
-              remainingSeconds={remainingSeconds}
-              size={240}
-              strokeWidth={8}
-              strictness={activeSession.strictness_mode}
-              isLockedSession={true}
-              blockedAppsCount={blockedTargets.length}
-            />
+            <View style={styles.chronographWrapper}>
+              <ChronographClock
+                totalSeconds={activeSession.duration_minutes * 60}
+                remainingSeconds={remainingSeconds}
+                size={270}
+                strokeWidth={5}
+                strictness={activeSession.strictness_mode}
+                isLockedSession={true}
+                blockedAppsCount={blockedTargets.length}
+              />
+              <Text style={styles.endTimeLabel}>Ends at {getEndTimeFormatted()}</Text>
+              <View style={styles.protectionBadge}>
+                <View style={styles.protectionDot} />
+                <Text style={styles.protectionText}>
+                  Protected · {blockedTargets.length} apps blocked
+                </Text>
+              </View>
+            </View>
+
+            {/* Session details card (Figma 08) */}
+            <GlassCard style={styles.sessionDetailsCard}>
+              <View style={styles.sessionDetailsTop}>
+                <Text style={styles.sessionDetailsLock}>Standard lock</Text>
+                <Text style={styles.sessionDetailsGems}>+12 Gems</Text>
+              </View>
+              <Text style={styles.sessionDetailsHint}>
+                A little reward for showing up. Ending early requires confirmation.
+              </Text>
+            </GlassCard>
+
+            {/* Stats reclaimed / intercepted */}
+            <View style={styles.inProgressStatsRow}>
+              <Text style={styles.inProgressStatText}>0h 0m reclaimed</Text>
+              <Text style={styles.inProgressStatDot}>•</Text>
+              <Text style={styles.inProgressStatText}>0 opens intercepted</Text>
+            </View>
 
             {/* Hold-to-end / Emergency Action */}
             <View style={styles.sessionControlBox}>
               {activeSession.strictness_mode === 'deep_focus' ? (
                 <GlassCard style={styles.deepFocusNoticeCard}>
                   <View style={styles.deepFocusNoticeRow}>
-                    <Lock size={16} color="#FBBF24" />
+                    <Lock size={16} color={colors.gemAccent} />
                     <Text style={styles.deepFocusNoticeText}>
                       Deep Focus Mode Active • OS Shield Unbreakable
                     </Text>
@@ -150,63 +180,127 @@ export const HomeScreen: React.FC = () => {
                   leftIcon={<Lock size={16} color={colors.warningAccent} />}
                 />
               ) : (
-                <PrimaryPillButton
-                  title="End Session Early"
-                  variant="danger"
+                <TouchableOpacity
+                  activeOpacity={0.7}
                   onPress={handleStopSession}
-                  style={styles.stopBtn}
-                  leftIcon={<StopCircle size={16} color="#FFFFFF" />}
-                />
+                  style={styles.endEarlyButton}
+                >
+                  <Text style={styles.endEarlyText}>End session…</Text>
+                </TouchableOpacity>
               )}
             </View>
           </View>
         ) : (
+          /* 2. FOCUS HOME READY STATE (Screen 07) */
           <>
-            <Text style={styles.readyHeading}>Ready to focus?</Text>
-            <GlassCard style={styles.sessionSummaryCard}>
-              <Text style={styles.summaryLabel}>FOCUS SESSION</Text>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryKey}>Duration</Text>
-                <Text style={styles.summaryValue}>25 min</Text>
-                <TouchableOpacity onPress={() => openModal('new_focus_session')}>
-                  <Text style={styles.summaryAction}>Change</Text>
+            <Text style={styles.screenMainTitle}>Ready to focus?</Text>
+
+            {/* Ready-to-start Session Card (Figma 10:333) */}
+            <GlassCard style={styles.readySessionCard}>
+              <Text style={styles.cardHeaderSmall}>FOCUS SESSION</Text>
+
+              {/* Duration Row */}
+              <View style={styles.cardSubBox}>
+                <View style={styles.subBoxLeft}>
+                  <Text style={styles.subBoxLabel}>Duration</Text>
+                  <Text style={styles.subBoxValue}>25 min</Text>
+                </View>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => openModal('new_focus_session')}
+                  style={styles.changeActionBtn}
+                >
+                  <Text style={styles.changeActionText}>Change</Text>
                 </TouchableOpacity>
               </View>
-              <View style={styles.summaryDivider} />
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryKey}>Apps to block</Text>
-                <Text style={styles.summaryValue}>{blockedTargets.length} apps</Text>
-                <TouchableOpacity onPress={() => openModal('block_list_picker')}>
-                  <Text style={styles.summaryAction}>Review</Text>
+
+              {/* Apps to Block Row */}
+              <View style={styles.cardSubBox}>
+                <View style={styles.subBoxLeft}>
+                  <Text style={styles.subBoxLabel}>Apps to block</Text>
+                  <Text style={styles.subBoxValue}>{blockedTargets.length} apps</Text>
+                </View>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => openModal('block_list_picker')}
+                  style={styles.changeActionBtn}
+                >
+                  <Text style={styles.changeActionText}>Review</Text>
                 </TouchableOpacity>
               </View>
+
+              {/* Start Focus Session Button */}
               <PrimaryPillButton
                 title="Start focus session"
                 onPress={() => openModal('new_focus_session')}
                 rightIcon={<Play size={16} color={colors.primaryButtonText} fill={colors.primaryButtonText} />}
-                style={styles.startButton}
+                style={styles.startFocusButton}
               />
             </GlassCard>
 
-            <GlassCard style={styles.scoreCard}>
-              <View style={styles.scoreHeader}>
-                <Text style={styles.scoreValue}>{focusScore}</Text>
-                <View style={styles.scoreInfo}>
-                  <Text style={styles.scoreTitle}>Today&apos;s focus score</Text>
-                  <Text style={styles.scoreSubtitle}>
-                    {focusScore >= 80 ? 'High focus zone' : 'Keep building your focus'}
-                  </Text>
+            {/* Daily Focus Score Summary Card (Figma 10:349) */}
+            <GlassCard style={styles.focusScoreCard}>
+              <View style={styles.scoreRow}>
+                <View style={styles.scoreBigGroup}>
+                  <Text style={styles.scoreNumber}>{focusScore}</Text>
+                  <Text style={styles.scoreOutOf}>out of 100</Text>
+                </View>
+
+                <View style={styles.scoreMetaGroup}>
+                  <Text style={styles.scoreSectionLabel}>Today’s focus score</Text>
+                  <View style={styles.scoreZoneRow}>
+                    <View style={styles.scoreZoneDot} />
+                    <Text style={styles.scoreZoneText}>
+                      {focusScore >= 80 ? 'High focus zone' : 'Active focus zone'}
+                    </Text>
+                  </View>
+                  <View style={styles.scoreProgressTrack}>
+                    <View style={[styles.scoreProgressFill, { width: `${Math.min(100, focusScore)}%` }]} />
+                  </View>
                 </View>
               </View>
-              <View style={styles.scoreTrack}>
-                <View style={[styles.scoreFill, { width: `${focusScore}%` }]} />
-              </View>
             </GlassCard>
+
+            {/* Today at a Glance Stat Tiles (Figma 10:357) */}
+            <View style={styles.glanceRow}>
+              <View style={styles.glanceTile}>
+                <Text style={styles.glanceValue}>0h 0m</Text>
+                <Text style={styles.glanceLabel}>Reclaimed today</Text>
+              </View>
+
+              <View style={styles.glanceDivider} />
+
+              <View style={styles.glanceTile}>
+                <Text style={styles.glanceValue}>0</Text>
+                <Text style={styles.glanceLabel}>Opens intercepted</Text>
+              </View>
+            </View>
+
+            {/* Manage App Limits Row (Figma 10:363) */}
+            <TouchableOpacity
+              activeOpacity={0.75}
+              onPress={() => openModal('block_list_picker')}
+            >
+              <GlassCard style={styles.appLimitsCard}>
+                <View style={styles.appLimitsRow}>
+                  <View style={styles.appLimitsIconBox}>
+                    <Sliders size={18} color={colors.primaryAccent} />
+                  </View>
+                  <View style={styles.appLimitsTextCol}>
+                    <Text style={styles.appLimitsTitle}>Manage app limits</Text>
+                    <Text style={styles.appLimitsSubtitle}>
+                      {blockedTargets.length} rules · Reels & Shorts only
+                    </Text>
+                  </View>
+                  <ChevronRight size={18} color={colors.secondaryMutedText} />
+                </View>
+              </GlassCard>
+            </TouchableOpacity>
           </>
         )}
-
       </ScrollView>
 
+      {/* Confirmation Modal (Figma 10:568 Screen 12) */}
       <Modal
         visible={showEndConfirmation}
         transparent
@@ -240,237 +334,334 @@ export const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.obsidian,
+    backgroundColor: colors.obsidian, // Figma #090F18
   },
   scrollContent: {
     paddingHorizontal: spacing.screenPadding,
-    paddingTop: 16,
+    gap: 16,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  avatarButton: {
-    position: 'relative',
+  brandRow: {
+    paddingVertical: 4,
   },
-  avatarCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#12141D',
-    borderWidth: 1.5,
-    borderColor: colors.primaryAccent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    padding: 3,
+  brandTitle: {
+    fontSize: 23,
+    fontWeight: '700',
+    color: colors.primaryText,
+    letterSpacing: -0.5,
   },
-  avatarLogo: {
-    width: '100%',
-    height: '100%',
-  },
-  protectionActiveBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: colors.positiveAccent,
-    borderWidth: 2,
-    borderColor: colors.obsidian,
-  },
-  streakBadge: {
+  headerRightGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(249, 115, 22, 0.12)',
+    gap: 10,
+  },
+  streakPill: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingVertical: 5,
+    borderRadius: 14,
+    backgroundColor: colors.elevatedCardSurface,
     borderWidth: 1,
-    borderColor: 'rgba(249, 115, 22, 0.3)',
-    gap: 6,
+    borderColor: colors.hairlineBorder,
   },
   streakText: {
-    ...typography.caption,
-    color: '#F97316',
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.secondaryMutedText,
   },
   proPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(251, 191, 36, 0.15)',
+    backgroundColor: '#253957',
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(251, 191, 36, 0.35)',
+    paddingVertical: 5,
+    borderRadius: 9,
     gap: 4,
   },
   proPillActive: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    borderColor: 'rgba(16, 185, 129, 0.35)',
+    backgroundColor: '#1E3352',
   },
   proPillText: {
-    ...typography.caption,
-    color: '#FBBF24',
-    fontWeight: '800',
-  },
-  focusRingContainer: {
-    marginVertical: 6,
-    alignItems: 'center',
-  },
-  ctaCardWrapper: {
-    marginVertical: 12,
-  },
-  readyHeading: {
-    ...typography.displayMedium,
-    fontSize: 24,
-    marginTop: 16,
-    marginBottom: 14,
-  },
-  sessionSummaryCard: {
-    padding: 14,
-    borderRadius: 14,
-    marginBottom: 12,
-    backgroundColor: colors.elevatedCardSurface,
-  },
-  summaryLabel: {
-    ...typography.caption,
-    fontSize: 9,
-    marginBottom: 11,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 28,
-  },
-  summaryKey: {
-    ...typography.bodySmall,
-    color: colors.primaryText,
-    flex: 1,
-  },
-  summaryValue: {
-    ...typography.bodySmall,
-    color: colors.primaryText,
-    marginRight: 12,
-  },
-  summaryAction: {
-    ...typography.bodySmall,
-    color: colors.primaryAccent,
+    fontSize: 11,
     fontWeight: '600',
+    color: colors.primaryAccent,
+    letterSpacing: 0.5,
   },
-  summaryDivider: {
-    height: 1,
-    backgroundColor: colors.hairlineBorder,
-    marginVertical: 6,
+  screenMainTitle: {
+    fontSize: 32,
+    fontWeight: '600',
+    color: colors.primaryText,
+    letterSpacing: -0.5,
+    marginTop: 4,
   },
-  startButton: {
-    marginTop: 12,
+  readySessionCard: {
+    gap: 12,
+    padding: 18,
+    borderRadius: 20,
+    backgroundColor: colors.elevatedCardSurface,
+    borderColor: colors.hairlineBorder,
   },
-  scoreCard: {
-    padding: 14,
+  cardHeaderSmall: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.subtleSlate,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  cardSubBox: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#152131',
     borderRadius: 14,
-    marginBottom: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
-  scoreHeader: {
+  subBoxLeft: {
+    gap: 2,
+  },
+  subBoxLabel: {
+    fontSize: 13,
+    color: colors.secondaryMutedText,
+  },
+  subBoxValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primaryText,
+  },
+  changeActionBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  changeActionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primaryAccent,
+  },
+  startFocusButton: {
+    marginTop: 4,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: colors.primaryAccent, // Figma #B5C5FF
+  },
+  focusScoreCard: {
+    padding: 18,
+    borderRadius: 20,
+    backgroundColor: colors.elevatedCardSurface,
+    borderColor: colors.hairlineBorder,
+  },
+  scoreRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 9,
+    gap: 16,
   },
-  scoreValue: {
+  scoreBigGroup: {
+    alignItems: 'flex-start',
+    minWidth: 80,
+  },
+  scoreNumber: {
+    fontSize: 42,
+    fontWeight: '300',
     color: colors.primaryText,
-    fontSize: 28,
-    lineHeight: 32,
-    fontWeight: '500',
-    fontVariant: ['tabular-nums'],
+    lineHeight: 48,
   },
-  scoreInfo: {
+  scoreOutOf: {
+    fontSize: 12,
+    color: colors.secondaryMutedText,
+  },
+  scoreMetaGroup: {
     flex: 1,
+    gap: 6,
   },
-  scoreTitle: {
-    ...typography.bodySmall,
-    color: colors.primaryText,
+  scoreSectionLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.secondaryMutedText,
   },
-  scoreSubtitle: {
-    ...typography.bodySmall,
-    fontSize: 9,
+  scoreZoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  scoreZoneDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.positiveAccent,
+  },
+  scoreZoneText: {
+    fontSize: 13,
+    fontWeight: '500',
     color: colors.positiveAccent,
+  },
+  scoreProgressTrack: {
+    height: 3,
+    backgroundColor: '#344259',
+    borderRadius: 1.5,
+    overflow: 'hidden',
     marginTop: 2,
   },
-  scoreTrack: {
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: colors.hairlineBorder,
-    overflow: 'hidden',
-  },
-  scoreFill: {
+  scoreProgressFill: {
     height: '100%',
     backgroundColor: colors.primaryAccent,
-    borderRadius: 2,
+    borderRadius: 1.5,
   },
-  sessionHeading: {
-    ...typography.displayMedium,
-    fontSize: 22,
-    marginBottom: 12,
-  },
-  confirmationOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.screenPadding,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-  },
-  confirmationCard: {
-    backgroundColor: colors.elevatedCardSurface,
-    borderWidth: 1,
-    borderColor: colors.hairlineBorder,
-    borderRadius: 16,
-    padding: 18,
-  },
-  confirmationTitle: {
-    ...typography.titleLarge,
-    fontSize: 17,
-    marginBottom: 8,
-  },
-  confirmationDescription: {
-    ...typography.bodySmall,
-    lineHeight: 18,
-    marginBottom: 15,
-  },
-  confirmationPrimary: {
-    borderRadius: 9,
-  },
-  confirmationSecondary: {
-    height: 40,
-    marginTop: 7,
+  glanceRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 9,
-    borderWidth: 1,
-    borderColor: colors.hairlineBorder,
+    justifyContent: 'space-between',
+    paddingVertical: 6,
   },
-  confirmationSecondaryText: {
-    ...typography.bodySmall,
+  glanceTile: {
+    flex: 1,
+    gap: 2,
+  },
+  glanceValue: {
+    fontSize: 27,
+    fontWeight: '300',
     color: colors.primaryText,
   },
+  glanceLabel: {
+    fontSize: 13,
+    color: colors.secondaryMutedText,
+  },
+  glanceDivider: {
+    width: 1,
+    height: 44,
+    backgroundColor: colors.hairlineBorder,
+    marginHorizontal: 16,
+  },
+  appLimitsCard: {
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: colors.elevatedCardSurface,
+    borderColor: colors.hairlineBorder,
+  },
+  appLimitsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  appLimitsIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#253957',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  appLimitsTextCol: {
+    flex: 1,
+    gap: 2,
+  },
+  appLimitsTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.primaryText,
+  },
+  appLimitsSubtitle: {
+    fontSize: 13,
+    color: colors.secondaryMutedText,
+  },
+
+  // Active Session Styles (Figma 08)
   activeSessionChamber: {
     alignItems: 'center',
-    marginVertical: 8,
+    gap: 16,
+  },
+  chronographWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 12,
+    gap: 8,
+  },
+  endTimeLabel: {
+    fontSize: 14,
+    color: colors.secondaryMutedText,
+    marginTop: 4,
+  },
+  protectionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  protectionDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.positiveAccent,
+  },
+  protectionText: {
+    fontSize: 13,
+    color: colors.secondaryMutedText,
+  },
+  sessionDetailsCard: {
+    width: '100%',
+    padding: 16,
+    borderRadius: 20,
+    backgroundColor: colors.elevatedCardSurface,
+    borderColor: colors.hairlineBorder,
+    gap: 4,
+  },
+  sessionDetailsTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  sessionDetailsLock: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.primaryText,
+  },
+  sessionDetailsGems: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primaryAccent,
+  },
+  sessionDetailsHint: {
+    fontSize: 13,
+    color: colors.secondaryMutedText,
+  },
+  inProgressStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  inProgressStatText: {
+    fontSize: 12,
+    color: colors.secondaryMutedText,
+  },
+  inProgressStatDot: {
+    fontSize: 12,
+    color: colors.secondaryMutedText,
   },
   sessionControlBox: {
     width: '100%',
-    marginTop: 14,
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  endEarlyButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  endEarlyText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: colors.dangerAccent,
   },
   deepFocusNoticeCard: {
     padding: 14,
-    borderRadius: 16,
-    backgroundColor: 'rgba(251, 191, 36, 0.08)',
-    borderColor: 'rgba(251, 191, 36, 0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderRadius: 14,
+    backgroundColor: 'rgba(224, 196, 152, 0.1)',
+    borderColor: 'rgba(224, 196, 152, 0.3)',
   },
   deepFocusNoticeRow: {
     flexDirection: 'row',
@@ -478,13 +669,57 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   deepFocusNoticeText: {
-    ...typography.caption,
-    color: '#FBBF24',
-    fontWeight: '700',
-    fontSize: 12,
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.gemAccent,
   },
   stopBtn: {
-    height: 48,
+    width: '100%',
+  },
+
+  // Confirmation modal styles
+  confirmationOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  confirmationCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: colors.elevatedCardSurface,
+    borderRadius: 20,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: colors.hairlineBorder,
+    alignItems: 'center',
+    gap: 14,
+  },
+  confirmationTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.primaryText,
+    textAlign: 'center',
+  },
+  confirmationDescription: {
+    fontSize: 14,
+    color: colors.secondaryMutedText,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  confirmationPrimary: {
+    width: '100%',
+    marginTop: 6,
+  },
+  confirmationSecondary: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  confirmationSecondaryText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.dangerAccent,
   },
 });
 

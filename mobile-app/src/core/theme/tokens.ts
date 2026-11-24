@@ -1,60 +1,77 @@
 /**
  * Design Tokens & Theme Configuration
- * Obsidian Digital Well-being & Screen-Time Blocker Design System
+ * Extracted from Figma: "Rishab" (DHI - Daily Habit Improvement)
+ * Minimalist Obsidian, Periwinkle Ice & Sage Design System
  */
 
 export const colors = {
-  // Primary Obsidian Backgrounds
-  obsidian: '#0B111D',
-  obsidianElevated: '#101A2A',
-  obsidianDeep: '#080D17',
+  // Primary Obsidian / Midnight Backgrounds
+  obsidian: '#090F18', // Figma canvas background
+  obsidianOLED: '#000000', // Pure OLED Black option
+  obsidianElevated: '#121D2B',
+  obsidianDeep: '#05090F',
 
   // Elevated Card Surfaces
-  elevatedCardSurface: '#152238',
-  elevatedCardHover: '#1C2B43',
-  glassSurface: 'rgba(21, 34, 56, 0.92)',
-  glassOverlay: 'rgba(8, 13, 23, 0.78)',
+  elevatedCardSurface: '#121D2B',
+  elevatedCardSubtle: '#152131',
+  elevatedCardHover: '#1C2D47',
+  glassSurface: 'rgba(20, 34, 54, 0.85)',
+  glassOverlay: 'rgba(9, 15, 24, 0.82)',
 
   // Borders & Dividers
-  hairlineBorder: '#26364E',
-  borderMuted: '#1A2940',
-  borderHighlight: '#344967',
+  hairlineBorder: '#29364B',
+  hairlineBorderMuted: 'rgba(255, 255, 255, 0.08)',
+  borderMuted: '#1E2B3E',
+  borderHighlight: '#3B4E6B',
 
   // Text Hierarchy
-  primaryText: '#FFFFFF',
-  secondaryMutedText: '#9AA9C1',
-  tertiaryText: '#687A95',
+  primaryText: '#F1F5FC',
+  secondaryMutedText: '#A2ADBF',
+  tertiaryText: '#75767E',
+  subtleSlate: '#B0BBCD',
 
-  // Primary Accent (Focus / Active State)
-  primaryAccent: '#A9B9FF',
-  primaryAccentGlow: 'rgba(169, 185, 255, 0.22)',
-  primaryAccentDark: '#8298ED',
+  // Accent Colors (Figma Specific)
+  primaryAccent: '#B5C5FF', // Periwinkle Ice (Figma primary accent & button)
+  primaryAccentGlow: 'rgba(181, 197, 255, 0.22)',
+  primaryAccentDark: '#7890B3',
 
-  // Positive Accent (Saved / Time Reclaimed / Success)
-  positiveAccent: '#72D8B5',
-  positiveAccentGlow: 'rgba(114, 216, 181, 0.2)',
-  positiveAccentDark: '#42B894',
+  // Positive Accent (Focus Zone & Health Step Tracker)
+  positiveAccent: '#A5D9C8', // Figma Sage Emerald
+  positiveEmerald: '#10B981', // Pure Emerald
+  positiveAccentGlow: 'rgba(165, 217, 200, 0.22)',
+
+  // Gems & Rewards (Warm Gold/Amber)
+  gemAccent: '#E0C498',
+  gemGlow: 'rgba(224, 196, 152, 0.22)',
 
   // Warning & Caution
-  warningAccent: '#E8B96E',
-  warningGlow: 'rgba(232, 185, 110, 0.2)',
+  warningAccent: '#F59E0B',
+  warningGlow: 'rgba(245, 158, 11, 0.22)',
 
-  // Danger & Locked State (Shield / Block Interception)
-  dangerAccent: '#E88791',
-  dangerAccentGlow: 'rgba(232, 135, 145, 0.2)',
+  // Danger & Locked State (Shield / End Session)
+  dangerAccent: '#C8AAB6', // Figma subtle muted rose
+  dangerBright: '#EF4444',
+  dangerAccentGlow: 'rgba(200, 170, 182, 0.22)',
 
   // CTA Pill Button Tokens
-  primaryButtonBg: '#A9B9FF',
-  primaryButtonText: '#111A2B',
-  secondaryButtonBg: '#20314B',
-  secondaryButtonText: '#FFFFFF',
+  primaryButtonBg: '#B5C5FF',
+  primaryButtonText: '#10182D',
+  primaryWhiteButtonBg: '#FFFFFF',
+  primaryWhiteButtonText: '#000000',
+  secondaryButtonBg: '#253957',
+  secondaryButtonText: '#B5C5FF',
+  iconCircleBg: '#181B26',
+
+  // Monochrome Tokens
+  monochromeLight: '#E4E4E7',
+  monochromeDark: '#161920',
 
   // Category Colors
-  categorySocial: '#D28AB1',
-  categoryEntertainment: '#B19AE8',
-  categoryGaming: '#E5A06F',
-  categoryProductivity: '#A9B9FF',
-  categoryShopping: '#72D8B5',
+  categorySocial: '#B5C5FF',
+  categoryEntertainment: '#A5D9C8',
+  categoryGaming: '#E0C498',
+  categoryProductivity: '#F1F5FC',
+  categoryShopping: '#B0BBCD',
 } as const;
 
 export const spacing = {
@@ -65,14 +82,14 @@ export const spacing = {
   xl: 20,
   xxl: 24,
   xxxl: 32,
-  screenPadding: 18,
+  screenPadding: 20,
 } as const;
 
 export const borderRadius = {
   sm: 8,
   md: 14,
-  lg: 18,
-  card: 18,
+  lg: 19,
+  card: 20, // 20px border radius per Figma cards
   pill: 9999, // Circular pill
 } as const;
 
@@ -80,20 +97,20 @@ export const typography = {
   displayLarge: {
     fontSize: 32,
     fontWeight: '600' as const,
-    lineHeight: 39,
+    lineHeight: 40,
     color: colors.primaryText,
     letterSpacing: -0.5,
   },
   displayMedium: {
-    fontSize: 25,
-    fontWeight: '500' as const,
-    lineHeight: 32,
+    fontSize: 26,
+    fontWeight: '600' as const,
+    lineHeight: 34,
     color: colors.primaryText,
     letterSpacing: -0.3,
   },
   titleLarge: {
     fontSize: 20,
-    fontWeight: '500' as const,
+    fontWeight: '600' as const,
     lineHeight: 28,
     color: colors.primaryText,
   },
@@ -131,16 +148,16 @@ export const typography = {
   },
   ctaButtonText: {
     fontSize: 16,
-    fontWeight: '700' as const,
+    fontWeight: '600' as const,
     lineHeight: 22,
     color: colors.primaryButtonText,
   },
 } as const;
 
 export const layout = {
-  cardPadding: 16,
-  hairlineBorderWidth: 1, // 1px hairline border per spec
-  ctaButtonHeight: 48,
+  cardPadding: 18, // 18px padding per Figma cards
+  hairlineBorderWidth: 1, // 1px hairline border per Figma
+  ctaButtonHeight: 56, // 56px height pill button per Figma
 } as const;
 
 export const theme = {
