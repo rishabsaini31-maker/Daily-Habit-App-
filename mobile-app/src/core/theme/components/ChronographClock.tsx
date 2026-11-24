@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import Svg, { Circle, Line, Defs, LinearGradient, Stop, G } from 'react-native-svg';
 import { colors, typography } from '../tokens';
-import { ShieldCheck, Lock, Gem, Sparkles } from 'lucide-react-native';
+import { ShieldCheck, Lock } from 'lucide-react-native';
 
 interface ChronographClockProps {
   totalSeconds: number;
@@ -21,7 +21,6 @@ interface ChronographClockProps {
   interactive?: boolean;
   onSelectDurationMinutes?: (minutes: number) => void;
   blockedAppsCount?: number;
-  gemsEarning?: number;
   isLockedSession?: boolean;
 }
 
@@ -34,7 +33,6 @@ export const ChronographClock: React.FC<ChronographClockProps> = ({
   interactive = false,
   onSelectDurationMinutes,
   blockedAppsCount = 0,
-  gemsEarning = 15,
   isLockedSession = false,
 }) => {
   // 1. Ambient breathing glow animation
@@ -174,10 +172,10 @@ export const ChronographClock: React.FC<ChronographClockProps> = ({
             transform: [{ scale: glowScale }],
             backgroundColor: isDeepFocus
               ? 'rgba(251, 191, 36, 0.12)'
-              : 'rgba(56, 189, 248, 0.12)',
+              : 'rgba(169, 185, 255, 0.12)',
             borderColor: isDeepFocus
               ? 'rgba(251, 191, 36, 0.22)'
-              : 'rgba(16, 185, 129, 0.22)',
+              : 'rgba(169, 185, 255, 0.22)',
           },
         ]}
       />
@@ -188,9 +186,9 @@ export const ChronographClock: React.FC<ChronographClockProps> = ({
           <Defs>
             {/* Emerald-to-Cyan Luxury Gradient */}
             <LinearGradient id="chronoGradientNormal" x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0%" stopColor="#38BDF8" stopOpacity="1" />
-              <Stop offset="50%" stopColor="#2DD4BF" stopOpacity="1" />
-              <Stop offset="100%" stopColor="#10B981" stopOpacity="1" />
+              <Stop offset="0%" stopColor={colors.primaryAccent} stopOpacity="1" />
+              <Stop offset="50%" stopColor={colors.primaryAccent} stopOpacity="1" />
+              <Stop offset="100%" stopColor={colors.primaryAccentDark} stopOpacity="1" />
             </LinearGradient>
 
             {/* Deep Focus Gold / Amber Luxury Gradient */}
@@ -268,40 +266,42 @@ export const ChronographClock: React.FC<ChronographClockProps> = ({
             {formattedTime}
           </Text>
 
-          {/* Sleek "Ends at X:XX PM" Badge */}
-          <View style={styles.endsAtBadge}>
-            <View
-              style={[
-                styles.endsAtDot,
-                { backgroundColor: isDeepFocus ? '#FBBF24' : colors.primaryAccent },
-              ]}
-            />
-            <Text style={styles.endsAtText}>Ends at {endsAtText}</Text>
-          </View>
+          {isLockedSession ? (
+            <Text style={styles.sessionDuration}>{Math.round(totalSeconds / 60)} minutes</Text>
+          ) : (
+            <>
+              <View style={styles.endsAtBadge}>
+                <View
+                  style={[
+                    styles.endsAtDot,
+                    { backgroundColor: isDeepFocus ? '#FBBF24' : colors.primaryAccent },
+                  ]}
+                />
+                <Text style={styles.endsAtText}>Ends at {endsAtText}</Text>
+              </View>
 
-          {/* Strictness Pill Indicator */}
-          <View
-            style={[
-              styles.modePill,
-              isDeepFocus
-                ? styles.modePillDeepFocus
-                : styles.modePillNormal,
-            ]}
-          >
-            {isDeepFocus ? (
-              <Lock size={11} color="#FBBF24" />
-            ) : (
-              <ShieldCheck size={11} color={colors.primaryAccent} />
-            )}
-            <Text
-              style={[
-                styles.modePillText,
-                isDeepFocus ? { color: '#FBBF24' } : { color: colors.primaryAccent },
-              ]}
-            >
-              {isDeepFocus ? 'DEEP FOCUS 🔒' : 'STANDARD LOCK'}
-            </Text>
-          </View>
+              <View
+                style={[
+                  styles.modePill,
+                  isDeepFocus ? styles.modePillDeepFocus : styles.modePillNormal,
+                ]}
+              >
+                {isDeepFocus ? (
+                  <Lock size={11} color="#FBBF24" />
+                ) : (
+                  <ShieldCheck size={11} color={colors.primaryAccent} />
+                )}
+                <Text
+                  style={[
+                    styles.modePillText,
+                    isDeepFocus ? { color: '#FBBF24' } : { color: colors.primaryAccent },
+                  ]}
+                >
+                  {isDeepFocus ? 'DEEP FOCUS 🔒' : 'STANDARD LOCK'}
+                </Text>
+              </View>
+            </>
+          )}
         </View>
       </View>
 
@@ -312,14 +312,8 @@ export const ChronographClock: React.FC<ChronographClockProps> = ({
           <View style={styles.shieldActivePill}>
             <View style={styles.pulsingEmeraldDot} />
             <Text style={styles.shieldActiveText}>
-              Shield Active • {blockedAppsCount} {blockedAppsCount === 1 ? 'App' : 'Apps'} Blocked
+              Protected • {blockedAppsCount} {blockedAppsCount === 1 ? 'app' : 'apps'} blocked
             </Text>
-          </View>
-
-          {/* Real-time Gems Earning Counter */}
-          <View style={styles.gemsCounterBadge}>
-            <Sparkles size={13} color="#38BDF8" />
-            <Text style={styles.gemsCounterText}>+{gemsEarning} Gems 💎</Text>
           </View>
         </View>
       )}
@@ -374,6 +368,12 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.1)',
     marginTop: 6,
   },
+  sessionDuration: {
+    ...typography.bodySmall,
+    color: colors.secondaryMutedText,
+    fontSize: 13,
+    marginTop: 7,
+  },
   endsAtDot: {
     width: 5,
     height: 5,
@@ -398,8 +398,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   modePillNormal: {
-    backgroundColor: 'rgba(56, 189, 248, 0.1)',
-    borderColor: 'rgba(56, 189, 248, 0.25)',
+    backgroundColor: 'rgba(169, 185, 255, 0.1)',
+    borderColor: 'rgba(169, 185, 255, 0.25)',
   },
   modePillDeepFocus: {
     backgroundColor: 'rgba(251, 191, 36, 0.12)',
@@ -439,24 +439,8 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: '#10B981',
     fontWeight: '700',
-    fontSize: 12,
-  },
-  gemsCounterBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: 'rgba(56, 189, 248, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.3)',
-  },
-  gemsCounterText: {
-    ...typography.caption,
-    color: '#38BDF8',
-    fontWeight: '700',
-    fontSize: 12,
+    fontSize: 11,
+    textTransform: 'none',
   },
 });
 

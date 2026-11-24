@@ -12,6 +12,7 @@ import Step5PermissionsGrant from './Step5PermissionsGrant';
 export const OnboardingFlow: React.FC = () => {
   const { currentStep } = useOnboarding();
   const { topInset, bottomInset, responsiveContainerStyle } = useResponsiveLayout();
+  const setupStep = currentStep === 2 ? 1 : currentStep === 3 ? 2 : currentStep === 5 ? 3 : null;
 
   const renderStep = () => {
     switch (currentStep) {
@@ -32,24 +33,32 @@ export const OnboardingFlow: React.FC = () => {
 
   return (
     <View style={styles.container}>
+      {setupStep !== null ? (
+        <View
+          style={[
+            styles.stepProgressBar,
+            { paddingTop: topInset + 8 },
+            responsiveContainerStyle,
+          ]}
+        >
+          {[1, 2, 3].map((step) => (
+            <View
+              key={step}
+              style={[
+                styles.progressSegment,
+                step <= setupStep && styles.progressSegmentActive,
+              ]}
+            />
+          ))}
+        </View>
+      ) : null}
       <View
         style={[
-          styles.stepProgressBar,
-          { paddingTop: topInset + 8 },
+          styles.content,
+          { paddingBottom: bottomInset, paddingTop: setupStep === null && currentStep !== 1 ? topInset : 0 },
           responsiveContainerStyle,
         ]}
       >
-        {[1, 2, 3, 4, 5].map((step) => (
-          <View
-            key={step}
-            style={[
-              styles.progressSegment,
-              step <= currentStep && styles.progressSegmentActive,
-            ]}
-          />
-        ))}
-      </View>
-      <View style={[styles.content, { paddingBottom: bottomInset }, responsiveContainerStyle]}>
         {renderStep()}
       </View>
     </View>

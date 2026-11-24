@@ -14,7 +14,7 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({ activeTab, onTabPres
   const { bottomInset, isWide } = useResponsiveLayout();
 
   const tabs: { key: AppTab; label: string; icon: LucideIcon }[] = [
-    { key: 'home', label: 'Home', icon: Shield },
+    { key: 'home', label: 'Focus', icon: Shield },
     { key: 'schedules', label: 'Schedules', icon: Calendar },
     { key: 'insights', label: 'Insights', icon: BarChart2 },
     { key: 'rewards', label: 'Rewards', icon: Award },
@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   activeIconWrapper: {
-    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    backgroundColor: 'rgba(169, 185, 255, 0.14)',
   },
   tabLabel: {
     fontSize: 11,
@@ -105,12 +105,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   activePillIndicator: {
-    position: 'absolute',
-    top: -8,
-    width: 24,
-    height: 2,
-    backgroundColor: colors.primaryAccent,
-    borderRadius: 1,
+    display: 'none',
   },
 });
 

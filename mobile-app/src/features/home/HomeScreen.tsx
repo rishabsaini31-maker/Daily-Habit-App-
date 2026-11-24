@@ -7,24 +7,19 @@ import {
   TouchableOpacity,
   Alert,
   Image,
+  Modal,
 } from 'react-native';
 import {
   Flame,
   Crown,
   Play,
   StopCircle,
-  Sliders,
-  ShieldAlert,
-  Clock,
-  Sparkles,
-  Zap,
   Lock,
 } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
 import { useResponsiveLayout } from '../../core/theme/useResponsiveLayout';
 import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
-import FocusRing from '../../core/theme/components/FocusRing';
 import ChronographClock from '../../core/theme/components/ChronographClock';
 import { useAppNavigation } from '../../core/navigation/NavigationContext';
 import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
@@ -34,13 +29,13 @@ const APP_LOGO = require('../../../assets/images/app-logo.png');
 export const HomeScreen: React.FC = () => {
   const { openModal, presentShield } = useAppNavigation();
   const { topInset, bottomInset, responsiveContainerStyle } = useResponsiveLayout();
+  const [showEndConfirmation, setShowEndConfirmation] = React.useState(false);
   const {
     profile,
     activeSession,
     remainingSeconds,
     formattedRemainingTime,
     focusScore,
-    todayMetrics,
     blockedTargets,
     stopSessionEarly,
   } = useFocusEngine();
@@ -65,31 +60,16 @@ export const HomeScreen: React.FC = () => {
       return;
     }
 
-    Alert.alert(
-      'End Focus Session?',
-      'You are currently in a flow state. Are you sure you want to lift the focus shield early?',
-      [
-        { text: 'Keep Focusing', style: 'cancel' },
-        {
-          text: 'End Session',
-          style: 'destructive',
-          onPress: async () => {
-            const res = await stopSessionEarly();
-            if (!res.success && res.reason) {
-              Alert.alert('Session Lock', res.reason);
-            }
-          },
-        },
-      ]
-    );
+    setShowEndConfirmation(true);
   };
 
-  const reclaimedHours = Math.floor((todayMetrics.blocked_time_min || 0) / 60);
-  const reclaimedMins = (todayMetrics.blocked_time_min || 0) % 60;
-  const reclaimedStr = `${reclaimedHours}h ${reclaimedMins}m`;
-  const estimatedGems = activeSession
-    ? Math.max(10, Math.floor(activeSession.duration_minutes / 2))
-    : 15;
+  const confirmEndSession = async () => {
+    setShowEndConfirmation(false);
+    const res = await stopSessionEarly();
+    if (!res.success && res.reason) {
+      Alert.alert('Session Lock', res.reason);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -138,6 +118,7 @@ export const HomeScreen: React.FC = () => {
         {/* 1. FOCUS CLOCK & SESSION SECTION */}
         {activeSession ? (
           <View style={styles.activeSessionChamber}>
+            <Text style={styles.sessionHeading}>Focus in progress</Text>
             {/* Precision Mechanical Chronograph */}
             <ChronographClock
               totalSeconds={activeSession.duration_minutes * 60}
@@ -147,7 +128,6 @@ export const HomeScreen: React.FC = () => {
               strictness={activeSession.strictness_mode}
               isLockedSession={true}
               blockedAppsCount={blockedTargets.length}
-              gemsEarning={estimatedGems}
             />
 
             {/* Hold-to-end / Emergency Action */}
@@ -182,84 +162,77 @@ export const HomeScreen: React.FC = () => {
           </View>
         ) : (
           <>
-            {/* Refined 100 Daily Focus Score Ring */}
-            <View style={styles.focusRingContainer}>
-              <FocusRing
-                score={focusScore}
-                size={220}
-                strokeWidth={14}
-                subtitle="Daily Focus Score"
-                label={focusScore >= 80 ? 'High Focus Zone' : 'Attention Vulnerable'}
-              />
-            </View>
-
-            {/* Elevated Instant Focus Session Pill CTA */}
-            <View style={styles.ctaCardWrapper}>
+            <Text style={styles.readyHeading}>Ready to focus?</Text>
+            <GlassCard style={styles.sessionSummaryCard}>
+              <Text style={styles.summaryLabel}>FOCUS SESSION</Text>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryKey}>Duration</Text>
+                <Text style={styles.summaryValue}>25 min</Text>
+                <TouchableOpacity onPress={() => openModal('new_focus_session')}>
+                  <Text style={styles.summaryAction}>Change</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.summaryDivider} />
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryKey}>Apps to block</Text>
+                <Text style={styles.summaryValue}>{blockedTargets.length} apps</Text>
+                <TouchableOpacity onPress={() => openModal('block_list_picker')}>
+                  <Text style={styles.summaryAction}>Review</Text>
+                </TouchableOpacity>
+              </View>
               <PrimaryPillButton
-                title="Start Instant Focus Session"
+                title="Start focus session"
                 onPress={() => openModal('new_focus_session')}
-                leftIcon={<Play size={18} color={colors.primaryButtonText} fill={colors.primaryButtonText} />}
+                rightIcon={<Play size={16} color={colors.primaryButtonText} fill={colors.primaryButtonText} />}
+                style={styles.startButton}
               />
-            </View>
+            </GlassCard>
+
+            <GlassCard style={styles.scoreCard}>
+              <View style={styles.scoreHeader}>
+                <Text style={styles.scoreValue}>{focusScore}</Text>
+                <View style={styles.scoreInfo}>
+                  <Text style={styles.scoreTitle}>Today&apos;s focus score</Text>
+                  <Text style={styles.scoreSubtitle}>
+                    {focusScore >= 80 ? 'High focus zone' : 'Keep building your focus'}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.scoreTrack}>
+                <View style={[styles.scoreFill, { width: `${focusScore}%` }]} />
+              </View>
+            </GlassCard>
           </>
         )}
 
-        {/* 2. RECLAIMED TODAY & OPENS INTERCEPTED METRICS ROW */}
-        <View style={styles.metricsRow}>
-          <GlassCard style={styles.metricCard}>
-            <View style={styles.metricIconCircle}>
-              <Clock size={19} color={colors.positiveAccent} />
-            </View>
-            <Text style={styles.metricNumber}>{reclaimedStr}</Text>
-            <Text style={styles.metricLabel}>Reclaimed Today</Text>
-          </GlassCard>
-
-          <GlassCard style={styles.metricCard}>
-            <View style={[styles.metricIconCircle, { backgroundColor: 'rgba(239, 68, 68, 0.12)', borderColor: 'rgba(239, 68, 68, 0.25)' }]}>
-              <ShieldAlert size={19} color={colors.dangerAccent} />
-            </View>
-            <Text style={[styles.metricNumber, { color: colors.dangerAccent }]}>
-              {todayMetrics.interceptions_count ?? 0}
-            </Text>
-            <Text style={styles.metricLabel}>Opens Intercepted</Text>
-          </GlassCard>
-        </View>
-
-        {/* 3. BLOCK LIST & SURGICAL PICKER SHORTCUT */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => openModal('block_list_picker')}
-        >
-          <GlassCard style={styles.blockListShortcutCard}>
-            <View style={styles.shortcutRow}>
-              <View style={styles.shortcutIconBox}>
-                <Sliders size={20} color={colors.primaryAccent} />
-              </View>
-              <View style={styles.shortcutTextCol}>
-                <Text style={styles.shortcutTitle}>Block List & Surgical Picker</Text>
-                <Text style={styles.shortcutSub}>
-                  {blockedTargets.length} rules active • Surgical Reels & Shorts enabled
-                </Text>
-              </View>
-              <View style={styles.editTag}>
-                <Text style={styles.editTagText}>Configure</Text>
-              </View>
-            </View>
-          </GlassCard>
-        </TouchableOpacity>
-
-        {/* 4. AI FOCUS OPPORTUNITY CARD */}
-        <GlassCard style={styles.opportunityCard}>
-          <View style={styles.opportunityHeader}>
-            <Sparkles size={18} color={colors.primaryAccent} />
-            <Text style={styles.opportunityTitle}>AI Focus Opportunity</Text>
-          </View>
-          <Text style={styles.opportunityBody}>
-            Your screen baseline is {profile.daily_baseline_minutes || 270} mins. Reclaiming 2.5
-            hours today will boost your Focus Score to 95 and earn +50 Gems!
-          </Text>
-        </GlassCard>
       </ScrollView>
+
+      <Modal
+        visible={showEndConfirmation}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowEndConfirmation(false)}
+      >
+        <View style={styles.confirmationOverlay}>
+          <View style={styles.confirmationCard}>
+            <Text style={styles.confirmationTitle}>End this focus session?</Text>
+            <Text style={styles.confirmationDescription}>
+              {formattedRemainingTime} remains. Ending now will stop protection for this session.
+            </Text>
+            <PrimaryPillButton
+              title="Keep focusing"
+              onPress={() => setShowEndConfirmation(false)}
+              style={styles.confirmationPrimary}
+            />
+            <TouchableOpacity
+              style={styles.confirmationSecondary}
+              onPress={confirmEndSession}
+            >
+              <Text style={styles.confirmationSecondaryText}>End session</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -288,7 +261,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     backgroundColor: '#12141D',
     borderWidth: 1.5,
-    borderColor: 'rgba(56, 189, 248, 0.4)',
+    borderColor: colors.primaryAccent,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -352,6 +325,137 @@ const styles = StyleSheet.create({
   ctaCardWrapper: {
     marginVertical: 12,
   },
+  readyHeading: {
+    ...typography.displayMedium,
+    fontSize: 24,
+    marginTop: 16,
+    marginBottom: 14,
+  },
+  sessionSummaryCard: {
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 12,
+    backgroundColor: colors.elevatedCardSurface,
+  },
+  summaryLabel: {
+    ...typography.caption,
+    fontSize: 9,
+    marginBottom: 11,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 28,
+  },
+  summaryKey: {
+    ...typography.bodySmall,
+    color: colors.primaryText,
+    flex: 1,
+  },
+  summaryValue: {
+    ...typography.bodySmall,
+    color: colors.primaryText,
+    marginRight: 12,
+  },
+  summaryAction: {
+    ...typography.bodySmall,
+    color: colors.primaryAccent,
+    fontWeight: '600',
+  },
+  summaryDivider: {
+    height: 1,
+    backgroundColor: colors.hairlineBorder,
+    marginVertical: 6,
+  },
+  startButton: {
+    marginTop: 12,
+  },
+  scoreCard: {
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 8,
+  },
+  scoreHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 9,
+  },
+  scoreValue: {
+    color: colors.primaryText,
+    fontSize: 28,
+    lineHeight: 32,
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
+  },
+  scoreInfo: {
+    flex: 1,
+  },
+  scoreTitle: {
+    ...typography.bodySmall,
+    color: colors.primaryText,
+  },
+  scoreSubtitle: {
+    ...typography.bodySmall,
+    fontSize: 9,
+    color: colors.positiveAccent,
+    marginTop: 2,
+  },
+  scoreTrack: {
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: colors.hairlineBorder,
+    overflow: 'hidden',
+  },
+  scoreFill: {
+    height: '100%',
+    backgroundColor: colors.primaryAccent,
+    borderRadius: 2,
+  },
+  sessionHeading: {
+    ...typography.displayMedium,
+    fontSize: 22,
+    marginBottom: 12,
+  },
+  confirmationOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.screenPadding,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+  },
+  confirmationCard: {
+    backgroundColor: colors.elevatedCardSurface,
+    borderWidth: 1,
+    borderColor: colors.hairlineBorder,
+    borderRadius: 16,
+    padding: 18,
+  },
+  confirmationTitle: {
+    ...typography.titleLarge,
+    fontSize: 17,
+    marginBottom: 8,
+  },
+  confirmationDescription: {
+    ...typography.bodySmall,
+    lineHeight: 18,
+    marginBottom: 15,
+  },
+  confirmationPrimary: {
+    borderRadius: 9,
+  },
+  confirmationSecondary: {
+    height: 40,
+    marginTop: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: colors.hairlineBorder,
+  },
+  confirmationSecondaryText: {
+    ...typography.bodySmall,
+    color: colors.primaryText,
+  },
   activeSessionChamber: {
     alignItems: 'center',
     marginVertical: 8,
@@ -381,127 +485,6 @@ const styles = StyleSheet.create({
   },
   stopBtn: {
     height: 48,
-  },
-  metricsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginVertical: 10,
-  },
-  metricCard: {
-    flex: 1,
-    paddingVertical: 18,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderTopColor: 'rgba(255, 255, 255, 0.2)',
-    backgroundColor: 'rgba(17, 20, 29, 0.85)',
-  },
-  metricIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.25)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  metricNumber: {
-    ...typography.titleLarge,
-    fontSize: 22,
-    color: colors.positiveAccent,
-    fontWeight: '800',
-    fontVariant: ['tabular-nums'],
-  },
-  metricLabel: {
-    ...typography.bodySmall,
-    color: colors.secondaryMutedText,
-    fontSize: 12,
-    marginTop: 2,
-    fontWeight: '500',
-  },
-  blockListShortcutCard: {
-    padding: 16,
-    marginVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderTopColor: 'rgba(255, 255, 255, 0.16)',
-  },
-  shortcutRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  shortcutIconBox: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: 'rgba(56, 189, 248, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.25)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  shortcutTextCol: {
-    flex: 1,
-  },
-  shortcutTitle: {
-    ...typography.titleMedium,
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  shortcutSub: {
-    ...typography.bodySmall,
-    color: colors.secondaryMutedText,
-    marginTop: 2,
-    fontSize: 12,
-  },
-  editTag: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    backgroundColor: 'rgba(56, 189, 248, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.25)',
-  },
-  editTagText: {
-    ...typography.caption,
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.primaryAccent,
-  },
-  opportunityCard: {
-    padding: 16,
-    marginVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.22)',
-    borderTopColor: 'rgba(56, 189, 248, 0.4)',
-    backgroundColor: 'rgba(18, 22, 34, 0.9)',
-  },
-  opportunityHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
-  },
-  opportunityTitle: {
-    ...typography.titleMedium,
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.primaryAccent,
-  },
-  opportunityBody: {
-    ...typography.bodySmall,
-    color: colors.secondaryMutedText,
-    lineHeight: 18,
-    fontSize: 12,
   },
 });
 

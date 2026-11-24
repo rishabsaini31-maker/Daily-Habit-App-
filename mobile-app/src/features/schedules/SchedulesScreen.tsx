@@ -161,19 +161,6 @@ export const SchedulesScreen: React.FC = () => {
     }
   };
 
-  const handleSimulateSteps = async () => {
-    const newSteps = isStepGoalMet ? 3200 : stepGoal + 500;
-    await healthStepService.setTodaySteps(newSteps);
-    setTodaySteps(newSteps);
-    const result = await healthStepService.enforceStepGating(schedules, blockedTargets);
-    Alert.alert(
-      result.shouldShield ? 'Step Gate Shield Active' : 'Step Goal Reached! Screen Time Unlocked ✓',
-      result.shouldShield
-        ? `Walked ${newSteps.toLocaleString()} / ${stepGoal.toLocaleString()} steps. Distracting apps stay shielded until goal is met.`
-        : `Walked ${newSteps.toLocaleString()} steps! Automatic OS shield has been lifted. Enjoy mindful screen time.`
-    );
-  };
-
   const handleCreateNewSchedule = async () => {
     const trimmedTitle = newTitle.trim();
     if (!trimmedTitle) {
@@ -280,18 +267,10 @@ export const SchedulesScreen: React.FC = () => {
       >
         <View style={styles.titleRow}>
           <View>
-            <Text style={styles.screenTitle}>Smart Schedules</Text>
+            <Text style={styles.screenTitle}>Schedules</Text>
             <Text style={styles.screenSubtitle}>
-              Automate your focus blocks by time, location, or daily steps
+              Create a routine or start with a preset.
             </Text>
-          </View>
-        </View>
-
-        {/* 1. TIME-BASED RECURRING RULES */}
-        <View style={styles.sectionHeaderRow}>
-          <View style={styles.sectionHeaderLeft}>
-            <Clock size={18} color={colors.primaryAccent} />
-            <Text style={styles.sectionTitle}>TIME-BASED SCHEDULES</Text>
           </View>
           <TouchableOpacity
             style={styles.addBtn}
@@ -299,18 +278,26 @@ export const SchedulesScreen: React.FC = () => {
             onPress={() => {
               if (!profile.is_pro && timeSchedules.length >= 1) {
                 openModal('paywall');
-              } else {
-                setNewTitle('Deep Work Routine');
-                setNewStartTime('09:00');
-                setNewEndTime('12:00');
-                setSelectedDays([1, 2, 3, 4, 5]);
-                setIsAddModalOpen(true);
+                return;
               }
+              setNewTitle('Deep Work Routine');
+              setNewStartTime('09:00');
+              setNewEndTime('12:00');
+              setSelectedDays([1, 2, 3, 4, 5]);
+              setIsAddModalOpen(true);
             }}
           >
-            <Plus size={16} color={colors.primaryAccent} />
-            <Text style={styles.addBtnText}>Add</Text>
+            <Plus size={14} color={colors.primaryAccent} />
+            <Text style={styles.addBtnText}>New</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* 1. TIME-BASED RECURRING RULES */}
+        <View style={styles.sectionHeaderRow}>
+          <View style={styles.sectionHeaderLeft}>
+            <Clock size={18} color={colors.primaryAccent} />
+            <Text style={styles.sectionTitle}>Time-based schedules</Text>
+          </View>
         </View>
 
         {timeSchedules.length === 0 ? (
@@ -413,11 +400,11 @@ export const SchedulesScreen: React.FC = () => {
           </View>
         )}
 
-        {/* 2. GPS LOCATION AUTO-LOCK */}
+        <Text style={styles.moreWaysHeading}>More ways to focus</Text>
         <View style={[styles.sectionHeaderRow, { marginTop: 24 }]}>
           <View style={styles.sectionHeaderLeft}>
             <MapPin size={18} color={colors.positiveAccent} />
-            <Text style={styles.sectionTitle}>GPS LOCATION AUTO-LOCK</Text>
+            <Text style={styles.sectionTitle}>Location-based focus</Text>
             {!profile.is_pro && (
               <View style={styles.proTag}>
                 <Crown size={10} color="#FBBF24" />
@@ -485,11 +472,10 @@ export const SchedulesScreen: React.FC = () => {
           </View>
         )}
 
-        {/* 3. STEP-GATED "EARN SCREEN TIME" RULES */}
         <View style={[styles.sectionHeaderRow, { marginTop: 24 }]}>
           <View style={styles.sectionHeaderLeft}>
             <Footprints size={18} color={colors.warningAccent} />
-            <Text style={styles.sectionTitle}>STEP-GATED "EARN TIME"</Text>
+            <Text style={styles.sectionTitle}>Step goals</Text>
             {!profile.is_pro && (
               <View style={styles.proTag}>
                 <Crown size={10} color="#FBBF24" />
@@ -578,16 +564,6 @@ export const SchedulesScreen: React.FC = () => {
                 </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[styles.stepActionBtn, styles.stepSimulateBtn]}
-                activeOpacity={0.7}
-                onPress={handleSimulateSteps}
-              >
-                <Footprints size={13} color={colors.warningAccent} />
-                <Text style={[styles.stepActionBtnText, { color: colors.warningAccent }]}>
-                  {isStepGoalMet ? 'Reset to 3,200 Steps' : 'Test Unlock (+500)'}
-                </Text>
-              </TouchableOpacity>
             </View>
           </View>
         </GlassCard>
@@ -765,10 +741,14 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 16,
   },
   screenTitle: {
     ...typography.displayMedium,
+    fontSize: 24,
     marginBottom: 4,
   },
   screenSubtitle: {
@@ -787,9 +767,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   sectionTitle: {
-    ...typography.caption,
-    color: colors.secondaryMutedText,
-    letterSpacing: 1.2,
+    ...typography.titleMedium,
+    color: colors.primaryText,
+    fontSize: 14,
+  },
+  moreWaysHeading: {
+    ...typography.titleMedium,
+    color: colors.primaryText,
+    fontSize: 17,
+    marginTop: 10,
+    marginBottom: 2,
   },
   proTag: {
     flexDirection: 'row',
@@ -811,10 +798,10 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingVertical: 4,
     paddingHorizontal: 8,
-    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    backgroundColor: 'rgba(169, 185, 255, 0.12)',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.3)',
+    borderColor: 'rgba(169, 185, 255, 0.3)',
   },
   addBtnText: {
     ...typography.caption,
@@ -825,7 +812,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   scheduleCard: {
-    padding: 16,
+    padding: 14,
+    borderRadius: 14,
   },
   cardTopRow: {
     flexDirection: 'row',
@@ -943,9 +931,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: 'rgba(56, 189, 248, 0.1)',
+    backgroundColor: colors.primaryAccentGlow,
     borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.25)',
+    borderColor: colors.primaryAccent,
   },
   stepSimulateBtn: {
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
@@ -958,12 +946,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   dashedRoutineCard: {
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: 'rgba(56, 189, 248, 0.4)',
-    backgroundColor: 'rgba(56, 189, 248, 0.04)',
-    padding: 16,
+    borderColor: 'rgba(169, 185, 255, 0.4)',
+    backgroundColor: 'rgba(169, 185, 255, 0.04)',
+    padding: 14,
     marginBottom: 12,
   },
   dashedCardHeader: {
@@ -976,7 +964,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    backgroundColor: colors.primaryAccentGlow,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1017,8 +1005,8 @@ const styles = StyleSheet.create({
   presetChipBadge: {
     ...typography.caption,
     fontSize: 10,
-    color: '#38BDF8',
-    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    color: colors.primaryAccent,
+    backgroundColor: colors.primaryAccentGlow,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
@@ -1129,9 +1117,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   modalPresetPill: {
-    backgroundColor: 'rgba(56, 189, 248, 0.1)',
+    backgroundColor: colors.primaryAccentGlow,
     borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.25)',
+    borderColor: colors.primaryAccent,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -1193,7 +1181,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dayPillSelected: {
-    backgroundColor: 'rgba(56, 189, 248, 0.2)',
+    backgroundColor: colors.primaryAccentGlow,
     borderColor: colors.primaryAccent,
   },
   dayPillText: {

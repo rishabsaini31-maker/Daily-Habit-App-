@@ -1,37 +1,50 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { ChevronLeft } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
 import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import { useOnboarding } from './OnboardingContext';
 
 const SCREEN_TIME_PRESETS = [
-  { hours: 2.5, label: '2 - 3 Hours', tier: 'Moderate User', desc: 'Typical casual check-ins & messaging' },
-  { hours: 4.5, label: '4 - 5 Hours', tier: 'High User', desc: 'Average modern smartphone consumer' },
-  { hours: 6.5, label: '6 - 7 Hours', tier: 'Intense User', desc: 'Heavy doomscrolling and constant multitasking' },
-  { hours: 8.5, label: '8+ Hours', tier: 'Extreme Loop', desc: 'Over half your waking day on device' },
+  { hours: 1.5, label: 'Under 2', suffix: 'hours' },
+  { hours: 2.5, label: '2–3', suffix: 'hours' },
+  { hours: 4.5, label: '4–5', suffix: 'hours' },
+  { hours: 6.5, label: '6–7', suffix: 'hours' },
+  { hours: 8.5, label: '8+', suffix: 'hours' },
 ];
 
 export const Step3ScreenTimeInput: React.FC = () => {
   const { dailyScreenHours, setDailyHours, nextStep, prevStep } = useOnboarding();
+  const [notSureSelected, setNotSureSelected] = useState(false);
 
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.stepIndicator}>STEP 3 OF 5</Text>
-        <Text style={styles.title}>Estimate your daily screen time</Text>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={prevStep} style={styles.backButton} accessibilityLabel="Back">
+            <ChevronLeft size={18} color={colors.secondaryMutedText} />
+          </TouchableOpacity>
+          <Text style={styles.stepIndicator}>Focus setup</Text>
+          <Text style={styles.stepCount}>2 of 3</Text>
+        </View>
+        <Text style={styles.title}>Daily screen time</Text>
         <Text style={styles.subtitle}>
-          Check your iOS Screen Time or Android Digital Wellbeing report if unsure.
+          A rough estimate is fine. Choose one.
         </Text>
 
         <View style={styles.presetsList}>
           {SCREEN_TIME_PRESETS.map((preset) => {
-            const isSelected = Math.abs(dailyScreenHours - preset.hours) < 0.2;
+            const isSelected = !notSureSelected && Math.abs(dailyScreenHours - preset.hours) < 0.2;
             return (
               <TouchableOpacity
                 key={preset.label}
                 activeOpacity={0.8}
-                onPress={() => setDailyHours(preset.hours)}
+                onPress={() => {
+                  setNotSureSelected(false);
+                  setDailyHours(preset.hours);
+                }}
+                style={styles.presetWrapper}
               >
                 <GlassCard
                   style={[
@@ -44,33 +57,52 @@ export const Step3ScreenTimeInput: React.FC = () => {
                       <Text style={[styles.hoursTitle, isSelected && styles.hoursTitleActive]}>
                         {preset.label}
                       </Text>
-                      <Text style={styles.tierBadge}>{preset.tier}</Text>
+                      <Text style={styles.tierBadge}>{preset.suffix}</Text>
                     </View>
                     <View style={[styles.radioCircle, isSelected && styles.radioCircleActive]}>
                       {isSelected && <View style={styles.radioInnerDot} />}
                     </View>
                   </View>
-                  <Text style={styles.presetDesc}>{preset.desc}</Text>
                 </GlassCard>
               </TouchableOpacity>
             );
           })}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.presetWrapper}
+            onPress={() => {
+              setNotSureSelected(true);
+              setDailyHours(4.5);
+            }}
+          >
+            <GlassCard style={[styles.presetCard, notSureSelected && styles.presetCardActive]}>
+              <View style={styles.cardHeader}>
+                <View>
+                  <Text style={[styles.hoursTitle, notSureSelected && styles.hoursTitleActive]}>
+                    Not sure
+                  </Text>
+                  <Text style={styles.tierBadge}>Choose later</Text>
+                </View>
+                <View style={[styles.radioCircle, notSureSelected && styles.radioCircleActive]}>
+                  {notSureSelected && <View style={styles.radioInnerDot} />}
+                </View>
+              </View>
+            </GlassCard>
+          </TouchableOpacity>
         </View>
       </View>
 
-      {/* Footer Navigation */}
       <View style={styles.footer}>
-        <View style={styles.navRow}>
-          <TouchableOpacity onPress={prevStep} style={styles.backBtn}>
-            <Text style={styles.backText}>Back</Text>
-          </TouchableOpacity>
-          <View style={styles.ctaWrapper}>
-            <PrimaryPillButton
-              title={`Calculate Impact (${dailyScreenHours} hrs/day)`}
-              onPress={nextStep}
-            />
-          </View>
-        </View>
+        <PrimaryPillButton
+          title="See my estimate"
+          onPress={nextStep}
+          rightIcon={<ChevronLeft size={16} color={colors.primaryButtonText} style={styles.nextIcon} />}
+        />
+        <Text style={styles.footerNote}>
+          {notSureSelected
+            ? "We'll use 4.5 hours as a temporary estimate. You can update it later."
+            : 'Choose Not sure to start with a 4.5-hour estimate.'}
+        </Text>
       </View>
     </View>
   );
@@ -85,57 +117,82 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: spacing.screenPadding,
-    paddingTop: 20,
-    justifyContent: 'center',
+    paddingTop: 8,
+    justifyContent: 'flex-start',
   },
   stepIndicator: {
-    ...typography.caption,
+    ...typography.bodySmall,
+    color: colors.secondaryMutedText,
+    flex: 1,
+    marginLeft: 8,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 22,
+  },
+  backButton: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    backgroundColor: colors.elevatedCardSurface,
+  },
+  stepCount: {
+    ...typography.bodySmall,
     color: colors.primaryAccent,
-    marginBottom: 6,
-    letterSpacing: 1.5,
+    fontSize: 10,
   },
   title: {
     ...typography.displayMedium,
-    marginBottom: 8,
+    fontSize: 23,
+    marginBottom: 5,
   },
   subtitle: {
     ...typography.bodyMedium,
     color: colors.secondaryMutedText,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   presetsList: {
-    gap: 12,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -5,
+    rowGap: 8,
+  },
+  presetWrapper: {
+    width: '50%',
+    paddingHorizontal: 5,
   },
   presetCard: {
-    padding: 16,
+    padding: 10,
+    borderRadius: 12,
+    minHeight: 55,
+    justifyContent: 'center',
   },
   presetCardActive: {
     borderColor: colors.primaryAccent,
-    backgroundColor: 'rgba(56, 189, 248, 0.08)',
+    backgroundColor: colors.primaryAccentGlow,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 0,
   },
   hoursTitle: {
-    ...typography.titleLarge,
-    fontSize: 18,
+    ...typography.bodyMedium,
+    color: colors.primaryText,
+    fontSize: 13,
+    fontWeight: '600',
   },
   hoursTitleActive: {
     color: colors.primaryAccent,
   },
   tierBadge: {
-    ...typography.caption,
-    fontSize: 10,
-    color: colors.secondaryMutedText,
-    marginTop: 2,
-  },
-  presetDesc: {
     ...typography.bodySmall,
+    fontSize: 9,
     color: colors.secondaryMutedText,
-    marginTop: 4,
   },
   radioCircle: {
     width: 22,
@@ -157,27 +214,17 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: spacing.screenPadding,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.hairlineBorder,
+    paddingVertical: 12,
     backgroundColor: colors.obsidian,
   },
-  navRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  footerNote: {
+    ...typography.bodySmall,
+    fontSize: 10,
+    textAlign: 'center',
+    marginTop: 8,
   },
-  backBtn: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  backText: {
-    ...typography.bodyMedium,
-    color: colors.secondaryMutedText,
-  },
-  ctaWrapper: {
-    flex: 1,
-    marginLeft: 12,
+  nextIcon: {
+    transform: [{ rotate: '180deg' }],
   },
 });
 

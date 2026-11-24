@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { Sparkles, Zap, Lock } from 'lucide-react-native';
+import { ArrowRight, Check, Clock } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
 import { useResponsiveLayout } from '../../core/theme/useResponsiveLayout';
-import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import { useOnboarding } from './OnboardingContext';
 import SignInModal from '../auth/SignInModal';
@@ -17,11 +16,10 @@ export const Step1WelcomeHook: React.FC = () => {
 
   return (
     <View style={[styles.container, { paddingTop: topInset + 8, paddingBottom: bottomInset + 16 }]}>
-      {/* Top Header with Prominent "Already Pro? Sign In" for returning users */}
       <View style={[styles.topHeader, responsiveContainerStyle]}>
         <View style={styles.brandBadge}>
           <Image source={APP_LOGO} style={styles.logoTiny} resizeMode="contain" />
-          <Text style={styles.brandTitle}>Daily Habit Improvement</Text>
+          <Text style={styles.brandTitle}>DHI</Text>
         </View>
         <TouchableOpacity
           style={styles.topSignInBtn}
@@ -29,80 +27,48 @@ export const Step1WelcomeHook: React.FC = () => {
           onPress={() => setShowSignInModal(true)}
           accessibilityLabel="Already Pro? Sign In"
         >
-          <Text style={styles.topSignInText}>
-            Already Pro? <Text style={styles.topSignInHighlight}>Sign In</Text>
-          </Text>
+          <Text style={styles.topSignInText}>Sign in</Text>
         </TouchableOpacity>
       </View>
 
       <View style={[styles.content, responsiveContainerStyle]}>
-        {/* Glow Icon Hero with Official Metallic App Logo */}
-        <View style={styles.heroIconWrapper}>
-          <View style={styles.glowOuter}>
-            <View style={styles.glowInner}>
-              <Image source={APP_LOGO} style={styles.logoHero} resizeMode="contain" />
-            </View>
-          </View>
-        </View>
-
-        <Text style={styles.tagline}>DIGITAL WELL-BEING OS</Text>
-        <Text style={styles.headline}>Take Back Your Life from Screen Addiction.</Text>
+        <Text style={styles.eyebrow}>DAILY HABIT IMPROVEMENT</Text>
+        <Text style={styles.headline}>
+          Less scrolling.{'\n'}
+          <Text style={styles.headlineAccent}>More living.</Text>
+        </Text>
         <Text style={styles.description}>
-          The average person spends 4+ hours daily in dopamine loops. Regain 2+ hours of deep
-          focus every single day with surgical app blocking and friction shielding.
+          Make space for what matters. Build a calmer relationship with your phone.
         </Text>
 
-        {/* Feature Highlights Cards */}
-        <View style={styles.highlightsContainer}>
-          <GlassCard style={styles.featureCard}>
-            <View style={styles.featureRow}>
-              <View style={[styles.badge, { backgroundColor: 'rgba(56, 189, 248, 0.15)' }]}>
-                <Zap size={20} color={colors.primaryAccent} />
-              </View>
-              <View style={styles.featureTextCol}>
-                <Text style={styles.featureTitle}>Surgical Reels & Shorts Blocker</Text>
-                <Text style={styles.featureSub}>
-                  Block endless vertical video feeds while keeping messages and utilities
-                </Text>
-              </View>
-            </View>
-          </GlassCard>
+        <View style={styles.heroRing}>
+          <View style={styles.heroRingInner} />
+        </View>
 
-          <GlassCard style={styles.featureCard}>
-            <View style={styles.featureRow}>
-              <View style={[styles.badge, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
-                <Lock size={20} color={colors.positiveAccent} />
-              </View>
-              <View style={styles.featureTextCol}>
-                <Text style={styles.featureTitle}>Hardcore Friction Shield</Text>
-                <Text style={styles.featureSub}>
-                  Unbreakable locks with friend verification & physical NFC pairing
-                </Text>
-              </View>
-            </View>
-          </GlassCard>
+        <View style={styles.highlightsContainer}>
+          <View style={styles.featureRow}>
+            <View style={styles.featureIcon}><Check size={14} color={colors.primaryAccent} /></View>
+            <Text style={styles.featureText}>Block reels, not your conversations</Text>
+          </View>
+          <View style={styles.featureRow}>
+            <View style={styles.featureIcon}><Check size={14} color={colors.primaryAccent} /></View>
+            <Text style={styles.featureText}>A little friction. A lot more intention.</Text>
+          </View>
         </View>
       </View>
 
-      {/* Bottom CTA & Returning Member Sign-In Link */}
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, responsiveContainerStyle]}>
         <PrimaryPillButton
-          title="Begin 2-Minute Diagnostic"
+          title="Get started"
           onPress={nextStep}
-          rightIcon={<Sparkles size={18} color={colors.primaryButtonText} />}
+          rightIcon={<ArrowRight size={18} color={colors.primaryButtonText} />}
         />
-        <TouchableOpacity
-          style={styles.signInLink}
-          activeOpacity={0.7}
-          onPress={() => setShowSignInModal(true)}
-        >
-          <Text style={styles.signInText}>
-            Already have an account? <Text style={styles.signInHighlight}>Sign In</Text>
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.durationRow}>
+          <Clock size={12} color={colors.secondaryMutedText} />
+          <Text style={styles.durationText}>3 steps · About 2 minutes</Text>
+        </View>
       </View>
 
-      {/* Returning User Sign-In Modal */}
       <SignInModal
         visible={showSignInModal}
         onClose={() => setShowSignInModal(false)}
@@ -123,150 +89,127 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '100%',
-    paddingBottom: 8,
+    paddingBottom: 4,
   },
   brandBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 7,
   },
   logoTiny: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.4)',
-  },
-  logoHero: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 22,
+    width: 24,
+    height: 24,
+    borderRadius: 7,
   },
   brandTitle: {
-    ...typography.caption,
-    fontSize: 12,
-    fontWeight: '800',
-    color: colors.primaryAccent,
-    letterSpacing: 1.5,
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.primaryText,
+    letterSpacing: 0.2,
   },
   topSignInBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: 'rgba(56, 189, 248, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.25)',
+    paddingHorizontal: 4,
+    paddingVertical: 8,
   },
   topSignInText: {
-    ...typography.caption,
-    fontSize: 12,
-    color: colors.secondaryMutedText,
-  },
-  topSignInHighlight: {
     color: colors.primaryAccent,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '600',
   },
   content: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
   },
-  heroIconWrapper: {
-    marginBottom: 20,
-    alignItems: 'center',
-  },
-  glowOuter: {
-    width: 114,
-    height: 114,
-    borderRadius: 57,
-    backgroundColor: 'rgba(56, 189, 248, 0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(56, 189, 248, 0.35)',
-    shadowColor: '#38BDF8',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  glowInner: {
-    width: 88,
-    height: 88,
-    borderRadius: 24,
-    backgroundColor: '#12141D',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: 'rgba(16, 185, 129, 0.4)',
-    padding: 6,
-  },
-  tagline: {
+  eyebrow: {
     ...typography.caption,
-    color: colors.primaryAccent,
-    marginBottom: 8,
-    letterSpacing: 2,
-  },
-  headline: {
-    ...typography.displayMedium,
-    textAlign: 'center',
+    color: colors.secondaryMutedText,
+    fontSize: 9,
+    letterSpacing: 1.4,
     marginBottom: 12,
   },
+  headline: {
+    color: colors.primaryText,
+    fontSize: 34,
+    lineHeight: 40,
+    letterSpacing: -1.3,
+    fontWeight: '500',
+    marginBottom: 12,
+  },
+  headlineAccent: {
+    color: colors.primaryAccent,
+  },
   description: {
-    ...typography.bodyMedium,
-    textAlign: 'center',
-    color: colors.secondaryMutedText,
-    marginBottom: 24,
-    paddingHorizontal: 8,
+    ...typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 17,
+    maxWidth: 290,
+    marginBottom: 20,
+  },
+  heroRing: {
+    width: 126,
+    height: 126,
+    borderRadius: 63,
+    alignSelf: 'center',
+    marginVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#263044',
+    borderWidth: 2,
+    borderColor: '#8995AA',
+    shadowColor: '#BBC7DD',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.24,
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  heroRingInner: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.obsidian,
+    borderWidth: 2,
+    borderColor: '#5E6A7F',
+    shadowColor: '#A9B9FF',
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
   },
   highlightsContainer: {
     width: '100%',
-    gap: 12,
-  },
-  featureCard: {
-    padding: 16,
+    gap: 9,
+    marginTop: 16,
   },
   featureRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 9,
   },
-  badge: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
+  featureIcon: {
+    width: 17,
+    height: 17,
+    borderRadius: 5,
+    backgroundColor: 'rgba(169, 185, 255, 0.14)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
   },
-  featureTextCol: {
-    flex: 1,
-  },
-  featureTitle: {
-    ...typography.titleMedium,
-    fontSize: 15,
-    marginBottom: 2,
-  },
-  featureSub: {
+  featureText: {
     ...typography.bodySmall,
-    color: colors.secondaryMutedText,
+    fontSize: 11,
+    color: colors.primaryText,
   },
   bottomBar: {
-    paddingTop: 16,
+    paddingTop: 12,
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
-  signInLink: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+  durationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
-  signInText: {
+  durationText: {
     ...typography.bodySmall,
-    color: colors.secondaryMutedText,
-  },
-  signInHighlight: {
-    color: colors.primaryAccent,
-    fontWeight: '700',
+    fontSize: 10,
   },
 });
 

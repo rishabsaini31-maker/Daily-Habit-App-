@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { Check } from 'lucide-react-native';
+import { Check, ChevronLeft } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
 import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
@@ -31,10 +31,16 @@ export const Step2DistractionQuiz: React.FC = () => {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.stepIndicator}>STEP 2 OF 5</Text>
-        <Text style={styles.title}>Which apps steal the most of your focus?</Text>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={prevStep} style={styles.backButton} accessibilityLabel="Back">
+            <ChevronLeft size={18} color={colors.secondaryMutedText} />
+          </TouchableOpacity>
+          <Text style={styles.stepIndicator}>Focus setup</Text>
+          <Text style={styles.stepCount}>1 of 3</Text>
+        </View>
+        <Text style={styles.title}>Choose apps to limit</Text>
         <Text style={styles.subtitle}>
-          Select all that you open unconsciously or spend more time on than intended.
+          Select one or more. You can change these later.
         </Text>
 
         <View style={styles.grid}>
@@ -61,11 +67,11 @@ export const Step2DistractionQuiz: React.FC = () => {
                         isSelected && styles.checkCircleActive,
                       ]}
                     >
-                      {isSelected && <Check size={14} color="#090A0F" />}
+                      {isSelected && <Check size={14} color={colors.primaryButtonText} />}
                     </View>
                   </View>
                   <Text style={styles.appName}>{item.name}</Text>
-                  <Text style={styles.appSubtext}>{item.subtext}</Text>
+                  <Text style={styles.appSubtext}>{item.category}</Text>
                 </GlassCard>
               </TouchableOpacity>
             );
@@ -75,18 +81,15 @@ export const Step2DistractionQuiz: React.FC = () => {
 
       {/* Footer Navigation */}
       <View style={styles.footer}>
-        <View style={styles.navRow}>
-          <TouchableOpacity onPress={prevStep} style={styles.backBtn}>
-            <Text style={styles.backText}>Back</Text>
-          </TouchableOpacity>
-          <View style={styles.ctaWrapper}>
-            <PrimaryPillButton
-              title={`Continue (${selectedApps.length} selected)`}
-              onPress={nextStep}
-              disabled={selectedApps.length === 0}
-            />
-          </View>
-        </View>
+        <Text style={styles.selectionNote}>
+          {selectedApps.length} apps selected · Change these anytime
+        </Text>
+        <PrimaryPillButton
+          title="Continue"
+          onPress={nextStep}
+          disabled={selectedApps.length === 0}
+          rightIcon={<ChevronLeft size={16} color={colors.primaryButtonText} style={styles.nextIcon} />}
+        />
       </View>
     </View>
   );
@@ -99,23 +102,42 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: spacing.screenPadding,
-    paddingTop: 20,
+    paddingTop: 8,
     paddingBottom: 24,
   },
   stepIndicator: {
-    ...typography.caption,
+    ...typography.bodySmall,
+    color: colors.secondaryMutedText,
+    flex: 1,
+    marginLeft: 8,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 22,
+  },
+  backButton: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    backgroundColor: colors.elevatedCardSurface,
+  },
+  stepCount: {
+    ...typography.bodySmall,
     color: colors.primaryAccent,
-    marginBottom: 6,
-    letterSpacing: 1.5,
+    fontSize: 10,
   },
   title: {
     ...typography.displayMedium,
-    marginBottom: 8,
+    fontSize: 23,
+    marginBottom: 5,
   },
   subtitle: {
     ...typography.bodyMedium,
     color: colors.secondaryMutedText,
-    marginBottom: 20,
+    marginBottom: 14,
   },
   grid: {
     flexDirection: 'row',
@@ -127,13 +149,14 @@ const styles = StyleSheet.create({
     padding: 6,
   },
   card: {
-    padding: 16,
-    minHeight: 120,
+    minHeight: 82,
+    borderRadius: 12,
+    padding: 11,
     justifyContent: 'space-between',
   },
   cardSelected: {
     borderColor: colors.primaryAccent,
-    backgroundColor: 'rgba(56, 189, 248, 0.08)',
+    backgroundColor: colors.primaryAccentGlow,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -142,7 +165,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   emoji: {
-    fontSize: 26,
+    fontSize: 19,
   },
   checkCircle: {
     width: 22,
@@ -158,38 +181,27 @@ const styles = StyleSheet.create({
     borderColor: colors.primaryAccent,
   },
   appName: {
-    ...typography.titleMedium,
-    fontSize: 15,
+    ...typography.bodySmall,
+    fontSize: 11,
+    color: colors.primaryText,
+    fontWeight: '600',
   },
   appSubtext: {
     ...typography.bodySmall,
-    fontSize: 11,
-    color: colors.secondaryMutedText,
-    marginTop: 2,
+    display: 'none',
   },
   footer: {
     paddingHorizontal: spacing.screenPadding,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.hairlineBorder,
+    paddingVertical: 12,
     backgroundColor: colors.obsidian,
   },
-  navRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backBtn: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  backText: {
+  selectionNote: {
     ...typography.bodyMedium,
-    color: colors.secondaryMutedText,
+    fontSize: 10,
+    marginBottom: 9,
   },
-  ctaWrapper: {
-    flex: 1,
-    marginLeft: 12,
+  nextIcon: {
+    transform: [{ rotate: '180deg' }],
   },
 });
 

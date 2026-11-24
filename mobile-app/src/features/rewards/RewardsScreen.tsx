@@ -6,8 +6,9 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Modal,
 } from 'react-native';
-import { Award, Gem, Flame, Users, Radio, Check, Lock } from 'lucide-react-native';
+import { Gem, Flame, Users, Radio, Check } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
 import { useResponsiveLayout } from '../../core/theme/useResponsiveLayout';
 import GlassCard from '../../core/theme/components/GlassCard';
@@ -18,6 +19,7 @@ export const RewardsScreen: React.FC = () => {
   const { profile, updateProfile, activeSession } = useFocusEngine();
   const { topInset, bottomInset, responsiveContainerStyle } = useResponsiveLayout();
   const [isScanningNFC, setIsScanningNFC] = useState<boolean>(false);
+  const [showGemGuide, setShowGemGuide] = useState(false);
 
   const handlePairNFC = () => {
     setIsScanningNFC(true);
@@ -98,10 +100,7 @@ export const RewardsScreen: React.FC = () => {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.screenTitle}>Rewards & Focus Gems</Text>
-        <Text style={styles.screenSubtitle}>
-          Gamify discipline with streak multipliers, partner locks, and NFC physical keys
-        </Text>
+        <Text style={styles.screenTitle}>Rewards</Text>
 
         {/* 1. FOCUS GEMS BALANCE HERO */}
         <GlassCard style={styles.gemsHeroCard}>
@@ -111,58 +110,49 @@ export const RewardsScreen: React.FC = () => {
             </View>
             <View style={styles.gemTextCol}>
               <View style={styles.gemTierRow}>
-                <Text style={styles.gemLabel}>TOTAL FOCUS GEMS</Text>
+                <Text style={styles.gemLabel}>FOCUS GEMS</Text>
                 <View style={styles.tierBadge}>
                   <Text style={styles.tierBadgeText}>{tierRank.toUpperCase()} TIER</Text>
                 </View>
               </View>
-              <Text style={styles.gemBalanceText}>{currentGems} 💎</Text>
+              <View style={styles.gemCountRow}>
+                <Text style={styles.gemBalanceText}>{currentGems}</Text>
+                <Gem size={17} color={colors.primaryAccent} />
+              </View>
             </View>
           </View>
-          <Text style={styles.gemSub}>
-            Earned via +10 Gems per 30m Deep Focus, +5 Gems per blocked app, and +50 Gems on daily 70+ Focus Score.
-          </Text>
+          <TouchableOpacity
+            style={styles.howToEarnButton}
+            activeOpacity={0.75}
+            onPress={() => setShowGemGuide(true)}
+          >
+            <Text style={styles.howToEarnText}>How to earn</Text>
+          </TouchableOpacity>
         </GlassCard>
 
-        {/* 2. STREAK MILESTONES */}
-        <Text style={styles.sectionHeader}>STREAK MILESTONES</Text>
+        {/* 2. FOCUS STREAK */}
+        <Text style={styles.sectionHeader}>Focus streak</Text>
         <GlassCard style={styles.streakCard}>
           <View style={styles.milestoneRow}>
             <View style={styles.milestoneIcon}>
               <Flame size={24} color="#F97316" />
             </View>
             <View style={styles.milestoneTextCol}>
-              <Text style={styles.milestoneTitle}>{streakDays}-Day Focus Streak</Text>
-              <Text style={styles.milestoneSub}>Milestone Active • 1.5x Gem Multiplier unlocked</Text>
+              <Text style={styles.milestoneTitle}>{streakDays} days</Text>
+              <Text style={styles.milestoneSub}>Focus streak</Text>
             </View>
             <View style={styles.doneCheck}>
               <Check size={16} color="#090A0F" />
             </View>
           </View>
 
-          <View style={styles.milestoneDivider} />
-
-          <View style={styles.milestoneRow}>
-            <View style={[styles.milestoneIcon, { backgroundColor: 'rgba(255, 255, 255, 0.05)' }]}>
-              <Award size={24} color={colors.secondaryMutedText} />
-            </View>
-            <View style={styles.milestoneTextCol}>
-              <Text style={[styles.milestoneTitle, { color: colors.secondaryMutedText }]}>
-                14-Day Diamond Shield
-              </Text>
-              <Text style={styles.milestoneSub}>Progress: {Math.min(14, streakDays)}/14 days completed</Text>
-            </View>
-            <View style={styles.lockedBadge}>
-              <Lock size={12} color={colors.secondaryMutedText} />
-            </View>
-          </View>
         </GlassCard>
 
         {/* 3. FRIEND LOCK ACCOUNTABILITY PARTNER */}
-        <Text style={styles.sectionHeader}>ACCOUNTABILITY LOCK</Text>
+        <Text style={styles.sectionHeader}>Accountability lock</Text>
         <GlassCard style={styles.featureCard}>
           <View style={styles.featureRow}>
-            <View style={[styles.iconBox, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
+            <View style={[styles.iconBox, { backgroundColor: colors.positiveAccentGlow }]}>
               <Users size={22} color={colors.positiveAccent} />
             </View>
             <View style={styles.featureTextCol}>
@@ -183,10 +173,10 @@ export const RewardsScreen: React.FC = () => {
         </GlassCard>
 
         {/* 4. PHYSICAL NFC TAG PAIRING */}
-        <Text style={styles.sectionHeader}>HARDWARE INTEGRATION</Text>
+        <Text style={styles.sectionHeader}>Physical keys</Text>
         <GlassCard style={styles.featureCard}>
           <View style={styles.featureRow}>
-            <View style={[styles.iconBox, { backgroundColor: 'rgba(56, 189, 248, 0.12)' }]}>
+            <View style={[styles.iconBox, { backgroundColor: colors.primaryAccentGlow }]}>
               <Radio size={22} color={colors.primaryAccent} />
             </View>
             <View style={styles.featureTextCol}>
@@ -203,11 +193,31 @@ export const RewardsScreen: React.FC = () => {
             onPress={handlePairNFC}
           >
             <Text style={styles.configBtnText}>
-              {profile.nfc_tag_uid ? 'Re-calibrate NFC Key' : 'Pair New NFC Sticker'}
+              {profile.nfc_tag_uid ? 'Manage NFC key' : 'Pair an NFC key'}
             </Text>
           </TouchableOpacity>
         </GlassCard>
       </ScrollView>
+
+      <Modal
+        visible={showGemGuide}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowGemGuide(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.guideTitle}>How to earn Gems</Text>
+            <Text style={styles.guideLine}>+10 Gems · Every 30 minutes of Deep Focus</Text>
+            <Text style={styles.guideLine}>+5 Gems · Each blocked app</Text>
+            <Text style={styles.guideLine}>+50 Gems · Daily focus score of 70 or higher</Text>
+            <Text style={styles.guideNote}>Your current multiplier is 1.5×.</Text>
+            <TouchableOpacity style={styles.gotItButton} onPress={() => setShowGemGuide(false)}>
+              <Text style={styles.gotItText}>Got it</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -224,7 +234,8 @@ const styles = StyleSheet.create({
   },
   screenTitle: {
     ...typography.displayMedium,
-    marginBottom: 4,
+    fontSize: 24,
+    marginBottom: 12,
   },
   screenSubtitle: {
     ...typography.bodyMedium,
@@ -232,10 +243,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   gemsHeroCard: {
-    padding: 20,
+    padding: 15,
     marginBottom: 16,
-    borderColor: 'rgba(56, 189, 248, 0.35)',
-    backgroundColor: 'rgba(56, 189, 248, 0.08)',
+    borderRadius: 14,
+    borderColor: colors.hairlineBorder,
+    backgroundColor: colors.elevatedCardSurface,
   },
   gemsTopRow: {
     flexDirection: 'row',
@@ -246,7 +258,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    backgroundColor: colors.primaryAccentGlow,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -265,7 +277,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
   },
   tierBadge: {
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    backgroundColor: colors.primaryAccentGlow,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
@@ -276,21 +288,38 @@ const styles = StyleSheet.create({
     color: colors.primaryAccent,
   },
   gemBalanceText: {
-    fontSize: 32,
-    fontWeight: '900',
+    fontSize: 34,
+    fontWeight: '400',
     color: colors.primaryText,
+  },
+  gemCountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
   },
   gemSub: {
     ...typography.bodySmall,
     color: colors.secondaryMutedText,
     lineHeight: 18,
   },
+  howToEarnButton: {
+    alignSelf: 'flex-start',
+    marginLeft: 66,
+    marginTop: -4,
+    paddingVertical: 5,
+  },
+  howToEarnText: {
+    ...typography.bodySmall,
+    color: colors.primaryAccent,
+    fontSize: 12,
+  },
   sectionHeader: {
     ...typography.caption,
     color: colors.secondaryMutedText,
     marginBottom: 10,
     marginTop: 12,
-    letterSpacing: 1.2,
+    letterSpacing: 0.3,
+    textTransform: 'none',
   },
   streakCard: {
     padding: 16,
@@ -346,6 +375,7 @@ const styles = StyleSheet.create({
   featureCard: {
     padding: 16,
     marginBottom: 14,
+    borderRadius: 14,
   },
   featureRow: {
     flexDirection: 'row',
@@ -382,6 +412,45 @@ const styles = StyleSheet.create({
   configBtnText: {
     ...typography.bodySmall,
     color: colors.primaryAccent,
+    fontWeight: '700',
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.screenPadding,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+  },
+  modalCard: {
+    backgroundColor: colors.elevatedCardSurface,
+    borderColor: colors.hairlineBorder,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 18,
+  },
+  guideTitle: {
+    ...typography.titleLarge,
+    marginBottom: 14,
+  },
+  guideLine: {
+    ...typography.bodySmall,
+    color: colors.primaryText,
+    marginBottom: 11,
+  },
+  guideNote: {
+    ...typography.bodySmall,
+    marginTop: 2,
+    marginBottom: 15,
+  },
+  gotItButton: {
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primaryButtonBg,
+    borderRadius: 9,
+  },
+  gotItText: {
+    ...typography.bodySmall,
+    color: colors.primaryButtonText,
     fontWeight: '700',
   },
 });

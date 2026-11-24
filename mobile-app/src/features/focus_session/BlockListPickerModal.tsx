@@ -8,20 +8,16 @@ import {
   Switch,
   Alert,
   TextInput,
+  Modal,
 } from 'react-native';
 import {
   X,
   Check,
-  Scissors,
-  Crown,
   Plus,
   Clock,
   Sliders,
   Sparkles,
-  RotateCcw,
   Lock,
-  AlertCircle,
-  Trash2,
 } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
 import { useResponsiveLayout } from '../../core/theme/useResponsiveLayout';
@@ -173,7 +169,6 @@ export const BlockListPickerModal: React.FC = () => {
     addBlockedTarget,
     removeBlockedTarget,
     setAppDailyLimit,
-    recordAppUsage,
     profile,
   } = useFocusEngine();
   const { bottomInset, isWide } = useResponsiveLayout();
@@ -181,6 +176,7 @@ export const BlockListPickerModal: React.FC = () => {
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'social' | 'entertainment' | 'gaming' | 'custom'>('all');
   const [showAddCustom, setShowAddCustom] = useState<boolean>(false);
   const [editingLimitPkg, setEditingLimitPkg] = useState<string | null>(null);
+  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
 
   // Custom App Form State
   const [customName, setCustomName] = useState<string>('');
@@ -295,35 +291,39 @@ export const BlockListPickerModal: React.FC = () => {
     );
   };
 
-  const handleSimulateUsage = async (packageName: string, currentSpent: number, limit: number) => {
-    const res = await recordAppUsage(packageName, 5);
-    if (res.isLimitReached) {
-      Alert.alert(
-        '24-Hour Daily Limit Reached! 🚫',
-        `You have used your entire ${limit}m allowance for today. This app is now blocked until 12:00 AM Midnight when the 24-hour cycle resets.`
-      );
-    }
-  };
-
   return (
     <View style={[styles.modalOverlay, isWide && styles.modalOverlayWide]}>
       <View style={[styles.sheetContainer, isWide && styles.sheetContainerWide]}>
         {/* Header */}
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.title}>App Block List & Daily Quotas</Text>
+            <Text style={styles.title}>App limits</Text>
             <Text style={styles.subtitle}>
-              Configure daily time limits (20m, 30m, 1h) & 24h midnight cycles
+              Set your daily limits
             </Text>
           </View>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={showAddCustom ? 'Close add app form' : 'Add custom app'}
+            onPress={() => setShowAddCustom(!showAddCustom)}
+            style={styles.addCustomBtn}
+          >
+            <Plus size={14} color={colors.primaryButtonText} />
+            <Text style={styles.addCustomBtnText}>Add</Text>
+          </TouchableOpacity>
           <TouchableOpacity onPress={closeModal} style={styles.closeBtn}>
             <X size={20} color={colors.secondaryMutedText} />
           </TouchableOpacity>
         </View>
 
         {/* Category Filter Pills */}
-        <View style={styles.filterBar}>
-          {(['all', 'social', 'entertainment', 'gaming', 'custom'] as const).map((filter) => {
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterBar}
+        >
+          {(['all', 'social', 'entertainment', 'gaming', ...(allApps.some((app) => app.isCustom) ? ['custom' as const] : [])] as const).map((filter) => {
             const isActive = selectedFilter === filter;
             return (
               <TouchableOpacity
@@ -338,44 +338,13 @@ export const BlockListPickerModal: React.FC = () => {
               </TouchableOpacity>
             );
           })}
-        </View>
+        </ScrollView>
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {/* 1. 24-HOUR RESET CYCLE BANNER (12 AM to 12 AM) */}
-          <GlassCard variant="accent" style={styles.cycleCard}>
-            <View style={styles.cycleHeaderRow}>
-              <Clock size={18} color={colors.primaryAccent} />
-              <Text style={styles.cycleTitle}>24-Hour Daily Cycle (12:00 AM – 12:00 AM)</Text>
-            </View>
-            <Text style={styles.cycleDesc}>
-              Each app's daily allowance runs on a midnight-to-midnight cycle. Once an app hits its daily
-              cap (e.g. 20m, 30m, 1h), it automatically locks for the rest of the day and unlocks fresh at
-              12:00 AM midnight.
-            </Text>
-            <View style={styles.cycleBadgeRow}>
-              <View style={styles.cyclePill}>
-                <RotateCcw size={12} color={colors.positiveAccent} />
-                <Text style={styles.cyclePillText}>Next Reset: Tonight at 12:00 AM Midnight</Text>
-              </View>
-            </View>
-          </GlassCard>
+          <Text style={styles.listIntro}>
+            Limit entire apps or just Reels and Shorts.
+          </Text>
 
-          {/* 2. ADD CUSTOM APP ACTION BUTTON */}
-          <View style={styles.actionHeaderRow}>
-            <Text style={styles.sectionHeader}>YOUR TARGET APPS & ALLOWANCES</Text>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => setShowAddCustom(!showAddCustom)}
-              style={styles.addCustomBtn}
-            >
-              <Plus size={14} color="#08090D" />
-              <Text style={styles.addCustomBtnText}>
-                {showAddCustom ? 'Close Form' : '+ Add Custom App'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* 3. CUSTOM APP FORM ACCORDION */}
           {showAddCustom && (
             <GlassCard style={styles.customAppFormCard}>
               <View style={styles.formTitleRow}>
@@ -469,25 +438,6 @@ export const BlockListPickerModal: React.FC = () => {
             </GlassCard>
           )}
 
-          {/* 4. SURGICAL BLOCKING SPOTLIGHT CARD */}
-          <GlassCard style={styles.surgicalSpotlightCard}>
-            <View style={styles.spotlightHeader}>
-              <Scissors size={20} color={colors.primaryAccent} />
-              <Text style={styles.spotlightTitle}>Surgical Blocker Mode</Text>
-              {!profile.is_pro && (
-                <View style={styles.proPillBadge}>
-                  <Crown size={12} color="#FBBF24" />
-                  <Text style={styles.proPillText}>PRO</Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.spotlightDesc}>
-              Keep productive messaging, search, and educational long-form videos active while
-              laser-blocking addicting vertical reels feeds.
-            </Text>
-          </GlassCard>
-
-          {/* 5. APPS LIST WITH PER-APP TIME LIMITS & 24H CYCLE PROGRESS */}
           <View style={styles.appsList}>
             {filteredCatalog.map((app) => {
               const matchedTarget = blockedTargets.find(
@@ -499,9 +449,7 @@ export const BlockListPickerModal: React.FC = () => {
 
               const dailyLimit = matchedTarget?.daily_limit_minutes ?? 20;
               const timeSpent = matchedTarget?.time_spent_today_minutes ?? 0;
-              const remainingMinutes = Math.max(0, dailyLimit - timeSpent);
               const isLimitReached = dailyLimit > 0 && timeSpent >= dailyLimit;
-              const progressPct = dailyLimit > 0 ? Math.min(100, Math.round((timeSpent / dailyLimit) * 100)) : 100;
               const isEditingThisLimit = editingLimitPkg === app.packageName;
 
               return (
@@ -520,7 +468,9 @@ export const BlockListPickerModal: React.FC = () => {
                           </View>
                         )}
                       </View>
-                      <Text style={styles.appUsage}>{app.packageName}</Text>
+                      <Text style={styles.appUsage}>
+                        {app.isCustom ? app.packageName : app.category}
+                      </Text>
                     </View>
                     <Switch
                       value={isEntirelyBlocked}
@@ -536,7 +486,7 @@ export const BlockListPickerModal: React.FC = () => {
                       <View style={styles.allowanceHeaderRow}>
                         <View style={styles.allowanceTitleRow}>
                           <Clock size={14} color={isLimitReached ? colors.dangerAccent : colors.primaryAccent} />
-                          <Text style={styles.allowanceLabel}>DAILY ALLOWANCE (24H CYCLE):</Text>
+                          <Text style={styles.allowanceLabel}>DAILY LIMIT</Text>
                         </View>
                         <TouchableOpacity
                           activeOpacity={0.7}
@@ -597,61 +547,12 @@ export const BlockListPickerModal: React.FC = () => {
                         </View>
                       )}
 
-                      {/* Progress Bar & 24h Cycle Tracking */}
-                      {dailyLimit > 0 && (
-                        <View style={styles.progressContainer}>
-                          <View style={styles.progressHeaderRow}>
-                            <Text style={styles.progressTimeText}>
-                              {timeSpent}m / {dailyLimit}m used today
-                            </Text>
-                            <Text
-                              style={[
-                                styles.progressRemainingText,
-                                isLimitReached && { color: colors.dangerAccent },
-                              ]}
-                            >
-                              {isLimitReached ? 'Daily Limit Reached' : `${remainingMinutes}m left`}
-                            </Text>
-                          </View>
-
-                          <View style={styles.progressBarTrack}>
-                            <View
-                              style={[
-                                styles.progressBarFill,
-                                {
-                                  width: `${progressPct}%`,
-                                  backgroundColor:
-                                    isLimitReached
-                                      ? colors.dangerAccent
-                                      : progressPct >= 75
-                                      ? colors.warningAccent
-                                      : colors.primaryAccent,
-                                },
-                              ]}
-                            />
-                          </View>
-
-                          {/* Status Badge when limit is reached */}
-                          {isLimitReached ? (
-                            <View style={styles.limitReachedBanner}>
-                              <Lock size={12} color={colors.dangerAccent} />
-                              <Text style={styles.limitReachedText}>
-                                LOCKED: 24h limit reached. Resets at 12:00 AM Midnight.
-                              </Text>
-                            </View>
-                          ) : (
-                            <View style={styles.simRow}>
-                              <Text style={styles.simHint}>Runs 12:00 AM to 12:00 AM cycle</Text>
-                              <TouchableOpacity
-                                onPress={() =>
-                                  handleSimulateUsage(app.packageName, timeSpent, dailyLimit)
-                                }
-                                style={styles.simBtn}
-                              >
-                                <Text style={styles.simBtnText}>+5m Test</Text>
-                              </TouchableOpacity>
-                            </View>
-                          )}
+                      {isLimitReached && (
+                        <View style={styles.limitReachedBanner}>
+                          <Lock size={12} color={colors.dangerAccent} />
+                          <Text style={styles.limitReachedText}>
+                            Daily limit reached. Resets at midnight.
+                          </Text>
                         </View>
                       )}
                     </View>
@@ -663,7 +564,13 @@ export const BlockListPickerModal: React.FC = () => {
                       <View style={styles.surgicalItemRow}>
                         <View style={styles.surgicalDot} />
                         <View style={styles.surgicalTextCol}>
-                          <Text style={styles.surgicalName}>{app.surgicalFeatureName}</Text>
+                          <Text style={styles.surgicalName}>
+                            {app.name === 'Instagram'
+                              ? 'Reels only'
+                              : app.name === 'YouTube'
+                                ? 'Shorts only'
+                                : app.surgicalFeatureName}
+                          </Text>
                           <Text style={styles.surgicalDesc}>{app.surgicalDescription}</Text>
                         </View>
                         <Switch
@@ -686,13 +593,37 @@ export const BlockListPickerModal: React.FC = () => {
 
         {/* Footer */}
         <View style={[styles.footer, { paddingBottom: Math.max(bottomInset, 16) }]}>
+          <Text style={styles.resetNote}>Daily limits reset at midnight.</Text>
           <PrimaryPillButton
-            title="Done & Sync Rules"
-            onPress={closeModal}
+            title="Save app limits"
+            onPress={() => setShowSaveConfirmation(true)}
             rightIcon={<Check size={18} color={colors.primaryButtonText} />}
           />
         </View>
       </View>
+
+      <Modal
+        visible={showSaveConfirmation}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSaveConfirmation(false)}
+      >
+        <View style={styles.confirmationOverlay}>
+          <View style={styles.confirmationCard}>
+            <Text style={styles.confirmationTitle}>App limits saved</Text>
+            <Text style={styles.confirmationDescription}>
+              Your {blockedTargets.length} app rules are saved. Daily allowances reset at midnight.
+            </Text>
+            <PrimaryPillButton title="Back to focus" onPress={closeModal} />
+            <TouchableOpacity
+              style={styles.keepEditingButton}
+              onPress={() => setShowSaveConfirmation(false)}
+            >
+              <Text style={styles.keepEditingText}>Keep editing</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -737,7 +668,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.titleLarge,
-    fontSize: 18,
+    fontSize: 19,
   },
   subtitle: {
     ...typography.bodySmall,
@@ -757,7 +688,7 @@ const styles = StyleSheet.create({
   filterBar: {
     flexDirection: 'row',
     paddingHorizontal: spacing.screenPadding,
-    paddingVertical: 12,
+    paddingVertical: 10,
     gap: 8,
   },
   filterPill: {
@@ -776,19 +707,27 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.secondaryMutedText,
     fontWeight: '600',
+    textTransform: 'none',
   },
   filterTextActive: {
-    color: '#08090D',
+    color: colors.primaryButtonText,
     fontWeight: '800',
   },
   scrollContent: {
     paddingHorizontal: spacing.screenPadding,
     paddingBottom: 32,
+    gap: 12,
+  },
+  listIntro: {
+    ...typography.bodySmall,
+    color: colors.secondaryMutedText,
+    lineHeight: 18,
+    marginBottom: 2,
   },
   cycleCard: {
     padding: 16,
     marginBottom: 16,
-    borderColor: 'rgba(56, 189, 248, 0.3)',
+    borderColor: colors.primaryAccent,
   },
   cycleHeaderRow: {
     flexDirection: 'row',
@@ -845,14 +784,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     backgroundColor: colors.primaryAccent,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 14,
   },
   addCustomBtnText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
-    color: '#08090D',
+    color: colors.primaryButtonText,
   },
   customAppFormCard: {
     padding: 16,
@@ -902,7 +841,7 @@ const styles = StyleSheet.create({
     borderColor: colors.hairlineBorder,
   },
   catChoicePillActive: {
-    backgroundColor: 'rgba(56, 189, 248, 0.2)',
+    backgroundColor: colors.primaryAccentGlow,
     borderColor: colors.primaryAccent,
   },
   catChoiceText: {
@@ -927,7 +866,7 @@ const styles = StyleSheet.create({
     borderColor: colors.hairlineBorder,
   },
   allowancePillActive: {
-    backgroundColor: 'rgba(56, 189, 248, 0.2)',
+    backgroundColor: colors.primaryAccentGlow,
     borderColor: colors.primaryAccent,
   },
   allowancePillText: {
@@ -1004,16 +943,18 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   appCard: {
-    padding: 16,
+    padding: 14,
+    borderRadius: 18,
+    borderColor: colors.hairlineBorder,
   },
   appRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   appIconPlaceholder: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 13,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1086,8 +1027,8 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   limitPillActive: {
-    backgroundColor: 'rgba(56, 189, 248, 0.12)',
-    borderColor: 'rgba(56, 189, 248, 0.35)',
+    backgroundColor: colors.primaryAccentGlow,
+    borderColor: colors.primaryAccent,
   },
   limitPillActiveText: {
     fontSize: 11,
@@ -1257,6 +1198,48 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.hairlineBorder,
     backgroundColor: colors.obsidian,
+  },
+  resetNote: {
+    ...typography.bodySmall,
+    textAlign: 'center',
+    fontSize: 10,
+    marginBottom: 9,
+  },
+  confirmationOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.screenPadding,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+  },
+  confirmationCard: {
+    backgroundColor: colors.elevatedCardSurface,
+    borderWidth: 1,
+    borderColor: colors.hairlineBorder,
+    borderRadius: 16,
+    padding: 18,
+  },
+  confirmationTitle: {
+    ...typography.titleLarge,
+    fontSize: 17,
+    marginBottom: 8,
+  },
+  confirmationDescription: {
+    ...typography.bodySmall,
+    lineHeight: 18,
+    marginBottom: 15,
+  },
+  keepEditingButton: {
+    height: 40,
+    marginTop: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: colors.hairlineBorder,
+  },
+  keepEditingText: {
+    ...typography.bodySmall,
+    color: colors.primaryText,
   },
 });
 

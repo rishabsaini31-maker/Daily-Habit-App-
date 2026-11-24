@@ -18,7 +18,6 @@ import {
   Lock,
   ArrowLeft,
   KeyRound,
-  Sparkles,
 } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
 import { AppleIcon, GoogleIcon } from '../../core/theme/components/SocialIcons';
@@ -35,6 +34,8 @@ interface SignInModalProps {
   visible: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  mode?: 'sign-in' | 'save-progress';
+  onContinueAsGuest?: () => void | Promise<void>;
 }
 
 type SignInStep = 'choose' | 'email_otp' | 'otp_verify' | 'email_password';
@@ -43,6 +44,8 @@ export const SignInModal: React.FC<SignInModalProps> = ({
   visible,
   onClose,
   onSuccess,
+  mode = 'sign-in',
+  onContinueAsGuest,
 }) => {
   const { finishOnboarding } = useOnboarding();
   const { refreshState } = useFocusEngine();
@@ -66,6 +69,15 @@ export const SignInModal: React.FC<SignInModalProps> = ({
   const handleClose = () => {
     resetState();
     onClose();
+  };
+
+  const handleContinueAsGuest = async () => {
+    try {
+      await onContinueAsGuest?.();
+      handleClose();
+    } catch {
+      setErrorMessage('Could not continue right now. Please try again.');
+    }
   };
 
   const handlePostSignInSuccess = async () => {
@@ -199,10 +211,10 @@ export const SignInModal: React.FC<SignInModalProps> = ({
       onRequestClose={handleClose}
     >
       <KeyboardAvoidingView
-        style={styles.overlay}
+        style={[styles.overlay, mode === 'save-progress' && styles.saveProgressOverlay]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.modalContent}>
+        <View style={[styles.modalContent, mode === 'save-progress' && styles.saveProgressContent]}>
           {/* Top Bar with Back/Close */}
           <View style={styles.topBar}>
             {step !== 'choose' ? (
@@ -215,7 +227,9 @@ export const SignInModal: React.FC<SignInModalProps> = ({
             ) : (
               <View style={styles.badge}>
                 <KeyRound size={14} color={colors.primaryAccent} />
-                <Text style={styles.badgeText}>RETURNING MEMBER</Text>
+                <Text style={styles.badgeText}>
+                  {mode === 'save-progress' ? 'SAVE YOUR PROGRESS' : 'RETURNING MEMBER'}
+                </Text>
               </View>
             )}
 
@@ -229,9 +243,13 @@ export const SignInModal: React.FC<SignInModalProps> = ({
             <View style={styles.modalLogoWrapper}>
               <Image source={APP_LOGO} style={styles.modalLogo} resizeMode="contain" />
             </View>
-            <Text style={styles.headline}>Welcome Back</Text>
+            <Text style={styles.headline}>
+              {mode === 'save-progress' ? 'Save your progress' : 'Welcome Back'}
+            </Text>
             <Text style={styles.subheadline}>
-              Sign in to restore your DHI Pro subscription, streaks, and custom block schedules.
+              {mode === 'save-progress'
+                ? 'Sign in to sync your focus progress and keep it safe across devices.'
+                : 'Sign in to restore your DHI Pro subscription, streaks, and custom block schedules.'}
             </Text>
           </View>
 
@@ -259,7 +277,9 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                     <View style={styles.appleLogoIcon}>
                       <AppleIcon size={20} color="#000000" />
                     </View>
-                    <Text style={styles.appleBtnText}>Sign In with Apple</Text>
+                    <Text style={styles.appleBtnText}>
+                      {mode === 'save-progress' ? 'Continue with Apple' : 'Sign In with Apple'}
+                    </Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -274,7 +294,9 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                 <View style={styles.googleIconBadge}>
                   <GoogleIcon size={18} />
                 </View>
-                <Text style={styles.googleBtnText}>Sign In with Google</Text>
+                <Text style={styles.googleBtnText}>
+                  {mode === 'save-progress' ? 'Continue with Google' : 'Sign In with Google'}
+                </Text>
               </TouchableOpacity>
 
               {/* Email OTP */}
@@ -285,16 +307,29 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                 disabled={loading}
               >
                 <Mail size={18} color={colors.primaryText} />
-                <Text style={styles.emailBtnText}>Sign In with Email Code (OTP)</Text>
+                <Text style={styles.emailBtnText}>
+                  {mode === 'save-progress' ? 'Continue with email' : 'Sign In with Email Code (OTP)'}
+                </Text>
               </TouchableOpacity>
 
               {/* Password option */}
-              <TouchableOpacity
-                style={styles.passwordLink}
-                onPress={() => { setStep('email_password'); setErrorMessage(null); }}
-              >
-                <Text style={styles.passwordLinkText}>Use Email & Password instead</Text>
-              </TouchableOpacity>
+              {mode === 'sign-in' && (
+                <TouchableOpacity
+                  style={styles.passwordLink}
+                  onPress={() => { setStep('email_password'); setErrorMessage(null); }}
+                >
+                  <Text style={styles.passwordLinkText}>Use Email & Password instead</Text>
+                </TouchableOpacity>
+              )}
+              {mode === 'save-progress' && (
+                <TouchableOpacity
+                  style={styles.continueGuestButton}
+                  onPress={handleContinueAsGuest}
+                  disabled={loading}
+                >
+                  <Text style={styles.continueGuestText}>Continue without an account</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
 
@@ -423,6 +458,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(4, 5, 8, 0.88)',
     justifyContent: 'flex-end',
   },
+  saveProgressOverlay: {
+    justifyContent: 'center',
+    backgroundColor: colors.obsidian,
+  },
   modalContent: {
     backgroundColor: colors.obsidian,
     borderTopLeftRadius: 28,
@@ -432,6 +471,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screenPadding,
     paddingTop: 16,
     paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+  },
+  saveProgressContent: {
+    flex: 1,
+    justifyContent: 'center',
+    borderRadius: 0,
+    borderWidth: 0,
+    paddingTop: 24,
+    paddingBottom: 24,
   },
   topBar: {
     flexDirection: 'row',
@@ -443,12 +490,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    backgroundColor: colors.primaryAccentGlow,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.25)',
+    borderColor: colors.primaryAccent,
   },
   badgeText: {
     ...typography.caption,
@@ -472,7 +519,7 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: 'rgba(56, 189, 248, 0.4)',
+    borderColor: colors.primaryAccent,
     overflow: 'hidden',
     backgroundColor: '#12141D',
     marginBottom: 12,
@@ -480,7 +527,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 4,
-    shadowColor: '#38BDF8',
+    shadowColor: colors.primaryAccent,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
@@ -591,6 +638,16 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: colors.secondaryMutedText,
     textDecorationLine: 'underline',
+  },
+  continueGuestButton: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginTop: 2,
+  },
+  continueGuestText: {
+    ...typography.bodySmall,
+    color: colors.primaryAccent,
+    fontWeight: '700',
   },
   inputStepContainer: {
     marginVertical: 4,

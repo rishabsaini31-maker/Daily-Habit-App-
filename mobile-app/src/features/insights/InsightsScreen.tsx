@@ -1,73 +1,77 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { TrendingDown, Sparkles, BookOpen, Dumbbell, Moon, ShieldAlert } from 'lucide-react-native';
-import { colors, typography, spacing } from '../../core/theme/tokens';
+import React, { useEffect, useState } from 'react';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { BookOpen, Dumbbell, TrendingDown } from 'lucide-react-native';
+import { colors, spacing } from '../../core/theme/tokens';
 import { useResponsiveLayout } from '../../core/theme/useResponsiveLayout';
 import GlassCard from '../../core/theme/components/GlassCard';
 import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
 import { api } from '../../services/api';
 
+type InsightRange = 'Today' | 'This week' | 'All time';
+type WeeklyInsight = {
+  reclaimed_hours: number;
+  ai_headline: string;
+  ai_opportunity_cost: string;
+};
+
+const ranges: InsightRange[] = ['Today', 'This week', 'All time'];
+
 export const InsightsScreen: React.FC = () => {
-  const { todayMetrics, profile, blockedTargets } = useFocusEngine();
+  const { profile, todayMetrics } = useFocusEngine();
   const { topInset, bottomInset, responsiveContainerStyle } = useResponsiveLayout();
-  const [aiInsight, setAiInsight] = useState<{
-    headline: string;
-    opportunityCost: string;
-    reclaimedHours: number;
-  } | null>(null);
+  const [selectedRange, setSelectedRange] = useState<InsightRange>('This week');
+  const [weeklyInsight, setWeeklyInsight] = useState<WeeklyInsight | null>(null);
+  const [insightUnavailable, setInsightUnavailable] = useState(false);
 
   useEffect(() => {
+    let active = true;
+
     api.getWeeklyAiInsight()
-      .then((data) => {
-        if (data && data.success) {
-          setAiInsight({
-            headline: data.ai_headline,
-            opportunityCost: data.ai_opportunity_cost,
-            reclaimedHours: data.reclaimed_hours,
-          });
+      .then((result) => {
+        if (active && result.success) {
+          setWeeklyInsight(result);
+          setInsightUnavailable(false);
+        } else if (active) {
+          setInsightUnavailable(true);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (active) setInsightUnavailable(true);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const totalSavedToday = todayMetrics.blocked_time_min ?? 0;
-  const totalWeeklySavedHours = aiInsight?.reclaimedHours ?? Number((totalSavedToday / 60).toFixed(1));
-
-  const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const todayDayIndex = (new Date().getDay() + 6) % 7;
-  const weeklyData = daysOfWeek.map((day, idx) => {
-    const isToday = idx === todayDayIndex;
-    if (isToday) {
-      const hours = Number((totalSavedToday / 60).toFixed(1));
-      return {
-        day,
-        hours,
-        heightPercent: totalSavedToday > 0 ? Math.min(100, Math.max(15, (totalSavedToday / 240) * 100)) : 10,
-        isToday: true,
-      };
-    }
-    return { day, hours: 0, heightPercent: 10, isToday: false };
-  });
-
-  const topBlockedApps = (blockedTargets || []).map((target) => {
-    const spent = target.time_spent_today_minutes ?? 0;
-    const limit = target.daily_limit_minutes ?? 0;
-    const attempts = spent > 0 ? Math.round(spent / 3) + 1 : 0;
-    const savedMinutes = limit > 0 ? Math.max(0, limit - spent) : spent;
-    const pkg = target.package_or_token.toLowerCase();
-    return {
-      name: target.display_name || target.package_or_token,
-      attempts,
-      savedMinutes,
-      emoji: pkg.includes('instagram') ? '📸' :
-             pkg.includes('youtube') ? '▶️' :
-             pkg.includes('twitter') || pkg.includes('x') ? '🐦' :
-             pkg.includes('tiktok') ? '🎵' : '📱',
-    };
-  });
-
-  const booksReadCount = totalWeeklySavedHours > 0 ? Math.max(1, Math.floor(totalWeeklySavedHours / 6)) : 0;
-  const workoutsCount = totalWeeklySavedHours > 0 ? Math.max(1, Math.floor(totalWeeklySavedHours / 3)) : 0;
+  const todayMinutes = todayMetrics.blocked_time_min ?? 0;
+  const weeklyHours = weeklyInsight?.reclaimed_hours;
+  const shownMinutes = selectedRange === 'Today' ? todayMinutes : null;
+  const shownHours = selectedRange === 'This week' ? weeklyHours : undefined;
+  const hasRangeData = selectedRange === 'Today'
+    ? shownMinutes !== null
+    : selectedRange === 'This week'
+      ? typeof shownHours === 'number'
+      : false;
+  const savedHours = hasRangeData
+    ? selectedRange === 'Today'
+      ? todayMinutes / 60
+      : (shownHours ?? 0)
+    : null;
+  const dailyMinutes = todayMinutes;
+  const dailyHourText = dailyMinutes >= 60
+    ? `${Math.floor(dailyMinutes / 60)}h ${dailyMinutes % 60}m`
+    : `${dailyMinutes}m`;
+  const weekDays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const todayIndex = (new Date().getDay() + 6) % 7;
+  const booksRead = weeklyHours == null ? null : Math.floor(weeklyHours / 4);
+  const workouts = weeklyHours == null ? null : Math.floor(weeklyHours / 2);
 
   return (
     <View style={styles.container}>
@@ -82,140 +86,151 @@ export const InsightsScreen: React.FC = () => {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.screenTitle}>Focus Insights</Text>
-        <Text style={styles.screenSubtitle}>
-          Your reclaimed time and daily cognitive clarity
-        </Text>
+        <Text style={styles.screenTitle}>Insights</Text>
 
-        {/* Big Reclaimed Metric Card */}
+        <View style={styles.rangeSelector}>
+          {ranges.map((range) => (
+            <TouchableOpacity
+              key={range}
+              accessibilityRole="button"
+              accessibilityState={{ selected: selectedRange === range }}
+              onPress={() => setSelectedRange(range)}
+              style={[
+                styles.rangeButton,
+                selectedRange === range && styles.rangeButtonSelected,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.rangeText,
+                  selectedRange === range && styles.rangeTextSelected,
+                ]}
+              >
+                {range}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         <GlassCard style={styles.summaryCard}>
-          <Text style={styles.summaryBadge}>WEEKLY RECLAIMED ATTENTION</Text>
-          <Text style={styles.giantHours}>{totalWeeklySavedHours} Hours</Text>
-          <View style={styles.trendRow}>
-            <TrendingDown size={16} color={colors.positiveAccent} />
-            <Text style={styles.trendText}>
-              -38% distraction time vs your {profile.daily_baseline_minutes || 270}m baseline
-            </Text>
-          </View>
+          <Text style={styles.eyebrow}>TIME RECLAIMED</Text>
+          {savedHours === null ? (
+            <Text style={styles.unavailableValue}>—</Text>
+          ) : (
+            <View style={styles.summaryValueRow}>
+              <Text style={styles.summaryValue}>
+                {savedHours < 1
+                  ? `${Math.round(savedHours * 60)}m`
+                  : `${savedHours.toFixed(1)}h`}
+              </Text>
+              {selectedRange === 'This week' && (
+                <View style={styles.changeBadge}>
+                  <TrendingDown size={14} color={colors.positiveAccent} />
+                  <Text style={styles.changeText}>vs. your baseline</Text>
+                </View>
+              )}
+            </View>
+          )}
+          <Text style={styles.summaryCaption}>
+            {selectedRange === 'Today'
+              ? 'Today'
+              : selectedRange === 'This week'
+                ? 'This week'
+                : 'All time'}
+          </Text>
+          {selectedRange === 'This week' && weeklyInsight?.ai_headline ? (
+            <Text style={styles.summaryNote}>{weeklyInsight.ai_headline}</Text>
+          ) : null}
+          {selectedRange === 'This week' && insightUnavailable ? (
+            <Text style={styles.summaryNote}>Weekly insights are unavailable right now.</Text>
+          ) : null}
+          {selectedRange === 'All time' ? (
+            <Text style={styles.summaryNote}>All-time insights will appear as you build your focus history.</Text>
+          ) : null}
         </GlassCard>
 
-        {/* Reclaimed Time Weekly Chart */}
-        <GlassCard style={styles.chartCard}>
-          <View style={styles.chartHeaderRow}>
-            <Text style={styles.chartTitle}>HOURS SAVED PER DAY</Text>
-            <View style={styles.todayLegend}>
-              <View style={styles.legendDot} />
-              <Text style={styles.legendText}>Today</Text>
-            </View>
+        <View style={styles.sectionHeadingRow}>
+          <Text style={styles.sectionTitle}>Daily log</Text>
+          <Text style={styles.sectionMeta}>This week</Text>
+        </View>
+        <GlassCard style={styles.dailyLogCard}>
+          <View style={styles.dailyLogHeader}>
+            <Text style={styles.dailyLogTitle}>Time reclaimed</Text>
+            <Text style={styles.dailyLogTotal}>
+              {dailyHourText}
+            </Text>
           </View>
-          <View style={styles.chartWrapper}>
-            {/* Horizontal Gridlines */}
-            <View style={styles.gridLinesContainer}>
-              <View style={styles.gridLine} />
-              <View style={styles.gridLine} />
-              <View style={styles.gridLine} />
-            </View>
-            <View style={styles.barsContainer}>
-              {weeklyData.map((d) => (
-                <View key={d.day} style={styles.barCol}>
-                  <Text style={[styles.barHours, d.isToday && styles.barHoursActive]}>
-                    {d.hours}h
-                  </Text>
-                  <View style={[styles.barTrack, d.isToday && styles.barTrackActive]}>
+          <View style={styles.weekRow}>
+            {weekDays.map((day, index) => {
+              const isToday = index === todayIndex;
+              return (
+                <View key={`${day}-${index}`} style={styles.dayColumn}>
+                  <View style={styles.barTrack}>
                     <View
                       style={[
-                        styles.barFill,
-                        { height: `${Math.max(10, d.heightPercent)}%` },
-                        d.hours >= 3.0 && styles.barFillTop,
-                        d.isToday && styles.barFillActive,
+                        styles.dayBar,
+                        isToday && dailyMinutes > 0 ? styles.dayBarToday : null,
+                        { height: isToday && dailyMinutes > 0 ? 28 : 5 },
                       ]}
                     />
                   </View>
-                  <View style={styles.dayCol}>
-                    <Text style={[styles.barDay, d.isToday && styles.barDayActive]}>
-                      {d.day}
-                    </Text>
-                    {d.isToday && <View style={styles.todayDot} />}
-                  </View>
-                </View>
-              ))}
-            </View>
-          </View>
-        </GlassCard>
-
-        {/* AI OPPORTUNITY COST CARD */}
-        <GlassCard style={styles.aiCostCard}>
-          <View style={styles.aiCostHeader}>
-            <View style={styles.aiGlowIconBox}>
-              <Sparkles size={18} color={colors.primaryAccent} />
-            </View>
-            <Text style={styles.aiCostTitle}>
-              {aiInsight?.headline || 'AI Opportunity Cost Analysis'}
-            </Text>
-          </View>
-          <Text style={styles.aiCostDesc}>
-            {aiInsight?.opportunityCost ||
-              `What ${totalWeeklySavedHours} hours of avoided doomscrolling became in real life:`}
-          </Text>
-
-          <View style={styles.gainsList}>
-            <View style={styles.gainItem}>
-              <View style={[styles.gainIconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.15)', borderColor: 'rgba(56, 189, 248, 0.3)' }]}>
-                <BookOpen size={16} color={colors.primaryAccent} />
-              </View>
-              <Text style={styles.gainText}>
-                <Text style={styles.gainBold}>{booksReadCount} Books read:</Text> Deep Work & Atomic Habits
-              </Text>
-            </View>
-
-            <View style={styles.gainItem}>
-              <View style={[styles.gainIconCircle, { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.3)' }]}>
-                <Dumbbell size={16} color={colors.positiveAccent} />
-              </View>
-              <Text style={styles.gainText}>
-                <Text style={styles.gainBold}>{workoutsCount} Gym workouts completed</Text> without phone distraction
-              </Text>
-            </View>
-
-            <View style={styles.gainItem}>
-              <View style={[styles.gainIconCircle, { backgroundColor: 'rgba(168, 85, 247, 0.15)', borderColor: 'rgba(168, 85, 247, 0.3)' }]}>
-                <Moon size={16} color="#C084FC" />
-              </View>
-              <Text style={styles.gainText}>
-                <Text style={styles.gainBold}>+48 mins</Text> additional REM sleep per night
-              </Text>
-            </View>
-          </View>
-        </GlassCard>
-
-        {/* TOP BLOCKED APPS LIST */}
-        <Text style={styles.sectionHeader}>TOP INTERCEPTED TARGETS</Text>
-        <View style={styles.blockedList}>
-          {topBlockedApps.length === 0 ? (
-            <GlassCard style={styles.appStatCard}>
-              <Text style={[styles.appStatSub, { textAlign: 'center', width: '100%', paddingVertical: 12 }]}>
-                No blocked targets intercepted yet. Add apps to your focus shield in Schedules to reclaim attention.
-              </Text>
-            </GlassCard>
-          ) : (
-            topBlockedApps.map((item, idx) => (
-              <GlassCard key={item.name} style={styles.appStatCard}>
-                <Text style={styles.rankNum}>#{idx + 1}</Text>
-                <Text style={styles.appEmoji}>{item.emoji}</Text>
-                <View style={styles.appStatInfoCol}>
-                  <Text style={styles.appStatName}>{item.name}</Text>
-                  <Text style={styles.appStatSub}>
-                    {item.attempts} opens blocked • Saved ~{item.savedMinutes}m
+                  <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]}>
+                    {day}
+                  </Text>
+                  <Text style={styles.dayValue}>
+                    {isToday ? dailyHourText : '—'}
                   </Text>
                 </View>
-                <View style={styles.shieldCountBadge}>
-                  <ShieldAlert size={14} color={colors.dangerAccent} />
-                  <Text style={styles.shieldCountText}>{item.attempts}</Text>
-                </View>
-              </GlassCard>
-            ))
-          )}
+              );
+            })}
+          </View>
+          <Text style={styles.dailyLogFootnote}>
+            {todayMetrics.metric_date
+              ? `Updated ${new Date(todayMetrics.metric_date).toLocaleDateString()}`
+              : 'Daily history will appear here as you use the app.'}
+          </Text>
+        </GlassCard>
+
+        <View style={styles.sectionHeadingRow}>
+          <Text style={styles.sectionTitle}>Beyond the screen</Text>
         </View>
+        <GlassCard style={styles.activitiesCard}>
+          <View style={styles.activityRow}>
+            <View style={styles.activityIcon}>
+              <BookOpen size={18} color={colors.primaryAccent} />
+            </View>
+            <View style={styles.activityCopy}>
+              <Text style={styles.activityTitle}>
+                {booksRead === null
+                  ? 'Reading time'
+                  : `About ${booksRead} ${booksRead === 1 ? 'book' : 'books'} worth of reading`}
+              </Text>
+              <Text style={styles.activitySubtitle}>
+                {weeklyInsight?.ai_opportunity_cost || 'Your reclaimed time can go toward what matters.'}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.activityRow}>
+            <View style={styles.activityIcon}>
+              <Dumbbell size={18} color={colors.positiveAccent} />
+            </View>
+            <View style={styles.activityCopy}>
+              <Text style={styles.activityTitle}>
+                {workouts === null
+                  ? 'Phone-free workouts'
+                  : `About ${workouts} gym ${workouts === 1 ? 'session' : 'sessions'} worth of time`}
+              </Text>
+              <Text style={styles.activitySubtitle}>
+                Based on time reclaimed this week
+              </Text>
+            </View>
+          </View>
+        </GlassCard>
+
+        <Text style={styles.baselineNote}>
+          Estimates use your daily baseline of {profile.daily_baseline_minutes ?? 0} minutes.
+        </Text>
       </ScrollView>
     </View>
   );
@@ -228,276 +243,212 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: spacing.screenPadding,
-    paddingTop: 16,
-    paddingBottom: 32,
+    gap: 16,
   },
   screenTitle: {
-    ...typography.displayMedium,
-    marginBottom: 4,
+    color: colors.primaryText,
+    fontSize: 28,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+    marginBottom: 2,
   },
-  screenSubtitle: {
-    ...typography.bodyMedium,
+  rangeSelector: {
+    flexDirection: 'row',
+    padding: 4,
+    borderRadius: 16,
+    backgroundColor: colors.obsidianElevated,
+    borderWidth: 1,
+    borderColor: colors.hairlineBorder,
+  },
+  rangeButton: {
+    flex: 1,
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+  },
+  rangeButtonSelected: {
+    backgroundColor: colors.elevatedCardSurface,
+  },
+  rangeText: {
     color: colors.secondaryMutedText,
-    marginBottom: 20,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  rangeTextSelected: {
+    color: colors.primaryText,
   },
   summaryCard: {
     padding: 20,
+    gap: 8,
+    borderRadius: 20,
+    borderColor: colors.borderHighlight,
+  },
+  eyebrow: {
+    color: colors.secondaryMutedText,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  summaryValueRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
+    flexWrap: 'wrap',
+    gap: 10,
   },
-  summaryBadge: {
-    ...typography.caption,
-    color: colors.positiveAccent,
-    letterSpacing: 1.5,
-  },
-  giantHours: {
-    fontSize: 48,
-    fontWeight: '900',
+  summaryValue: {
     color: colors.primaryText,
+    fontSize: 38,
+    fontWeight: '700',
     letterSpacing: -1,
-    marginVertical: 4,
   },
-  trendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  trendText: {
-    ...typography.bodySmall,
-    color: colors.positiveAccent,
-    fontWeight: '600',
-  },
-  chartCard: {
-    padding: 18,
-    marginBottom: 16,
-  },
-  chartHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  chartTitle: {
-    ...typography.caption,
-    color: colors.secondaryMutedText,
-    letterSpacing: 1.2,
-  },
-  todayLegend: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  legendDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.positiveAccent,
-  },
-  legendText: {
-    ...typography.caption,
-    fontSize: 10,
-    color: colors.positiveAccent,
+  unavailableValue: {
+    color: colors.tertiaryText,
+    fontSize: 38,
     fontWeight: '700',
   },
-  chartWrapper: {
-    position: 'relative',
-    height: 140,
-    justifyContent: 'flex-end',
-  },
-  gridLinesContainer: {
-    position: 'absolute',
-    top: 20,
-    left: 0,
-    right: 0,
-    bottom: 30,
-    justifyContent: 'space-between',
-  },
-  gridLine: {
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    width: '100%',
-  },
-  barsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    height: 140,
-    paddingBottom: 4,
-    zIndex: 1,
-  },
-  barCol: {
-    flex: 1,
-    alignItems: 'center',
-    height: '100%',
-    justifyContent: 'flex-end',
-  },
-  barHours: {
-    ...typography.bodySmall,
-    fontSize: 9,
-    color: colors.secondaryMutedText,
-    marginBottom: 4,
-    fontVariant: ['tabular-nums'],
-  },
-  barHoursActive: {
-    color: colors.positiveAccent,
-    fontWeight: '700',
-  },
-  barTrack: {
-    width: 14,
-    height: 88,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderRadius: 7,
-    justifyContent: 'flex-end',
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
-  },
-  barTrackActive: {
-    borderColor: 'rgba(16, 185, 129, 0.3)',
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
-  },
-  barFill: {
-    width: '100%',
-    backgroundColor: colors.primaryAccent,
-    borderRadius: 7,
-  },
-  barFillTop: {
-    backgroundColor: colors.positiveAccent,
-  },
-  barFillActive: {
-    backgroundColor: colors.positiveAccent,
-  },
-  dayCol: {
-    alignItems: 'center',
-    marginTop: 6,
-    height: 20,
-  },
-  barDay: {
-    ...typography.bodySmall,
-    fontSize: 11,
-    color: colors.secondaryMutedText,
-  },
-  barDayActive: {
-    color: colors.primaryText,
-    fontWeight: '700',
-  },
-  todayDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.positiveAccent,
-    marginTop: 2,
-  },
-  aiCostCard: {
-    padding: 18,
-    marginBottom: 20,
-    borderColor: 'rgba(56, 189, 248, 0.35)',
-    backgroundColor: 'rgba(56, 189, 248, 0.04)',
-    borderWidth: 1,
-  },
-  aiCostHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 8,
-  },
-  aiGlowIconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.3)',
-  },
-  aiCostTitle: {
-    ...typography.titleMedium,
-    fontSize: 15,
-    color: colors.primaryAccent,
-    fontWeight: '700',
-  },
-  aiCostDesc: {
-    ...typography.bodySmall,
-    color: colors.secondaryMutedText,
-    marginBottom: 14,
-    lineHeight: 18,
-  },
-  gainsList: {
-    gap: 10,
-  },
-  gainItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  gainIconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-    borderWidth: 1,
-  },
-  gainText: {
-    ...typography.bodySmall,
-    color: colors.primaryText,
-    flex: 1,
-  },
-  gainBold: {
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  sectionHeader: {
-    ...typography.caption,
-    color: colors.secondaryMutedText,
-    marginBottom: 10,
-    letterSpacing: 1.2,
-  },
-  blockedList: {
-    gap: 10,
-  },
-  appStatCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-  },
-  rankNum: {
-    ...typography.caption,
-    fontSize: 12,
-    color: colors.secondaryMutedText,
-    width: 24,
-  },
-  appEmoji: {
-    fontSize: 22,
-    marginRight: 10,
-  },
-  appStatInfoCol: {
-    flex: 1,
-  },
-  appStatName: {
-    ...typography.titleMedium,
-    fontSize: 14,
-  },
-  appStatSub: {
-    ...typography.bodySmall,
-    color: colors.secondaryMutedText,
-    fontSize: 11,
-  },
-  shieldCountBadge: {
+  changeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: colors.positiveAccentGlow,
   },
-  shieldCountText: {
-    ...typography.caption,
+  changeText: {
+    color: colors.positiveAccent,
     fontSize: 11,
-    color: colors.dangerAccent,
+    fontWeight: '700',
+  },
+  summaryCaption: {
+    color: colors.secondaryMutedText,
+    fontSize: 13,
+  },
+  summaryNote: {
+    color: colors.secondaryMutedText,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  sectionHeadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 2,
+  },
+  sectionTitle: {
+    color: colors.primaryText,
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  sectionMeta: {
+    color: colors.secondaryMutedText,
+    fontSize: 12,
+  },
+  dailyLogCard: {
+    padding: 16,
+    gap: 16,
+  },
+  dailyLogHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dailyLogTitle: {
+    color: colors.secondaryMutedText,
+    fontSize: 13,
+  },
+  dailyLogTotal: {
+    color: colors.primaryText,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  weekRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  dayColumn: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 6,
+  },
+  barTrack: {
+    height: 48,
+    width: '100%',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingBottom: 3,
+    borderRadius: 10,
+    backgroundColor: colors.obsidianElevated,
+  },
+  dayBar: {
+    width: 14,
+    borderRadius: 8,
+    backgroundColor: colors.hairlineBorder,
+  },
+  dayBarToday: {
+    backgroundColor: colors.primaryAccent,
+  },
+  dayLabel: {
+    color: colors.tertiaryText,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  dayLabelToday: {
+    color: colors.primaryAccent,
+  },
+  dayValue: {
+    color: colors.tertiaryText,
+    fontSize: 9,
+    minHeight: 12,
+  },
+  dailyLogFootnote: {
+    color: colors.tertiaryText,
+    fontSize: 10,
+  },
+  activitiesCard: {
+    padding: 16,
+    gap: 14,
+  },
+  activityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  activityIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: colors.elevatedCardSurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activityCopy: {
+    flex: 1,
+    gap: 3,
+  },
+  activityTitle: {
+    color: colors.primaryText,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  activitySubtitle: {
+    color: colors.secondaryMutedText,
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.hairlineBorder,
+  },
+  baselineNote: {
+    color: colors.tertiaryText,
+    textAlign: 'center',
+    fontSize: 10,
+    paddingHorizontal: 20,
+    marginBottom: 8,
   },
 });
 

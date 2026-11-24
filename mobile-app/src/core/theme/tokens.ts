@@ -5,56 +5,56 @@
 
 export const colors = {
   // Primary Obsidian Backgrounds
-  obsidian: '#08090D',
-  obsidianElevated: '#0D0F17',
-  obsidianDeep: '#040508',
+  obsidian: '#0B111D',
+  obsidianElevated: '#101A2A',
+  obsidianDeep: '#080D17',
 
   // Elevated Card Surfaces
-  elevatedCardSurface: '#12141D',
-  elevatedCardHover: '#181B27',
-  glassSurface: 'rgba(18, 20, 29, 0.85)',
-  glassOverlay: 'rgba(8, 9, 13, 0.75)',
+  elevatedCardSurface: '#152238',
+  elevatedCardHover: '#1C2B43',
+  glassSurface: 'rgba(21, 34, 56, 0.92)',
+  glassOverlay: 'rgba(8, 13, 23, 0.78)',
 
   // Borders & Dividers
-  hairlineBorder: '#1E2230',
-  borderMuted: '#171A24',
-  borderHighlight: '#2A3044',
+  hairlineBorder: '#26364E',
+  borderMuted: '#1A2940',
+  borderHighlight: '#344967',
 
   // Text Hierarchy
   primaryText: '#FFFFFF',
-  secondaryMutedText: '#8A94A6',
-  tertiaryText: '#525B6C',
+  secondaryMutedText: '#9AA9C1',
+  tertiaryText: '#687A95',
 
   // Primary Accent (Focus / Active State)
-  primaryAccent: '#38BDF8', // Cyan
-  primaryAccentGlow: 'rgba(56, 189, 248, 0.25)',
-  primaryAccentDark: '#0284C7',
+  primaryAccent: '#A9B9FF',
+  primaryAccentGlow: 'rgba(169, 185, 255, 0.22)',
+  primaryAccentDark: '#8298ED',
 
   // Positive Accent (Saved / Time Reclaimed / Success)
-  positiveAccent: '#10B981', // Emerald
-  positiveAccentGlow: 'rgba(16, 185, 129, 0.25)',
-  positiveAccentDark: '#059669',
+  positiveAccent: '#72D8B5',
+  positiveAccentGlow: 'rgba(114, 216, 181, 0.2)',
+  positiveAccentDark: '#42B894',
 
   // Warning & Caution
-  warningAccent: '#F59E0B', // Amber
-  warningGlow: 'rgba(245, 158, 11, 0.25)',
+  warningAccent: '#E8B96E',
+  warningGlow: 'rgba(232, 185, 110, 0.2)',
 
   // Danger & Locked State (Shield / Block Interception)
-  dangerAccent: '#EF4444', // Rose / Red
-  dangerAccentGlow: 'rgba(239, 68, 68, 0.25)',
+  dangerAccent: '#E88791',
+  dangerAccentGlow: 'rgba(232, 135, 145, 0.2)',
 
   // CTA Pill Button Tokens
-  primaryButtonBg: '#FFFFFF',
-  primaryButtonText: '#090A0F',
-  secondaryButtonBg: '#1E2230',
+  primaryButtonBg: '#A9B9FF',
+  primaryButtonText: '#111A2B',
+  secondaryButtonBg: '#20314B',
   secondaryButtonText: '#FFFFFF',
 
   // Category Colors
-  categorySocial: '#EC4899',
-  categoryEntertainment: '#A855F7',
-  categoryGaming: '#F97316',
-  categoryProductivity: '#3B82F6',
-  categoryShopping: '#14B8A6',
+  categorySocial: '#D28AB1',
+  categoryEntertainment: '#B19AE8',
+  categoryGaming: '#E5A06F',
+  categoryProductivity: '#A9B9FF',
+  categoryShopping: '#72D8B5',
 } as const;
 
 export const spacing = {
@@ -65,35 +65,35 @@ export const spacing = {
   xl: 20,
   xxl: 24,
   xxxl: 32,
-  screenPadding: 20,
+  screenPadding: 18,
 } as const;
 
 export const borderRadius = {
   sm: 8,
   md: 14,
   lg: 18,
-  card: 24, // 24px border radius for cards per spec
+  card: 18,
   pill: 9999, // Circular pill
 } as const;
 
 export const typography = {
   displayLarge: {
     fontSize: 32,
-    fontWeight: '700' as const,
-    lineHeight: 40,
+    fontWeight: '600' as const,
+    lineHeight: 39,
     color: colors.primaryText,
     letterSpacing: -0.5,
   },
   displayMedium: {
-    fontSize: 26,
-    fontWeight: '700' as const,
-    lineHeight: 34,
+    fontSize: 25,
+    fontWeight: '500' as const,
+    lineHeight: 32,
     color: colors.primaryText,
     letterSpacing: -0.3,
   },
   titleLarge: {
     fontSize: 20,
-    fontWeight: '600' as const,
+    fontWeight: '500' as const,
     lineHeight: 28,
     color: colors.primaryText,
   },
@@ -138,9 +138,9 @@ export const typography = {
 } as const;
 
 export const layout = {
-  cardPadding: 20, // 20px padding per spec
+  cardPadding: 16,
   hairlineBorderWidth: 1, // 1px hairline border per spec
-  ctaButtonHeight: 54, // 54px height pill per spec
+  ctaButtonHeight: 48,
 } as const;
 
 export const theme = {

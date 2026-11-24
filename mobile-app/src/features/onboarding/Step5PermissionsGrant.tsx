@@ -1,28 +1,27 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert } from 'react-native';
-import { ShieldCheck, CheckCircle2, Lock, Smartphone, ShieldAlert } from 'lucide-react-native';
-import { colors, typography, spacing } from '../../core/theme/tokens';
+import { Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { CheckCircle2, ChevronLeft, Lock, ShieldAlert, ShieldCheck, Smartphone } from 'lucide-react-native';
+import { colors, spacing, typography } from '../../core/theme/tokens';
 import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import { useOnboarding } from './OnboardingContext';
 import { useNativeBlocker } from '../../services/native_blocker/NativeBlockerContext';
 import { useAppNavigation } from '../../core/navigation/NavigationContext';
+import SignInModal from '../auth/SignInModal';
 
 export const Step5PermissionsGrant: React.FC = () => {
   const { finishOnboarding, prevStep } = useOnboarding();
   const { permissions, requestPermissions } = useNativeBlocker();
   const { openModal } = useAppNavigation();
-  const [isAuthorizing, setIsAuthorizing] = useState<boolean>(false);
-
+  const [isAuthorizing, setIsAuthorizing] = useState(false);
+  const [showSaveProgress, setShowSaveProgress] = useState(false);
   const isIOS = Platform.OS === 'ios';
 
   const handleGrant = async () => {
     setIsAuthorizing(true);
     try {
       await requestPermissions();
-      await finishOnboarding();
-      // Per spec: completing Step 5 marks hasCompletedOnboarding = true and presents Pro Paywall Modal
-      openModal('paywall');
+      setShowSaveProgress(true);
     } catch {
       Alert.alert('Permission Error', 'Could not configure OS blockers. Please try again.');
     } finally {
@@ -30,94 +29,93 @@ export const Step5PermissionsGrant: React.FC = () => {
     }
   };
 
+  const handleContinueAsGuest = async () => {
+    await finishOnboarding();
+    openModal('paywall');
+  };
+
+  const usageAccessGranted = isIOS
+    ? permissions.familyControlsAuthorized
+    : permissions.usageStatsPermissionGranted;
+
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.stepIndicator}>STEP 5 OF 5</Text>
-        <Text style={styles.title}>Enable OS-Level Shielding</Text>
-        <Text style={styles.subtitle}>
-          To stop compulsive opens and surgical shorts, our app requires local system-level
-          blocking permission.
-        </Text>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={prevStep} style={styles.backButton} accessibilityLabel="Back">
+            <ChevronLeft size={18} color={colors.secondaryMutedText} />
+          </TouchableOpacity>
+          <Text style={styles.stepIndicator}>Focus setup</Text>
+          <Text style={styles.stepCount}>3 of 3</Text>
+        </View>
+        <Text style={styles.title}>Enable app protection</Text>
+        <Text style={styles.subtitle}>DHI needs two permissions to block selected apps.</Text>
 
         <View style={styles.cardsList}>
-          {/* iOS / Android Specific Permissions Card */}
           <GlassCard style={styles.permissionCard}>
             <View style={styles.cardRow}>
-              <View style={styles.iconCircle}>
-                <Smartphone size={24} color={colors.primaryAccent} />
-              </View>
               <View style={styles.cardTextCol}>
-                <Text style={styles.permTitle}>
-                  {isIOS ? 'Apple Screen Time API' : 'Android Accessibility & Usage'}
-                </Text>
+                <Text style={styles.cardEyebrow}>1 OF 2 · REQUIRED</Text>
+                <Text style={styles.permTitle}>{isIOS ? 'Screen Time access' : 'Usage access'}</Text>
                 <Text style={styles.permDesc}>
                   {isIOS
-                    ? 'FamilyControls & ManagedSettings authorization to lock apps without VPN overhead.'
-                    : 'Accessibility Service & UsageStatsManager to intercept and shield distraction apps.'}
+                    ? 'Allow Screen Time access to protect the apps you choose.'
+                    : 'Lets DHI detect when a selected app opens.'}
                 </Text>
               </View>
-              <View style={styles.statusCol}>
-                {permissions.allRequiredPermissionsGranted ? (
-                  <CheckCircle2 size={24} color={colors.positiveAccent} />
-                ) : (
-                  <View style={styles.pendingBadge}>
-                    <Text style={styles.pendingText}>Required</Text>
-                  </View>
-                )}
-              </View>
+              {usageAccessGranted ? (
+                <CheckCircle2 size={20} color={colors.positiveAccent} />
+              ) : (
+                <Text style={styles.statusText}>Not enabled</Text>
+              )}
             </View>
           </GlassCard>
 
-          {/* Privacy Guarantee Card */}
-          <GlassCard style={styles.privacyCard}>
+          <GlassCard style={styles.permissionCard}>
             <View style={styles.cardRow}>
-              <View
-                style={[
-                  styles.iconCircle,
-                  { backgroundColor: 'rgba(16, 185, 129, 0.12)' },
-                ]}
-              >
-                <Lock size={22} color={colors.positiveAccent} />
-              </View>
               <View style={styles.cardTextCol}>
-                <Text style={styles.privacyTitle}>100% Private & On-Device</Text>
-                <Text style={styles.privacyDesc}>
-                  Zero personal data leaves your device. We cannot view your screen contents,
-                  chats, or passwords. Everything runs locally in Apple/Android secure enclaves.
-                </Text>
+                <Text style={styles.cardEyebrow}>NEXT</Text>
+                <Text style={styles.permTitle}>{isIOS ? 'App restrictions' : 'Accessibility'}</Text>
+                <Text style={styles.permDesc}>Apply the blocking rules you choose.</Text>
               </View>
+              {permissions.accessibilityServiceEnabled || permissions.deviceActivityAuthorized ? (
+                <CheckCircle2 size={20} color={colors.positiveAccent} />
+              ) : (
+                <Smartphone size={17} color={colors.secondaryMutedText} />
+              )}
             </View>
           </GlassCard>
 
-          {/* Anti-Bypass Note */}
-          <GlassCard style={styles.antiBypassCard}>
-            <View style={styles.cardRow}>
-              <ShieldAlert size={20} color={colors.warningAccent} />
-              <Text style={styles.antiBypassText}>
-                Friction shielding stops subconscious muscle-memory opens instantly.
-              </Text>
-            </View>
-          </GlassCard>
-        </View>
-      </View>
-
-      {/* Footer Navigation */}
-      <View style={styles.footer}>
-        <View style={styles.navRow}>
-          <TouchableOpacity onPress={prevStep} style={styles.backBtn}>
-            <Text style={styles.backText}>Back</Text>
-          </TouchableOpacity>
-          <View style={styles.ctaWrapper}>
-            <PrimaryPillButton
-              title="Grant Permission & Finish"
-              onPress={handleGrant}
-              loading={isAuthorizing}
-              rightIcon={<ShieldCheck size={18} color={colors.primaryButtonText} />}
-            />
+          <View style={styles.privacyRow}>
+            <Lock size={13} color={colors.positiveAccent} />
+            <Text style={styles.privacyTitle}>Your boundaries. Your device.</Text>
+          </View>
+          <Text style={styles.privacyDescription}>
+            Blocking stays on-device. DHI doesn’t read messages or passwords. Revoke access anytime
+            in system settings.
+          </Text>
+          <View style={styles.noticeRow}>
+            <ShieldAlert size={14} color={colors.secondaryMutedText} />
+            <Text style={styles.noticeText}>Then return here to enable Accessibility.</Text>
           </View>
         </View>
       </View>
+
+      <View style={styles.footer}>
+        <PrimaryPillButton
+          title={isIOS ? 'Enable app protection' : 'Enable usage access'}
+          onPress={handleGrant}
+          loading={isAuthorizing}
+          rightIcon={<ShieldCheck size={17} color={colors.primaryButtonText} />}
+        />
+      </View>
+      <SignInModal
+        visible={showSaveProgress}
+        mode="save-progress"
+        onClose={() => setShowSaveProgress(false)}
+        onSuccess={() => openModal('paywall')}
+        onContinueAsGuest={handleContinueAsGuest}
+      />
     </View>
   );
 };
@@ -126,124 +124,111 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.obsidian,
+    justifyContent: 'space-between',
   },
   content: {
     flex: 1,
     paddingHorizontal: spacing.screenPadding,
-    paddingTop: 20,
+    paddingTop: 8,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 22,
+  },
+  backButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.elevatedCardSurface,
+    alignItems: 'center',
     justifyContent: 'center',
   },
   stepIndicator: {
-    ...typography.caption,
+    ...typography.bodySmall,
+    flex: 1,
+    marginLeft: 8,
+  },
+  stepCount: {
+    ...typography.bodySmall,
     color: colors.primaryAccent,
-    marginBottom: 6,
-    letterSpacing: 1.5,
+    fontSize: 10,
   },
   title: {
     ...typography.displayMedium,
-    marginBottom: 8,
+    fontSize: 23,
+    marginBottom: 5,
   },
   subtitle: {
-    ...typography.bodyMedium,
-    color: colors.secondaryMutedText,
-    marginBottom: 24,
+    ...typography.bodySmall,
+    marginBottom: 17,
   },
   cardsList: {
-    gap: 14,
+    gap: 10,
   },
   permissionCard: {
-    padding: 18,
-    borderColor: 'rgba(56, 189, 248, 0.3)',
-  },
-  privacyCard: {
-    padding: 18,
-    borderColor: 'rgba(16, 185, 129, 0.25)',
-  },
-  antiBypassCard: {
+    borderRadius: 13,
     padding: 14,
-    backgroundColor: 'rgba(245, 158, 11, 0.06)',
-    borderColor: 'rgba(245, 158, 11, 0.2)',
-  },
-  antiBypassText: {
-    ...typography.bodySmall,
-    color: colors.warningAccent,
-    marginLeft: 10,
-    flex: 1,
+    backgroundColor: colors.elevatedCardSurface,
   },
   cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(56, 189, 248, 0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
   cardTextCol: {
     flex: 1,
   },
+  cardEyebrow: {
+    ...typography.caption,
+    fontSize: 8,
+    letterSpacing: 0.5,
+    marginBottom: 5,
+  },
   permTitle: {
     ...typography.titleMedium,
-    fontSize: 15,
+    fontSize: 13,
     marginBottom: 3,
   },
   permDesc: {
     ...typography.bodySmall,
-    color: colors.secondaryMutedText,
-    lineHeight: 18,
+    fontSize: 10,
+    lineHeight: 15,
+  },
+  statusText: {
+    ...typography.bodySmall,
+    fontSize: 8,
+    marginLeft: 8,
+  },
+  privacyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 5,
   },
   privacyTitle: {
-    ...typography.titleMedium,
-    fontSize: 15,
-    marginBottom: 3,
-    color: colors.positiveAccent,
-  },
-  privacyDesc: {
     ...typography.bodySmall,
-    color: colors.secondaryMutedText,
-    lineHeight: 18,
-  },
-  statusCol: {
-    marginLeft: 10,
-  },
-  pendingBadge: {
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  pendingText: {
-    ...typography.caption,
+    color: colors.primaryText,
     fontSize: 10,
-    color: colors.primaryAccent,
+  },
+  privacyDescription: {
+    ...typography.bodySmall,
+    fontSize: 9,
+    lineHeight: 14,
+  },
+  noticeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    marginTop: 4,
+  },
+  noticeText: {
+    ...typography.bodySmall,
+    fontSize: 9,
   },
   footer: {
     paddingHorizontal: spacing.screenPadding,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.hairlineBorder,
-    backgroundColor: colors.obsidian,
-  },
-  navRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backBtn: {
     paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  backText: {
-    ...typography.bodyMedium,
-    color: colors.secondaryMutedText,
-  },
-  ctaWrapper: {
-    flex: 1,
-    marginLeft: 12,
+    backgroundColor: colors.obsidian,
   },
 });
 
