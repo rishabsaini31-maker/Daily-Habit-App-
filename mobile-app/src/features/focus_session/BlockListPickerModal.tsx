@@ -29,6 +29,7 @@ import { useAppNavigation } from '../../core/navigation/NavigationContext';
 import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
 import { useNativeBlocker } from '../../services/native_blocker/NativeBlockerContext';
 import { SyncBlockedTarget } from '../../services/sync/SyncService';
+import AppLogo from '../../core/theme/components/AppLogo';
 
 export interface AppItem {
   packageName: string;
@@ -473,11 +474,11 @@ export const BlockListPickerModal: React.FC = () => {
                   {/* Figma 09: Top Row with Real Icon, Name, Subtitle, and Switch */}
                   <View style={styles.appRow}>
                     <View style={styles.appIconBackplate}>
-                      {iconUri ? (
-                        <Image source={{ uri: iconUri }} style={styles.realAppIcon} resizeMode="contain" />
-                      ) : (
-                        <Text style={styles.appIconInitial}>{app.name.charAt(0)}</Text>
-                      )}
+                      <AppLogo
+                        appNameOrId={app.packageName || app.name}
+                        size={30}
+                        iconBase64={iconUri}
+                      />
                     </View>
                     <View style={styles.appInfoCol}>
                       <View style={styles.appNameRow}>

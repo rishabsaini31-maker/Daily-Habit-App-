@@ -21,6 +21,7 @@ import { useResponsiveLayout } from '../../core/theme/useResponsiveLayout';
 import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import ChronographClock from '../../core/theme/components/ChronographClock';
+import AppLogo from '../../core/theme/components/AppLogo';
 import { useAppNavigation } from '../../core/navigation/NavigationContext';
 import { useFocusEngine } from '../../services/focus_engine/FocusEngineContext';
 
@@ -218,7 +219,24 @@ export const HomeScreen: React.FC = () => {
               <View style={styles.cardSubBox}>
                 <View style={styles.subBoxLeft}>
                   <Text style={styles.subBoxLabel}>Apps to block</Text>
-                  <Text style={styles.subBoxValue}>{blockedTargets.length} apps</Text>
+                  <View style={styles.appsValueRow}>
+                    {blockedTargets.length > 0 && (
+                      <View style={styles.appIconsOverlap}>
+                        {blockedTargets.slice(0, 3).map((target, idx) => (
+                          <View
+                            key={target.package_or_token || target.display_name || idx}
+                            style={[
+                              styles.overlappingLogoCircle,
+                              { marginLeft: idx > 0 ? -6 : 0, zIndex: 10 - idx },
+                            ]}
+                          >
+                            <AppLogo appNameOrId={target.package_or_token || target.display_name} size={18} />
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                    <Text style={styles.subBoxValue}>{blockedTargets.length} apps</Text>
+                  </View>
                 </View>
                 <TouchableOpacity
                   activeOpacity={0.7}
@@ -434,6 +452,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.primaryText,
+  },
+  appsValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
+  appIconsOverlap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  overlappingLogoCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#121D2B',
+    borderWidth: 1.5,
+    borderColor: '#29364B',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
   changeActionBtn: {
     paddingVertical: 4,

@@ -11,23 +11,19 @@ import {
   Check,
   ChevronLeft,
   ArrowRight,
-  Gamepad2,
-  ShoppingBag,
-  Newspaper,
-  Compass,
 } from 'lucide-react-native';
 import { colors, typography, spacing } from '../../core/theme/tokens';
 import GlassCard from '../../core/theme/components/GlassCard';
 import PrimaryPillButton from '../../core/theme/components/PrimaryPillButton';
 import { useOnboarding } from './OnboardingContext';
 import { useNativeBlocker } from '../../services/native_blocker/NativeBlockerContext';
+import AppLogo from '../../core/theme/components/AppLogo';
 
 interface DistractionOption {
   id: string;
   name: string;
   category: string;
   packageKeywords: string[];
-  fallbackIcon: React.ReactNode;
 }
 
 const DISTRACTION_OPTIONS: DistractionOption[] = [
@@ -36,84 +32,54 @@ const DISTRACTION_OPTIONS: DistractionOption[] = [
     name: 'Instagram',
     category: 'Social',
     packageKeywords: ['instagram'],
-    fallbackIcon: <Compass size={20} color="#FFFFFF" />,
   },
   {
     id: 'tiktok',
     name: 'TikTok',
     category: 'Social',
     packageKeywords: ['tiktok', 'musically'],
-    fallbackIcon: <Compass size={20} color="#FFFFFF" />,
   },
   {
     id: 'youtube',
     name: 'YouTube',
     category: 'Video',
     packageKeywords: ['youtube'],
-    fallbackIcon: <Compass size={20} color="#FFFFFF" />,
   },
   {
     id: 'twitter',
     name: 'X / Twitter',
     category: 'Social',
     packageKeywords: ['twitter'],
-    fallbackIcon: <Compass size={20} color="#FFFFFF" />,
   },
   {
     id: 'reddit',
     name: 'Reddit',
     category: 'Forum',
     packageKeywords: ['reddit'],
-    fallbackIcon: <Compass size={20} color="#FFFFFF" />,
   },
   {
     id: 'games',
     name: 'Mobile games',
     category: 'Gaming',
     packageKeywords: ['game', 'pubg', 'roblox'],
-    fallbackIcon: <Gamepad2 size={20} color={colors.monochromeLight} />,
   },
   {
     id: 'shopping',
     name: 'Shopping',
     category: 'Shopping',
     packageKeywords: ['amazon', 'shein', 'flipkart', 'shopping'],
-    fallbackIcon: <ShoppingBag size={20} color={colors.monochromeLight} />,
   },
   {
     id: 'news',
     name: 'News',
     category: 'News',
     packageKeywords: ['news', 'nytimes', 'bbc'],
-    fallbackIcon: <Newspaper size={20} color={colors.monochromeLight} />,
   },
 ];
 
 export const Step2DistractionQuiz: React.FC = () => {
   const { selectedApps, toggleAppSelection, nextStep, prevStep } = useOnboarding();
   const { apps: nativeApps } = useNativeBlocker();
-
-  // Find real installed app icon if available
-  const getAppIcon = (item: DistractionOption) => {
-    if (nativeApps && nativeApps.length > 0) {
-      const match = nativeApps.find((app) =>
-        item.packageKeywords.some((kw) =>
-          app.id.toLowerCase().includes(kw) ||
-          app.name.toLowerCase().includes(kw)
-        )
-      );
-      if (match?.iconBase64) {
-        return (
-          <Image
-            source={{ uri: `data:image/png;base64,${match.iconBase64}` }}
-            style={styles.realAppIcon}
-            resizeMode="contain"
-          />
-        );
-      }
-    }
-    return item.fallbackIcon;
-  };
 
   return (
     <View style={styles.container}>
@@ -162,7 +128,18 @@ export const Step2DistractionQuiz: React.FC = () => {
                 >
                   <View style={styles.cardTopRow}>
                     <View style={styles.iconBackplate}>
-                      {getAppIcon(item)}
+                      <AppLogo
+                        appNameOrId={item.id}
+                        size={28}
+                        iconBase64={
+                          nativeApps?.find((app) =>
+                            item.packageKeywords.some((kw) =>
+                              app.id.toLowerCase().includes(kw) ||
+                              app.name.toLowerCase().includes(kw)
+                            )
+                          )?.iconBase64
+                        }
+                      />
                     </View>
                     <View
                       style={[
